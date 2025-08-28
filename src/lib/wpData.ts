@@ -50,7 +50,7 @@ export async function getPosts(first = 10) {
 
 export async function getProductCategories(first = 50) {
   const data = await wpRequest<{
-    productCategories: { nodes: { id: string; slug: string; name: string }[] };
+    productCategories: { nodes: { id: string; slug: string; name: string; description?: string | null }[] };
   }>(QUERY_CATEGORIES, { first });
   return data.productCategories?.nodes ?? [];
 }
@@ -60,7 +60,10 @@ export type Product = {
   slug: string;
   name: string;
   description: string;
+  sku?: string | null;
+  stockStatus?: string | null;
   image?: { sourceUrl?: string; altText?: string } | null;
+  galleryImages?: { nodes?: { sourceUrl?: string; altText?: string }[] } | null;
   price?: string | null;
   regularPrice?: string | null;
   salePrice?: string | null;

@@ -54,6 +54,7 @@ export const QUERY_CATEGORIES = /* GraphQL */ `
         id
         slug
         name
+        description
       }
     }
   }
@@ -67,9 +68,19 @@ export const QUERY_PRODUCTS = /* GraphQL */ `
         slug
         name
         description
+        sku
         image {
           sourceUrl
           altText
+        }
+        galleryImages {
+          nodes {
+            sourceUrl
+            altText
+          }
+        }
+        ... on InventoriedProduct {
+          stockStatus
         }
         ... on SimpleProduct {
           price

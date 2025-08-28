@@ -1,0 +1,106 @@
+/* Global minimal, elegant background utilities
+   Each uses a gentle gradient + subtle transparent noise overlay.
+   Keep colors very soft so product photos remain the focus. */
+
+:root {
+  --noise-url: url('/noise.svg');
+}
+
+/* Helper: layered background function via two backgrounds */
+.bg-sky-mist {
+  background-image:
+    linear-gradient(180deg, rgba(236, 246, 252, 1) 0%, rgba(220, 236, 247, 1) 100%),
+    var(--noise-url);
+  background-size: cover, 128px 128px;
+  background-repeat: no-repeat, repeat;
+}
+
+.bg-water-glint {
+  background-image:
+    linear-gradient(180deg, rgba(228, 241, 247, 1) 0%, rgba(210, 230, 239, 1) 100%),
+    var(--noise-url);
+  background-size: cover, 128px 128px;
+  background-repeat: no-repeat, repeat;
+}
+
+.bg-reed-sand {
+  background-image:
+    linear-gradient(180deg, rgba(241, 237, 225, 1) 0%, rgba(232, 226, 207, 1) 100%),
+    var(--noise-url);
+  background-size: cover, 128px 128px;
+  background-repeat: no-repeat, repeat;
+}
+
+.bg-dune-paper {
+  background-image:
+    linear-gradient(180deg, rgba(246, 243, 236, 1) 0%, rgba(233, 228, 215, 1) 100%),
+    var(--noise-url);
+  background-size: cover, 128px 128px;
+  background-repeat: no-repeat, repeat;
+}
+
+.bg-soft-stone {
+  background-image:
+    linear-gradient(180deg, rgba(243, 244, 246, 1) 0%, rgba(229, 231, 235, 1) 100%),
+    var(--noise-url);
+  background-size: cover, 128px 128px;
+  background-repeat: no-repeat, repeat;
+}
+
+.bg-cloud-sheen {
+  background-image:
+    linear-gradient(180deg, rgba(249, 250, 251, 1) 0%, rgba(236, 238, 240, 1) 100%),
+    var(--noise-url);
+  background-size: cover, 128px 128px;
+  background-repeat: no-repeat, repeat;
+}
+
+.bg-linen-fade {
+  background-image:
+    linear-gradient(180deg, rgba(250, 247, 243, 1) 0%, rgba(237, 232, 226, 1) 100%),
+    var(--noise-url);
+  background-size: cover, 128px 128px;
+  background-repeat: no-repeat, repeat;
+}
+
+.bg-pebble-stripe {
+  background-image:
+    linear-gradient(180deg, rgba(238, 242, 245, 1) 0%, rgba(222, 228, 233, 1) 100%),
+    var(--noise-url);
+  background-size: cover, 128px 128px;
+  background-repeat: no-repeat, repeat;
+}
+
+.bg-sunwash-radial {
+  background-image:
+    radial-gradient(60% 60% at 50% 40%, rgba(255, 249, 235, 1) 0%, rgba(253, 245, 225, 1) 40%, rgba(245, 237, 210, 1) 100%),
+    var(--noise-url);
+  background-size: cover, 128px 128px;
+  background-repeat: no-repeat, repeat;
+}
+
+/* Responsive smoothing for very large screens to avoid banding */
+@media (min-width: 1280px) {
+  .bg-sky-mist,
+  .bg-water-glint,
+  .bg-reed-sand,
+  .bg-dune-paper,
+  .bg-soft-stone,
+  .bg-cloud-sheen,
+  .bg-linen-fade,
+  .bg-pebble-stripe,
+  .bg-sunwash-radial {
+    background-size: cover, 192px 192px;
+  }
+}
+
+/* Mobile refinement: slightly increase contrast so patterns remain perceptible */
+@media (max-width: 640px) {
+  .bg-sunwash-radial {
+    background-image:
+      radial-gradient(60% 60% at 50% 40%, rgba(255, 249, 235, 1) 0%, rgba(253, 245, 225, 1) 50%, rgba(245, 237, 210, 1) 100%),
+      var(--noise-url);
+  }
+}
+
+

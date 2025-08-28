@@ -1,7 +1,11 @@
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
 import { getProductCategories, getProducts, Product } from "@/lib/wpData";
 import ProductCard from "@/components/ProductCard";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
 
 export default function ShopPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -25,13 +29,20 @@ export default function ShopPage() {
     if (!p) return undefined;
     const n = parseFloat(p.replace(/[^0-9.,]/g, "").replace(",", "."));
     return isNaN(n) ? undefined : n;
+    // NOTE: display cleanup is handled inside ProductCard; this is only for filtering.
   };
 
   const filtered = useMemo(() => {
     return allProducts.filter((p) => {
       const price = numericPrice(p.price ?? p.salePrice ?? p.regularPrice ?? null);
       const inPrice = price === undefined ? true : price >= priceMin && price <= priceMax;
-      const inCategory = activeCategories.length === 0 ? true : activeCategories.some((slug) => JSON.stringify(p).includes(slug));
+
+      // keep your previous logic to be robust to different Product shapes
+      const inCategory =
+        activeCategories.length === 0
+          ? true
+          : activeCategories.some((slug) => JSON.stringify(p).includes(slug));
+
       return inPrice && inCategory;
     });
   }, [allProducts, activeCategories, priceMin, priceMax]);
@@ -40,62 +51,101 @@ export default function ShopPage() {
   const maxSelectable = 2000;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      <h1 className="text-3xl font-bold mb-6">Shop</h1>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Filters Sidebar */}
+          <aside className="lg:w-64 flex-shrink-0">
+            <div className="space-y-6">
+              {/* Categories */}
+              <Card className="rounded-none border border-gray-200">
+                <CardHeader className="rounded-none">
+                  <CardTitle className="text-lg">Categories</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {/* All categories */}
+                  <Button
+                    key="all-categories"
+                    variant={activeCategories.length === 0 ? "default" : "ghost"}
+                    className="w-full justify-start rounded-none"
+                    onClick={() => setActiveCategories([])}
+                  >
+                    All
+                  </Button>
 
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-end">
-        <div>
-          <div className="text-sm font-medium mb-2">Categories</div>
-          <div className="flex gap-2 flex-wrap">
-            {categories.map((cat) => {
-              const active = activeCategories.includes(cat.slug);
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => toggleCategory(cat.slug)}
-                  className={`px-3 py-1 rounded-full text-sm border ${
-                    active ? "bg-foreground text-background" : "border-black/10 dark:border-white/10"
-                  }`}
+                  {categories.map((cat) => {
+                    const active = activeCategories.includes(cat.slug);
+                    return (
+                      <Button
+                        key={cat.id}
+                        variant={active ? "default" : "ghost"}
+                        className="w-full justify-start rounded-none"
+                        onClick={() => toggleCategory(cat.slug)}
+                      >
+                        {cat.name}
+                      </Button>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
+              {/* Price Range */}
+              <Card className="rounded-none border border-gray-200">
+                <CardHeader className="rounded-none">
+                  <CardTitle className="text-lg">Price Range</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Slider
+                    value={[priceMin, priceMax]}
+                    onValueChange={([min, max]) => {
+                      setPriceMin(min);
+                      setPriceMax(max);
+                    }}
+                    min={minSelectable}
+                    max={maxSelectable}
+                    step={5}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-sm opacity-70">
+                    <span>€{priceMin}</span>
+                    <span>€{priceMax}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </aside>
+
+          {/* Products Grid */}
+          <main className="flex-1">
+            <div className="mb-6">
+              <h1 className="text-2xl font-medium text-foreground mb-2">Shop</h1>
+              <p className="text-muted-foreground">{filtered.length} products found</p>
+            </div>
+
+            {filtered.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filtered.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No products found matching your criteria.</p>
+                <Button
+                  className="mt-4 rounded-none"
+                  onClick={() => {
+                    setActiveCategories([]);
+                    setPriceMin(minSelectable);
+                    setPriceMax(maxSelectable);
+                  }}
                 >
-                  {cat.name}
-                </button>
-              );
-            })}
-          </div>
+                  Clear Filters
+                </Button>
+              </div>
+            )}
+          </main>
         </div>
-
-        <div className="w-full md:w-[420px]">
-          <div className="text-sm font-medium mb-2">Price</div>
-          <div className="flex items-center gap-3">
-            <input
-              type="range"
-              min={minSelectable}
-              max={maxSelectable}
-              value={priceMin}
-              onChange={(e) => setPriceMin(Number(e.target.value))}
-              className="w-full"
-            />
-            <input
-              type="range"
-              min={minSelectable}
-              max={maxSelectable}
-              value={priceMax}
-              onChange={(e) => setPriceMax(Number(e.target.value))}
-              className="w-full"
-            />
-          </div>
-          <div className="text-xs opacity-70 mt-1">€{priceMin} - €{priceMax}</div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {filtered.map((p) => (
-          <ProductCard key={p.id} product={p} />
-        ))}
       </div>
     </div>
   );
 }
-
-
-

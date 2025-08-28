@@ -1,13 +1,27 @@
-export default function HomeCmsPage() {
+// app/(pages)/home/page.tsx
+
+import { HeroSection } from "@/components/HeroSection";
+import PortfolioSection from "@/components/PortfolioSection"; // COMBINED (Portfolio + Popular)
+import TestimoniesAbout from "@/components/TestimoniesAbout";
+import Hexagon from "@/components/Hexagon";
+import { getProductCategories } from "@/lib/wpData";
+
+export default async function HomeCmsPage() {
+  const categories = await getProductCategories();
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12 space-y-8">
-      <h1 className="text-4xl font-bold">Welcome to TISKRE-DO</h1>
-      <p className="opacity-80">
-        Quality products and practical guidance. Explore our shop and browse the latest blog posts.
-      </p>
+    <div className="w-full space-y-0">
+      {/* 1) Hero */}
+      <HeroSection categories={categories} />
+
+      {/* 2) Combined: Portfolio (ends at Blue=100%) → Popular (gather + zoom) */}
+      <PortfolioSection />
+
+      {/* 3) Next stages */}
+      <TestimoniesAbout />
+
+      {/* 4) Hexagon section */}
+      <Hexagon />
     </div>
   );
 }
-
-
-
