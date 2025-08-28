@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { blogPath, detectLocaleFromPath, shopPath } from "@/lib/paths";
 import { Youtube, Instagram } from "lucide-react";
 
 /* 
@@ -16,6 +17,7 @@ const TikTokIcon = ({ className }: { className?: string }) => (
 );
 
 export default function Footer() {
+  const locale = detectLocaleFromPath(typeof window !== "undefined" ? window.location.pathname : undefined);
   return (
     <>
       {/* Global helpers for the "reveal" behavior */}

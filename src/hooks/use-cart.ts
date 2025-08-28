@@ -1,31 +1,57 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cartCreate, cartLinesAdd, cartLinesRemove, cartLinesUpdate, type Cart } from "@/lib/cart";
 
-export type CartItem = { id: string; name: string; price: number; quantity: number };
+const CART_ID_KEY = "sf_cart_id";
+
+async function ensureCartId(): Promise<string> {
+  if (typeof window === "undefined") return "";
+  const existing = localStorage.getItem(CART_ID_KEY);
+  if (existing) return existing;
+  const cart = await cartCreate();
+  localStorage.setItem(CART_ID_KEY, cart.id);
+  return cart.id;
+}
 
 export function useCart() {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<Cart | null>(null);
+  const loadingRef = useRef(false);
 
-  const openCart = useCallback(() => {
-    // placeholder for a cart drawer/modal
-    // eslint-disable-next-line no-alert
-    alert("Cart opened (placeholder)");
-  }, []);
-
-  const addItem = useCallback((item: CartItem) => {
-    setItems((prev) => {
-      const idx = prev.findIndex((i) => i.id === item.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = { ...copy[idx], quantity: copy[idx].quantity + item.quantity };
-        return copy;
+  useEffect(() => {
+    (async () => {
+      if (typeof window === "undefined" || loadingRef.current) return;
+      loadingRef.current = true;
+      try {
+        const id = await ensureCartId();
+        if (!id) return;
+        setCart((prev) => prev ?? { id, totalQuantity: 0, checkoutUrl: "", lines: { nodes: [] } } as Cart);
+      } finally {
+        loadingRef.current = false;
       }
-      return [...prev, item];
-    });
+    })();
   }, []);
 
-  const count = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
+  const add = useCallback(async (variantId: string, quantity: number) => {
+    const id = await ensureCartId();
+    const next = await cartLinesAdd(id, [{ merchandiseId: variantId, quantity }]);
+    localStorage.setItem(CART_ID_KEY, next.id);
+    setCart(next);
+  }, []);
 
-  return { items, addItem, openCart, count };
+  const update = useCallback(async (lineId: string, quantity: number) => {
+    if (!cart) return;
+    const next = await cartLinesUpdate(cart.id, [{ id: lineId, quantity }]);
+    setCart(next);
+  }, [cart]);
+
+  const remove = useCallback(async (lineId: string) => {
+    if (!cart) return;
+    const next = await cartLinesRemove(cart.id, [lineId]);
+    setCart(next);
+  }, [cart]);
+
+  const count = useMemo(() => cart?.totalQuantity ?? 0, [cart]);
+
+  return { cart, add, update, remove, count };
 }
 
