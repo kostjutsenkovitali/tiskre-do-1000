@@ -1,21 +1,9 @@
-import { wpRequest } from "./wpClient";
-import {
-  QUERY_MENUS,
-  QUERY_PAGES_BY_SLUG,
-  QUERY_POSTS,
-  QUERY_CATEGORIES,
-  QUERY_PRODUCTS,
-} from "./queries";
+// Legacy WP/Woo data helpers disabled. Leaving file as a feature-flagged stub to avoid import crashes.
+// To re-enable, restore WP client and queries.
 
 export type MenuItem = { id: string; label: string; path: string };
 
-export async function getMenu(location: "PRIMARY" | "FOOTER" = "PRIMARY") {
-  const data = await wpRequest<{ menuItems: { nodes: MenuItem[] } }>(
-    QUERY_MENUS,
-    { location }
-  );
-  return data.menuItems?.nodes ?? [];
-}
+export async function getMenu() { return []; }
 
 export type WPPage = {
   id: string;
@@ -25,12 +13,7 @@ export type WPPage = {
   featuredImage?: { node?: { sourceUrl?: string; altText?: string } };
 };
 
-export async function getPageBySlug(slug: string) {
-  const data = await wpRequest<{ page: WPPage | null }>(QUERY_PAGES_BY_SLUG, {
-    slug,
-  });
-  return data.page ?? null;
-}
+export async function getPageBySlug(_slug: string) { return null; }
 
 export type WPPost = {
   id: string;
@@ -41,19 +24,9 @@ export type WPPost = {
   featuredImage?: { node?: { sourceUrl?: string; altText?: string } };
 };
 
-export async function getPosts(first = 10) {
-  const data = await wpRequest<{ posts: { nodes: WPPost[] } }>(QUERY_POSTS, {
-    first,
-  });
-  return data.posts?.nodes ?? [];
-}
+export async function getPosts(_first = 10) { return []; }
 
-export async function getProductCategories(first = 50) {
-  const data = await wpRequest<{
-    productCategories: { nodes: { id: string; slug: string; name: string; description?: string | null }[] };
-  }>(QUERY_CATEGORIES, { first });
-  return data.productCategories?.nodes ?? [];
-}
+export async function getProductCategories(_first = 50) { return []; }
 
 export type Product = {
   id: string;
@@ -69,13 +42,7 @@ export type Product = {
   salePrice?: string | null;
 };
 
-export async function getProducts(first = 20, categorySlugs?: string[]) {
-  const data = await wpRequest<{ products: { nodes: Product[] } }>(
-    QUERY_PRODUCTS,
-    { first, category: categorySlugs }
-  );
-  return data.products?.nodes ?? [];
-}
+export async function getProducts(_first = 20, _categorySlugs?: string[]) { return []; }
 
 
 

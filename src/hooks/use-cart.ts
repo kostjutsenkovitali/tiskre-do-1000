@@ -36,6 +36,11 @@ export function useCart() {
     const next = await cartLinesAdd(id, [{ merchandiseId: variantId, quantity }]);
     localStorage.setItem(CART_ID_KEY, next.id);
     setCart(next);
+    if (typeof window !== "undefined") {
+      try {
+        window.dispatchEvent(new CustomEvent("cart:open"));
+      } catch {}
+    }
   }, []);
 
   const update = useCallback(async (lineId: string, quantity: number) => {

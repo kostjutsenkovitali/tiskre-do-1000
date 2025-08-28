@@ -13,7 +13,7 @@ type Props = {
 };
 
 export default async function IndexBySegment({params, searchParams}: Props) {
-  const {locale: rawLocale, segment} = params;
+  const { locale: rawLocale, segment } = await params;
   if (!isLocale(rawLocale)) notFound();
 
   const shopSeg = getSegment("shop", rawLocale);
@@ -25,8 +25,8 @@ export default async function IndexBySegment({params, searchParams}: Props) {
   if (isShop) {
     const {country, language} = resolveInContext(rawLocale);
     const first = 12;
-    const q = searchParams?.q?.trim() || undefined;
-    const after = searchParams?.after || undefined;
+    const q = (await searchParams)?.q?.trim() || undefined;
+    const after = (await searchParams)?.after || undefined;
     const data = await sf<GetProductsResponse>(GET_PRODUCTS, {
       first,
       after,
@@ -78,17 +78,26 @@ export default async function IndexBySegment({params, searchParams}: Props) {
   const first = Number(searchParams?.first || 12);
   const query = searchParams?.query || undefined;
   const blogHandle = "news";
-  const data = await sf<{ blog: { title: string; articles: { nodes: any[] } } }>(GET_BLOG_WITH_ARTICLES, {
-    blogHandle,
-    first,
-  }).catch(async () => {
-    return sf<{ articles: { nodes: any[] } }>(LIST_ARTICLES, { first, query }).then((res) => ({ blog: { title: "News", articles: res.articles } } as any));
-  });
-
-  const nodes = data.blog?.articles?.nodes ?? [];
+  let nodes: any[] = [];
+  let blogTitle = "News";
+  try {
+    const data = await sf<{ blog: { title: string; articles: { nodes: any[] } } }>(GET_BLOG_WITH_ARTICLES, {
+      blogHandle,
+      first,
+    });
+    blogTitle = data.blog?.title || blogTitle;
+    nodes = data.blog?.articles?.nodes ?? [];
+  } catch (err) {
+    try {
+      const data = await sf<{ articles: { nodes: any[] } }>(LIST_ARTICLES, { first, query });
+      nodes = data.articles?.nodes ?? [];
+    } catch {
+      nodes = [];
+    }
+  }
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold">{data.blog?.title || "News"}</h1>
+      <h1 className="mb-6 text-2xl font-semibold">{blogTitle}</h1>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {nodes.map((a: any) => (
           <Link key={a.handle + a.publishedAt} href={`/${rawLocale}/${segment}/${a.handle}`} className="group">

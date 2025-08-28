@@ -20,34 +20,26 @@ export enum LanguageCode {
 
 export const SHOPIFY_BLOG_HANDLE: string = process.env.SHOPIFY_BLOG_HANDLE || "news";
 
-type Env = {
-  SHOPIFY_STORE_DOMAIN: string | undefined;
-  SHOPIFY_STOREFRONT_API_VERSION?: string | undefined;
-  SHOPIFY_STOREFRONT_ACCESS_TOKEN: string | undefined;
-};
+function readEnv(): { storeDomain: string; publicAccessToken: string; apiVersion: string } {
+  const storeDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN || "";
+  const publicAccessToken =
+    process.env.SHOPIFY_STOREFRONT_API_TOKEN ||
+    process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN ||
+    process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN ||
+    "";
+  const requestedVersion = process.env.SHOPIFY_API_VERSION || process.env.SHOPIFY_STOREFRONT_API_VERSION || "2025-07";
+  const supported = new Set(["2024-10", "2025-01", "2025-04", "2025-07", "2025-10", "unstable"]);
+  const apiVersion = supported.has(requestedVersion) ? requestedVersion : "2025-07";
 
-function readEnv(): Required<Pick<Env, "SHOPIFY_STORE_DOMAIN" | "SHOPIFY_STOREFRONT_ACCESS_TOKEN">> & {SHOPIFY_STOREFRONT_API_VERSION: string} {
-  const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
-  const apiVersion = process.env.SHOPIFY_STOREFRONT_API_VERSION || "2025-01";
-  const publicAccessToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
-
-  if (!storeDomain) throw new Error("Missing env SHOPIFY_STORE_DOMAIN");
-  if (!publicAccessToken) throw new Error("Missing env SHOPIFY_STOREFRONT_ACCESS_TOKEN");
-
-  return {
-    SHOPIFY_STORE_DOMAIN: storeDomain,
-    SHOPIFY_STOREFRONT_API_VERSION: apiVersion,
-    SHOPIFY_STOREFRONT_ACCESS_TOKEN: publicAccessToken,
-  };
+  if (!storeDomain) throw new Error("Missing env SHOPIFY_STORE_DOMAIN (or NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN)");
+  if (!publicAccessToken)
+    throw new Error("Missing env SHOPIFY_STOREFRONT_API_TOKEN (or _ACCESS_TOKEN)");
+  return { storeDomain, publicAccessToken, apiVersion } as { storeDomain: string; publicAccessToken: string; apiVersion: string };
 }
 
 export function createStorefrontClient() {
-  const env = readEnv();
-  return createStorefrontApiClient({
-    storeDomain: env.SHOPIFY_STORE_DOMAIN,
-    apiVersion: env.SHOPIFY_STOREFRONT_API_VERSION,
-    publicAccessToken: env.SHOPIFY_STOREFRONT_ACCESS_TOKEN,
-  });
+  const { storeDomain, publicAccessToken, apiVersion } = readEnv();
+  return createStorefrontApiClient({ storeDomain, apiVersion, publicAccessToken });
 }
 
 const _client = (() => {
@@ -60,11 +52,9 @@ const _client = (() => {
 
 export async function sf<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   if (!_client) {
-    const {SHOPIFY_STORE_DOMAIN, SHOPIFY_STOREFRONT_ACCESS_TOKEN} = readEnv();
+    const { storeDomain, publicAccessToken } = readEnv();
     throw new Error(
-      `Shopify client not initialized. Check env: SHOPIFY_STORE_DOMAIN='${SHOPIFY_STORE_DOMAIN}', SHOPIFY_STOREFRONT_ACCESS_TOKEN present=${Boolean(
-        SHOPIFY_STOREFRONT_ACCESS_TOKEN
-      )}`
+      `Shopify client not initialized. Check env: SHOPIFY_STORE_DOMAIN='${storeDomain}', STOREFRONT TOKEN present=${Boolean(publicAccessToken)}`
     );
   }
 

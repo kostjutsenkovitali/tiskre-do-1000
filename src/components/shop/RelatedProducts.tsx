@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { Product } from "@/lib/wpData";
 import ProductCard from "@/components/ProductCard";
+type Product = any;
 
 export default function RelatedProducts({ products }: { products: Product[] }) {
   if (!products?.length) return null;

@@ -8,7 +8,7 @@ import type { Metadata } from "next";
 import sanitizeHtml from "sanitize-html";
 import { SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
 import {sf} from "@/lib/shopify";
-import { AddToCartIsland } from "./AddToCartIsland";
+import AddToCartButton from "@/components/AddToCartButton";
 
 type Props = {
   params: { locale: string; segment: string; slug: string };
@@ -58,7 +58,11 @@ export default async function DetailBySegment({params}: Props) {
             {p.variants.nodes[0] ? (
               <div className="text-lg">{p.variants.nodes[0].price.amount} {p.variants.nodes[0].price.currencyCode}</div>
             ) : null}
-            <AddToCartIsland variantId={p.variants.nodes[0]?.id} />
+            {p.variants.nodes[0]?.id ? (
+              <AddToCartButton variantId={p.variants.nodes[0].id} />
+            ) : (
+              <p className="text-sm text-red-600">No purchasable variant.</p>
+            )}
             <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{__html: p.descriptionHtml}} />
           </div>
         </div>

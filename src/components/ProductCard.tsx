@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Product } from "@/lib/wpData";
+type Product = any;
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
 import * as React from "react";
@@ -13,10 +13,11 @@ type Props = {
 };
 
 export default function ProductCard({ product, onAddToCart }: Props) {
-  const href = `/shop/${(product as any)?.slug ?? product?.id}`;
+  const href = `/shop/${(product as any)?.slug ?? (product as any)?.handle ?? product?.id}`;
 
   const imgSrc =
     (product as any)?.image?.sourceUrl ||
+    (product as any)?.featuredImage?.url ||
     (product as any)?.images?.[0]?.src ||
     "/placeholder.png";
 
@@ -50,7 +51,7 @@ export default function ProductCard({ product, onAddToCart }: Props) {
 
       <div className="p-4 flex flex-col gap-2">
         <div className="text-sm font-medium leading-tight line-clamp-2">
-          {(product as any)?.name ?? "Untitled product"}
+          {(product as any)?.name ?? (product as any)?.title ?? "Untitled product"}
         </div>
 
         {/* Category chips */}

@@ -18,7 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { Product } from "@/lib/wpData";
+type Product = any;
 import RelatedProducts from "@/components/shop/RelatedProducts";
 
 type Props = {

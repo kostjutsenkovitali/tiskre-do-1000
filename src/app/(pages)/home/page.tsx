@@ -4,7 +4,7 @@ import { HeroSection } from "@/components/HeroSection";
 import PortfolioSection from "@/components/PortfolioSection"; // COMBINED (Portfolio + Popular)
 import TestimoniesAbout from "@/components/TestimoniesAbout";
 import Hexagon from "@/components/Hexagon";
-import { getProductCategories } from "@/lib/wpData";
+// WP data removed; adjust or remove category usage if present.
 
 export default async function HomeCmsPage() {
   const categories = await getProductCategories();
