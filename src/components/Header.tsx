@@ -6,11 +6,12 @@ import Image from "next/image";
 import { User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 import ThreeModel, { ThreeModelHandle } from "@/components/ThreeModel";
 import { bus } from "@/utils/visibilityBus";
 import { blogPath, detectLocaleFromPath, shopPath } from "@/lib/paths";
+import { segments } from "@/i18n/config";
 
 // removed three.js debug imports
 
@@ -31,6 +32,7 @@ const navItemClass = (active: boolean) =>
 export default function Header() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const modelRef = useRef<ThreeModelHandle | null>(null);
 
   const cartData = useCart();
@@ -50,20 +52,29 @@ export default function Header() {
     []
   );
 
-  const currentLangCode = (searchParams?.get("lang") || "en").toLowerCase();
+  const currentLangCode = detectLocaleFromPath(pathname).toLowerCase();
   const currentLang =
     languages.find((l) => l.code === currentLangCode) || languages[0];
 
   const locale = detectLocaleFromPath(pathname);
   const shopHref = shopPath(locale);
   const blogHref = blogPath(locale);
+  const navLabels: Record<string, { home: string; shop: string; about: string; instructions: string; contact: string; blog: string }> = {
+    en: { home: "Home", shop: "Shop", about: "About", instructions: "Instructions", contact: "Contact", blog: "Blog" },
+    et: { home: "Avaleht", shop: "Pood", about: "Meist", instructions: "Juhendid", contact: "Kontakt", blog: "Blogi" },
+    de: { home: "Startseite", shop: "Shop", about: "Über uns", instructions: "Anleitungen", contact: "Kontakt", blog: "Blog" },
+    fr: { home: "Accueil", shop: "Boutique", about: "À propos", instructions: "Guides", contact: "Contact", blog: "Blog" },
+    fi: { home: "Etusivu", shop: "Kauppa", about: "Meistä", instructions: "Ohjeet", contact: "Yhteystiedot", blog: "Blogi" },
+    sv: { home: "Hem", shop: "Butik", about: "Om oss", instructions: "Instruktioner", contact: "Kontakt", blog: "Blogg" },
+  };
+  const L = navLabels[locale] || navLabels.en;
   const nav = [
-    { href: `/${locale}`, label: "Home", isActive: isHomePath },
-    { href: shopHref, label: "Shop", isActive: pathname?.startsWith(shopHref) },
-    { href: "/about", label: "About", isActive: pathname?.startsWith("/about") },
-    { href: "/instructions", label: "Instructions", isActive: pathname?.startsWith("/instructions") },
-    { href: "/contact", label: "Contact", isActive: pathname?.startsWith("/contact") },
-    { href: blogHref, label: "Blog", isActive: pathname?.startsWith(blogHref) },
+    { href: `/${locale}`, label: L.home, isActive: isHomePath },
+    { href: shopHref, label: L.shop, isActive: pathname?.startsWith(shopHref) },
+    { href: "/about", label: L.about, isActive: pathname?.startsWith("/about") },
+    { href: "/instructions", label: L.instructions, isActive: pathname?.startsWith("/instructions") },
+    { href: "/contact", label: L.contact, isActive: pathname?.startsWith("/contact") },
+    { href: blogHref, label: L.blog, isActive: pathname?.startsWith(blogHref) },
   ];
 
   const langRef = useRef<HTMLDetailsElement | null>(null);
@@ -106,6 +117,39 @@ export default function Header() {
   }, []);
 
   const closeLangMenu = () => langRef.current?.removeAttribute("open");
+
+  // Language switch handler: preserves path, query, hash; remaps shop slug when needed
+  const onChangeLocale = (nextLocale: string) => {
+    try {
+      const currentHash = typeof window !== "undefined" ? window.location.hash : "";
+      const qs = searchParams ? searchParams.toString() : "";
+      const parts = (pathname || "/").split("/").filter(Boolean);
+      // Replace locale segment (index 0)
+      if (parts.length === 0) {
+        parts.push(nextLocale);
+      } else {
+        parts[0] = nextLocale;
+      }
+
+      // If inside shop, remap the second segment to the target locale's shop slug
+      const allShop = new Set(Object.values(segments.shop));
+      if (parts.length >= 2 && allShop.has(parts[1])) {
+        parts[1] = segments.shop[nextLocale as keyof typeof segments.shop];
+      }
+
+      const targetPath = `/${parts.join("/")}` + (qs ? `?${qs}` : "") + currentHash;
+
+      // Remember selection
+      if (typeof document !== "undefined") {
+        document.cookie = `NEXT_LOCALE=${nextLocale}; Max-Age=${60 * 60 * 24 * 365}; Path=/`;
+      }
+
+      router.push(targetPath);
+    } catch {
+      // Fallback to localized home if anything goes wrong
+      router.push(`/${nextLocale}`);
+    }
+  };
 
   return (
     <>
@@ -151,40 +195,34 @@ export default function Header() {
 
               <div className="absolute right-0 mt-1 min-w-56 rounded-md border border-black/10 dark:border-white/15 bg-white/95 dark:bg-neutral-900/95 shadow-lg backdrop-blur p-2">
                 <ul className="max-h-[60vh] overflow-auto">
-                  {languages.map((lang) => {
-                    const href =
-                      (isHomePath ? "/home" : pathname || "/") +
-                      "?" +
-                      new URLSearchParams({
-                        ...(Object.fromEntries(searchParams?.entries() ?? [])),
-                        lang: lang.code,
-                      }).toString();
-
-                    return (
-                      <li key={lang.code}>
-                        <Link
-                          href={href}
-                          onClick={closeLangMenu}
-                          className="group flex items-center gap-3 px-2 py-2 rounded-md hover:bg-black/[0.12] dark:hover:bg-white/[0.18]"
+                  {languages.map((lang) => (
+                    <li key={lang.code}>
+                      <Link
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onChangeLocale(lang.code);
+                          closeLangMenu();
+                        }}
+                        className="group flex items-center gap-3 px-2 py-2 rounded-md hover:bg-black/[0.12] dark:hover:bg-white/[0.18]"
+                      >
+                        <img
+                          src={lang.flag}
+                          alt={`${lang.name} flag`}
+                          className="h-5 w-auto"
+                          loading="lazy"
+                        />
+                        <span
+                          className={[
+                            baseCaps,
+                            "text-[12px] tracking-[0.20em] text-black/80 dark:text-white/85",
+                          ].join(" ")}
                         >
-                          <img
-                            src={lang.flag}
-                            alt={`${lang.name} flag`}
-                            className="h-5 w-auto"
-                            loading="lazy"
-                          />
-                          <span
-                            className={[
-                              baseCaps,
-                              "text-[12px] tracking-[0.20em] text-black/80 dark:text-white/85",
-                            ].join(" ")}
-                          >
-                            {lang.name}
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
+                          {lang.name}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </details>

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import ProductCard from "@/components/ProductCard";
+import { usePathname } from "next/navigation";
+import { detectLocaleFromPath } from "@/lib/paths";
 
 interface FormattedProduct {
   id: string;
@@ -34,6 +36,17 @@ interface ShopClientProps {
 }
 
 export default function ShopClient({ products, collections, hrefBase = "/shop" }: ShopClientProps) {
+  const pathname = usePathname();
+  const locale = detectLocaleFromPath(pathname);
+  const L: Record<string, { shop: string; categories: string; priceRange: string; all: string; productsFound: (n: number) => string; noResults: string; clearFilters: string }> = {
+    en: { shop: "Shop", categories: "Categories", priceRange: "Price Range", all: "All", productsFound: (n) => `${n} products found`, noResults: "No products found matching your criteria.", clearFilters: "Clear Filters" },
+    et: { shop: "Pood", categories: "Kategooriad", priceRange: "Hinnavahemik", all: "Kõik", productsFound: (n) => `Leitud ${n} toodet`, noResults: "Sobivaid tooteid ei leitud.", clearFilters: "Puhasta filtrid" },
+    de: { shop: "Shop", categories: "Kategorien", priceRange: "Preisspanne", all: "Alle", productsFound: (n) => `${n} Produkte gefunden`, noResults: "Keine passenden Produkte gefunden.", clearFilters: "Filter zurücksetzen" },
+    fr: { shop: "Boutique", categories: "Catégories", priceRange: "Fourchette de prix", all: "Tous", productsFound: (n) => `${n} produits trouvés`, noResults: "Aucun produit correspondant.", clearFilters: "Effacer les filtres" },
+    fi: { shop: "Kauppa", categories: "Kategoriat", priceRange: "Hintahaarukka", all: "Kaikki", productsFound: (n) => `Löytyi ${n} tuotetta`, noResults: "Hakuehdoilla ei löytynyt tuotteita.", clearFilters: "Tyhjennä suodattimet" },
+    sv: { shop: "Butik", categories: "Kategorier", priceRange: "Prisintervall", all: "Alla", productsFound: (n) => `${n} produkter hittades`, noResults: "Inga produkter hittades.", clearFilters: "Rensa filter" },
+  };
+  const T = L[locale] || L.en;
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
 
@@ -67,27 +80,20 @@ export default function ShopClient({ products, collections, hrefBase = "/shop" }
   const convertedProducts = filtered.map((p) => ({
     id: p.id,
     slug: p.slug,
-    title: p.title,
-    description: p.description,
+    name: p.title,
+    image: p.featuredImage ? { sourceUrl: p.featuredImage.url, altText: p.featuredImage.altText ?? p.title } : null,
     price: p.price,
-    regularPrice: p.price,
-    salePrice: undefined,
-    currencyCode: p.currencyCode,
-    featuredImage: p.featuredImage?.url || "",
-    availableForSale: p.availableForSale,
-    tags: p.tags,
-    vendor: p.vendor,
   }));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #e8d8c8 100%)" }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="lg:w-64 flex-shrink-0">
             <div className="space-y-6">
               <Card className="rounded-none border border-gray-200">
                 <CardHeader className="rounded-none">
-                  <CardTitle className="text-lg">Categories</CardTitle>
+                  <CardTitle className="text-lg">{T.categories}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <Button
@@ -96,7 +102,7 @@ export default function ShopClient({ products, collections, hrefBase = "/shop" }
                     className={`w-full justify-start rounded-none ${selectedCategory === "all" ? "bg-primary text-primary-foreground" : ""}`}
                     onClick={() => selectCategory("all")}
                   >
-                    All
+                    {T.all}
                   </Button>
 
                   {collections.map((collection) => {
@@ -117,7 +123,7 @@ export default function ShopClient({ products, collections, hrefBase = "/shop" }
 
               <Card className="rounded-none border border-gray-200">
                 <CardHeader className="rounded-none">
-                  <CardTitle className="text-lg">Price Range</CardTitle>
+                  <CardTitle className="text-lg">{T.priceRange}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Slider value={priceRange} onValueChange={setPriceRange} min={minSelectable} max={maxSelectable} step={5} className="w-full" />
@@ -132,8 +138,8 @@ export default function ShopClient({ products, collections, hrefBase = "/shop" }
 
           <main className="flex-1">
             <div className="mb-6">
-              <h1 className="text-2xl font-medium text-foreground mb-2">Shop</h1>
-              <p className="text-muted-foreground">{filtered.length} products found</p>
+              <h1 className="text-2xl font-medium text-foreground mb-2">{T.shop}</h1>
+              <p className="text-muted-foreground">{T.productsFound(filtered.length)}</p>
             </div>
 
             {filtered.length > 0 ? (
@@ -144,7 +150,7 @@ export default function ShopClient({ products, collections, hrefBase = "/shop" }
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">No products found matching your criteria.</p>
+                <p className="text-muted-foreground">{T.noResults}</p>
                 <Button
                   className="mt-4 rounded-none"
                   onClick={() => {
@@ -152,7 +158,7 @@ export default function ShopClient({ products, collections, hrefBase = "/shop" }
                     setPriceRange([minSelectable, maxSelectable]);
                   }}
                 >
-                  Clear Filters
+                  {T.clearFilters}
                 </Button>
               </div>
             )}

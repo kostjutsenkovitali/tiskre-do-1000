@@ -59,6 +59,29 @@ export const GET_PRODUCT = gql`
           price { amount currencyCode }
         }
       }
+      bulletPoints: metafield(namespace: "custom", key: "bullet_points") { type value }
+      instructionJpg: metafield(namespace: "custom", key: "instruction_jpg") {
+        value
+        reference {
+          __typename
+          ... on MediaImage { image { url altText } }
+          ... on GenericFile { url }
+          ... on Video { sources { url mimeType } }
+        }
+        references(first: 10) {
+          nodes {
+            __typename
+            ... on MediaImage { image { url altText } }
+            ... on GenericFile { url }
+            ... on Video { sources { url mimeType } }
+          }
+        }
+      }
+      instructionPdf: metafield(namespace: "custom", key: "instruction_pdf") {
+        value
+        reference { __typename ... on GenericFile { url } }
+        references(first: 5) { nodes { __typename ... on GenericFile { url } } }
+      }
       collections(first: 4) {
         nodes { id handle title }
       }
@@ -71,6 +94,22 @@ export const GET_COLLECTIONS = gql`
     collections(first: $first, after: $after) {
       pageInfo { hasNextPage endCursor }
       nodes { id handle title }
+    }
+  }
+`;
+
+export const GET_COLLECTION_PRODUCTS = gql`
+  query GetCollectionProducts($handle: String!, $first: Int = 8, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+    collection(handle: $handle) {
+      products(first: $first) {
+        nodes {
+          id
+          handle
+          title
+          featuredImage { url altText }
+          priceRange { minVariantPrice { amount currencyCode } }
+        }
+      }
     }
   }
 `;

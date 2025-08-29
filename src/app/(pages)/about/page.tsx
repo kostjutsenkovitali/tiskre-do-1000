@@ -1,94 +1,82 @@
-// About page – local content using site styles
+"use client";
+
+import Image from "next/image";
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-medium text-foreground mb-6">About Us</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            We believe in the power of simplicity and the beauty of well-made things.
-          </p>
+    <main className="min-h-screen" style={{ background: "linear-gradient(180deg, #a8b8b8 0%, #f8f8f8 100%)" }}>
+      {/* Intro */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="text-3xl md:text-4xl font-medium text-foreground mb-6">About Tiskre-DO</h1>
+        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-3xl">
+          We are a small family company from Tallinn, Estonia. Our mission is to bring our vision of the dream
+          outdoor lifestyle to life—crafted in metal. If our ideas resonate with yours, we’ll be truly happy to connect.
+        </p>
+      </section>
+
+      {/* Block 1: text window then image aligned to right edge */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-4xl">
+          <div className="rounded-md border border-gray-200 bg-gray-100/80 p-6">
+            <h2 className="text-2xl font-medium mb-3">Our Philosophy</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              We believe that good design should feel natural. Every piece we create is shaped by hands, not hype.
+              Durable, practical, and quietly beautiful—That’s how we imagine the perfect outdoor space.
+            </p>
+          </div>
         </div>
-
-        <div className="space-y-12">
-          <section>
-            <h2 className="text-2xl font-medium text-foreground mb-6">Our Story</h2>
-            <div className="prose dark:prose-invert max-w-none">
-              <p className="text-muted-foreground leading-relaxed mb-4">
-                Founded in 2020, Minimalist Store emerged from a simple belief: that less can be more.
-                We started as a small team passionate about curating products that combine functionality,
-                sustainability, and timeless design.
-              </p>
-              <p className="text-muted-foreground leading-relaxed mb-4">
-                Our journey began when we noticed how overwhelmed people felt by endless choices and
-                cluttered spaces. We wanted to create a different kind of shopping experience—one that
-                values quality over quantity and thoughtful design over fleeting trends.
-              </p>
-              <p className="text-muted-foreground leading-relaxed">
-                Today, we work with makers and designers around the world who share our commitment to
-                craftsmanship, sustainability, and creating products that truly improve daily life.
-              </p>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-medium text-foreground mb-6">Our Values</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🌱</span>
-                </div>
-                <h3 className="font-medium text-foreground mb-2">Sustainability</h3>
-                <p className="text-sm text-muted-foreground">
-                  We prioritize eco-friendly materials and ethical production practices.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">✨</span>
-                </div>
-                <h3 className="font-medium text-foreground mb-2">Quality</h3>
-                <p className="text-sm text-muted-foreground">
-                  Every product is carefully selected for its craftsmanship and durability.
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🎯</span>
-                </div>
-                <h3 className="font-medium text-foreground mb-2">Purpose</h3>
-                <p className="text-sm text-muted-foreground">
-                  We believe every item should serve a clear purpose and bring joy.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="bg-muted/30 rounded-lg p-8">
-            <h2 className="text-2xl font-medium text-foreground mb-6 text-center">Our Team</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-medium">SJ</span>
-                </div>
-                <h3 className="font-medium text-foreground">Sarah Johnson</h3>
-                <p className="text-sm text-muted-foreground">Founder & Creative Director</p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-24 h-24 bg-black/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-medium">MC</span>
-                </div>
-                <h3 className="font-medium text-foreground">Michael Chen</h3>
-                <p className="text-sm text-muted-foreground">Head of Product Curation</p>
-              </div>
-            </div>
-          </section>
+        <div className="mt-4 md:w-1/2 ml-auto relative aspect-[16/10] border border-gray-200 bg-white">
+          <Image src="/about/about1.jpg" alt="About 1" fill className="object-cover" />
         </div>
-      </div>
-    </div>
+      </section>
+
+      {/* Block 2: text window then image aligned to left edge */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-4xl ml-auto">
+          <div className="rounded-md border border-gray-200 bg-gray-100/80 p-6">
+            <h2 className="text-2xl font-medium mb-3">Crafted in Metal</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              We design and build durable products that live outdoors. Thoughtful details, honest materials,
+              and long service are at the center of what we do.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 md:w-1/2 mr-auto relative aspect-[16/10] border border-gray-200 bg-white">
+          <Image src="/about/about2.jpg" alt="About 2" fill className="object-cover" />
+        </div>
+      </section>
+
+      {/* Block 3: text window then full-width image */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-4xl">
+          <div className="rounded-md border border-gray-200 bg-gray-100/80 p-6">
+            <h2 className="text-2xl font-medium mb-3">People & Places</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              What inspires us most is the outdoors—simple forms and robust workmanship that blend into the landscape.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 relative w-full aspect-[21/9] border border-gray-200 bg-white">
+          <Image src="/about/about3.jpg" alt="About 3" fill className="object-cover" />
+        </div>
+      </section>
+
+      {/* Final block: two windows similar sizing to Hexagon */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+          <div className="relative w-full" style={{ aspectRatio: "22/15" }}>
+            <div className="absolute inset-0 border border-gray-300 bg-white flex items-center justify-center">
+              <div className="px-8">
+                <h3 className="text-xl font-medium mb-2">Roots</h3>
+                <p className="text-muted-foreground leading-relaxed">We try to hold strong to our roots.</p>
+              </div>
+            </div>
+          </div>
+          <div className="relative w-full" style={{ aspectRatio: "22/15" }}>
+            <Image src="/about/about5.jpg" alt="Workshop" fill className="object-cover border border-gray-300" />
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

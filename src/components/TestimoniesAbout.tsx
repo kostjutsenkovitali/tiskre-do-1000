@@ -1,7 +1,7 @@
 // src/components/TestimoniesAbout.tsx
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, ReactNode } from "react";
 import Link from "next/link";
 import ThreeModel from "@/components/ThreeModel";
 
@@ -85,11 +85,16 @@ function unlockScroll(prevY: number) {
 }
 
 /* =========================
-   G-code parsing
+   G-code parsing (with feed rates)
 ========================= */
-type Seg = { a: [number, number]; b: [number, number]; len: number };
+type Seg = {
+  a: [number, number];
+  b: [number, number];
+  len: number;
+  feed?: number;      // mm/min (or your machine units/min)
+  rapid?: boolean;    // true for G0 jogs (we won't render them)
+};
 type BBox = { xmin: number; ymin: number; xmax: number; ymax: number };
-
 const WORD_RE = /([A-Za-z])\s*(?:=)?\s*([+\-]?(?:\d+(?:\.\d*)?|\.\d+))/g;
 
 function stripComments(text: string) {
@@ -135,31 +140,20 @@ function centerFromR(x0: number, y0: number, x1: number, y1: number, R: number, 
   if (sc1 === Infinity && sc2 === Infinity) return cw ? (s1.cw < s2.cw ? c1 : c2) : (s1.ccw < s2.ccw ? c1 : c2);
   return sc1 <= sc2 ? c1 : c2;
 }
+
 function parseGcodeToSegments(text: string): { segs: Seg[]; bbox: BBox; total: number } {
   const lines = stripComments(text).split(/\r?\n/);
   let abs = true;
   let cur = { x: 0, y: 0 };
-  let stroke: [number, number][] = [];
+  let curFeed: number | undefined = undefined; // last specified F
   const segs: Seg[] = [];
 
-  function penUp() {
-    if (stroke.length >= 2) {
-      for (let i = 1; i < stroke.length; i++) {
-        const a = stroke[i - 1], b = stroke[i];
-        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        if (len > 0) segs.push({ a, b, len });
-      }
-    }
-    stroke = [];
-  }
-  function ensureStart() {
-    if (!stroke.length) stroke.push([cur.x, cur.y]);
-  }
-  function down(x: number, y: number) {
-    ensureStart();
-    stroke.push([x, y]);
-    cur.x = x;
-    cur.y = y;
+  function pushSeg(x1: number, y1: number, rapid = false) {
+    const a: [number, number] = [cur.x, cur.y];
+    const b: [number, number] = [x1, y1];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len > 0) segs.push({ a, b, len, feed: curFeed, rapid });
+    cur.x = x1; cur.y = y1;
   }
 
   for (let i = 0; i < lines.length; i++) {
@@ -167,31 +161,42 @@ function parseGcodeToSegments(text: string): { segs: Seg[]; bbox: BBox; total: n
     if (!raw) continue;
     const words = parseWords(raw);
     if (!words.length) continue;
+
     let g: number | null = null;
     const p: Record<string, number> = {};
     for (const w of words) {
       if (w.type === "G" && typeof w.val === "number") g = w.val;
       if (w.axis && typeof w.val === "number") p[w.axis] = w.val;
     }
+    if (p.F !== undefined && Number.isFinite(p.F)) curFeed = p.F;
+
     if (g === 90) { abs = true; continue; }
     if (g === 91) { abs = false; continue; }
 
     const tx = p.X !== undefined ? (abs ? p.X : cur.x + p.X) : cur.x;
     const ty = p.Y !== undefined ? (abs ? p.Y : cur.y + p.Y) : cur.y;
 
-    if (g === 0) { cur.x = tx; cur.y = ty; penUp(); continue; }
-    if (g === 1) { down(tx, ty); continue; }
+    if (g === 0) { // rapid
+      // represent jogs as segments marked 'rapid' (we won't render them but we can use feed/state)
+      pushSeg(tx, ty, true);
+      continue;
+    }
+    if (g === 1) { // linear cut
+      pushSeg(tx, ty, false);
+      continue;
+    }
 
     if (g === 2 || g === 3) {
       const cw = g === 2;
       const hasIJ = p.I !== undefined && p.J !== undefined;
       const hasR = p.R !== undefined;
-      if (!(hasIJ || hasR)) { down(tx, ty); continue; }
+      if (!(hasIJ || hasR)) { pushSeg(tx, ty, false); continue; }
+
       let cx: number, cy: number, r: number;
       if (hasIJ) { cx = cur.x + p.I; cy = cur.y + p.J; r = Math.hypot(cur.x - cx, cur.y - cy); }
       else {
         const c = centerFromR(cur.x, cur.y, tx, ty, p.R as number, cw);
-        if (!c) { down(tx, ty); continue; }
+        if (!c) { pushSeg(tx, ty, false); continue; }
         cx = c.x; cy = c.y; r = Math.hypot(cur.x - cx, cur.y - cy);
       }
       let a0 = Math.atan2(cur.y - cy, cur.x - cx);
@@ -199,18 +204,23 @@ function parseGcodeToSegments(text: string): { segs: Seg[]; bbox: BBox; total: n
       if (cw) { if (a1 >= a0) a1 -= Math.PI * 2; } else { if (a1 <= a0) a1 += Math.PI * 2; }
       const sweep = a1 - a0;
       const steps = Math.max(6, Math.min(2000, Math.floor(Math.abs(sweep) * r / 2)));
-      ensureStart();
+      let px = cur.x, py = cur.y;
       for (let k = 1; k <= steps; k++) {
         const ang = a0 + sweep * (k / steps);
-        stroke.push([cx + r * Math.cos(ang), cy + r * Math.sin(ang)]);
+        const nx = cx + r * Math.cos(ang);
+        const ny = cy + r * Math.sin(ang);
+        const a: [number, number] = [px, py];
+        const b: [number, number] = [nx, ny];
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (len > 0) segs.push({ a, b, len, feed: curFeed, rapid: false });
+        px = nx; py = ny;
       }
       cur.x = tx; cur.y = ty;
       continue;
     }
   }
-  penUp();
 
-  // bbox + total
+  // bbox + total (only over all segments regardless of type)
   let xmin = +Infinity, ymin = +Infinity, xmax = -Infinity, ymax = -Infinity, total = 0;
   for (const s of segs) {
     xmin = Math.min(xmin, s.a[0], s.b[0]);
@@ -224,7 +234,7 @@ function parseGcodeToSegments(text: string): { segs: Seg[]; bbox: BBox; total: n
 }
 
 /* Fit world → screen (shared) */
-function makeFitter(b: BBox, W: number, H: number, pad = 20) {
+function makeFitter(b: BBox, W: number, H: number, pad = 0) {
   const w = b.xmax - b.xmin, h = b.ymax - b.ymin;
   const sx = (W - 2 * pad) / (w || 1), sy = (H - 2 * pad) / (h || 1);
   const s = Math.min(sx, sy);
@@ -246,7 +256,7 @@ function unionBBox(bs: (BBox | null | undefined)[]): BBox | null {
 }
 
 /* =========================
-   Multi-laser overlay (absolute space)
+   Multi-laser overlay (absolute space) with particles + audio
 ========================= */
 function MultiLaserOverlayAbsolute({
   active,
@@ -265,6 +275,27 @@ function MultiLaserOverlayAbsolute({
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number | null>(null);
 
+  // Particles (sparks & embers)
+  type P = { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; hot: boolean };
+  const partsRef = useRef<P[]>([]);
+
+  // Audio
+  const moveAudioRef = useRef<HTMLAudioElement | null>(null);
+  const cutAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioReadyRef = useRef<boolean>(false);
+
+  // feed stats (to detect "high speed")
+  const feedMinMax = useMemo(() => {
+    let min = +Infinity, max = -Infinity, any = false;
+    for (const t of targets) {
+      for (const s of t.segs || []) {
+        if (s.feed && !s.rapid) { min = Math.min(min, s.feed); max = Math.max(max, s.feed); any = true; }
+      }
+    }
+    if (!any) return null;
+    return { min, max };
+  }, [targets]);
+
   const fitCanvasDPR = () => {
     const c = ref.current;
     if (!c) return;
@@ -275,6 +306,54 @@ function MultiLaserOverlayAbsolute({
     const ctx = c.getContext("2d");
     if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
+
+  // prepare audio
+  useEffect(() => {
+    if (!active) return;
+    if (!moveAudioRef.current) {
+      moveAudioRef.current = new Audio("/sounds/laser_move.mp3");
+      moveAudioRef.current.loop = true;
+      moveAudioRef.current.volume = 0;
+    }
+    if (!cutAudioRef.current) {
+      cutAudioRef.current = new Audio("/sounds/laser_cut.mp3");
+      cutAudioRef.current.loop = true;
+      cutAudioRef.current.volume = 0;
+    }
+    const tryPlay = async () => {
+      try {
+        await moveAudioRef.current!.play();
+        await cutAudioRef.current!.play();
+        audioReadyRef.current = true;
+      } catch {
+        audioReadyRef.current = false;
+      }
+    };
+    tryPlay();
+
+    // retry on first user gesture if blocked
+    const resume = () => {
+      if (audioReadyRef.current) return;
+      try {
+        moveAudioRef.current!.play().catch(() => {});
+        cutAudioRef.current!.play().catch(() => {});
+        audioReadyRef.current = true;
+      } catch {}
+      window.removeEventListener("pointerdown", resume);
+      window.removeEventListener("keydown", resume);
+      window.removeEventListener("scroll", resume, { capture: true } as any);
+    };
+    window.addEventListener("pointerdown", resume, { once: true });
+    window.addEventListener("keydown", resume, { once: true });
+    window.addEventListener("scroll", resume, { once: true, capture: true } as any);
+
+    return () => {
+      moveAudioRef.current?.pause();
+      cutAudioRef.current?.pause();
+      moveAudioRef.current && (moveAudioRef.current.currentTime = 0);
+      cutAudioRef.current && (cutAudioRef.current.currentTime = 0);
+    };
+  }, [active]);
 
   useEffect(() => {
     if (!active) {
@@ -309,8 +388,8 @@ function MultiLaserOverlayAbsolute({
       if (startRef.current === null) startRef.current = ts;
       const elapsed = ts - startRef.current;
       const progress = Math.min(1, elapsed / durationMs);
+      const dt = Math.max(0.016, Math.min(0.05, (rafRef.current ? (ts - (startRef.current + (progress - (elapsed / durationMs)) )) : 0) / 1000)); // conservative
 
-      // Determine drawing area (GLB box) or fallback
       const cvsRect = c.getBoundingClientRect();
       const fitRect = (() => {
         const el = anchorRef?.current || null;
@@ -322,44 +401,44 @@ function MultiLaserOverlayAbsolute({
           const h = Math.max(40, Math.min(c.clientHeight, r.height));
           return { x, y, w, h };
         }
-        const padW = c.clientWidth * 0.1;
-        const padH = c.clientHeight * 0.15;
-        return { x: padW, y: padH, w: c.clientWidth - 2 * padW, h: c.clientHeight - 2 * padH };
+        return { x: 0, y: 0, w: c.clientWidth, h: c.clientHeight };
       })();
 
-      // Clear
       ctx.clearRect(0, 0, c.width, c.height);
 
-      // Shared fitter from union bbox → glb box area
-      const baseFit = makeFitter(worldBBox, fitRect.w, fitRect.h, 24);
+      const baseFit = makeFitter(worldBBox, fitRect.w, fitRect.h, 0);
       const fit = (p: [number, number]) => {
         const r = baseFit(p);
         return [r[0] + fitRect.x, r[1] + fitRect.y] as [number, number];
       };
 
-      // Optional: draw world frame + origin
-      ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.15)";
-      ctx.lineWidth = 1;
-      const p0 = fit([worldBBox.xmin, worldBBox.ymin]);
-      const p1 = fit([worldBBox.xmax, worldBBox.ymin]);
-      const p2 = fit([worldBBox.xmax, worldBBox.ymax]);
-      const p3 = fit([worldBBox.xmin, worldBBox.ymax]);
-      ctx.beginPath();
-      ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]);
-      ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]);
-      ctx.closePath(); ctx.stroke();
-      const o = fit([0,0]);
-      ctx.beginPath(); ctx.arc(o[0], o[1], 3, 0, Math.PI*2); ctx.fillStyle = "#fff"; ctx.fill();
-      ctx.restore();
+      // find per-target tip & feed so we can drive audio / sparks
+      let anyCutting = false;
+      let anyMoving = false;
 
-      // Draw each target in shared space
       for (let i = 0; i < targets.length; i++) {
         const segs = targets[i].segs || [];
         const total = totals[i] || 0;
         if (!segs.length || total <= 0) continue;
 
         const progLen = total * progress;
+
+        // Determine current segment & whether it's "fast"
+        let acc = 0;
+        let curSeg: Seg | null = null;
+        for (const s of segs) {
+          if (acc + s.len >= progLen) { curSeg = s; break; }
+          acc += s.len;
+        }
+        // thresholds
+        const normFeed = (s: Seg) => {
+          if (!feedMinMax || !s.feed) return 0.5;
+          if (feedMinMax.max <= feedMinMax.min) return 0.5;
+          return clamp01((s.feed - feedMinMax.min) / (feedMinMax.max - feedMinMax.min));
+        };
+        const isFast = (s: Seg | null) => s ? (s.rapid || normFeed(s) >= 0.75) : false;
+
+        // draw trails with fast segments *omitted*
         const hotWindow = 0.06 * total;
         const coolEnd = Math.max(0, progLen - hotWindow);
 
@@ -371,41 +450,27 @@ function MultiLaserOverlayAbsolute({
           ctx.lineTo(p1_[0], p1_[1]);
         }
         function pointAtLen(L: number) {
-          let acc = 0;
+          let acc2 = 0;
           for (const s of segs) {
-            if (acc + s.len >= L) {
-              const t = (L - acc) / s.len;
+            if (acc2 + s.len >= L) {
+              const t = (L - acc2) / s.len;
               return [s.a[0] + (s.b[0] - s.a[0]) * t, s.a[1] + (s.b[1] - s.a[1]) * t] as [number, number];
             }
-            acc += s.len;
+            acc2 += s.len;
           }
           const last = segs[segs.length - 1];
           return last ? last.b : ([0, 0] as [number, number]);
         }
 
-        // faint outline
-        ctx.save();
-        ctx.globalAlpha = 0.08;
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = "#ffffff";
-        ctx.beginPath();
-        for (const s of segs) {
-          const a = fit(s.a);
-          const b = fit(s.b);
-          ctx.moveTo(a[0], a[1]);
-          ctx.lineTo(b[0], b[1]);
-        }
-        ctx.stroke();
-        ctx.restore();
-
-        // cooled trail
+        // cooled trail (skip fast segments)
         ctx.save();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = "#3a3f47";
+        ctx.strokeStyle = "rgba(40,45,55,0.9)";
         ctx.beginPath();
         let remainCool = coolEnd;
         for (const s of segs) {
           if (remainCool <= 0) break;
+          if (isFast(s)) { remainCool -= s.len; continue; } // hide high-speed lines
           const use = Math.min(remainCool, s.len);
           drawPartial(s, 0, use, false);
           remainCool -= use;
@@ -413,9 +478,10 @@ function MultiLaserOverlayAbsolute({
         ctx.stroke();
         ctx.restore();
 
-        // hot trail
+        // hot trail (skip fast segments)
         ctx.save();
-        ctx.lineWidth = 2.6;
+        const HOT_BASE = 2.6;
+        ctx.lineWidth = HOT_BASE;
         ctx.strokeStyle = "#ff8c3a";
         ctx.shadowColor = "#ff8c3a";
         ctx.shadowBlur = 18;
@@ -425,7 +491,7 @@ function MultiLaserOverlayAbsolute({
         for (const s of segs) {
           if (pos >= s.len) { pos -= s.len; continue; }
           const use = Math.min(remainHot, s.len - pos);
-          drawPartial(s, pos, pos + use, true);
+          if (!isFast(s)) drawPartial(s, pos, pos + use, true);
           remainHot -= use;
           pos = 0;
           if (remainHot <= 0) break;
@@ -433,21 +499,110 @@ function MultiLaserOverlayAbsolute({
         ctx.stroke();
         ctx.restore();
 
-        // tip glow
-        const tip = fit(pointAtLen(progLen));
+        // tip glow + sparks
+        const tipW = pointAtLen(progLen);
+        const tip = fit(tipW);
+
+        const cuttingNow = !!curSeg && !isFast(curSeg) && !curSeg.rapid;
+        const movingFast = !!curSeg && isFast(curSeg);
+
+        anyCutting = anyCutting || cuttingNow;
+        anyMoving = anyMoving || movingFast;
+
+        // heat bloom (stronger when slower)
+        const feedN = curSeg ? (curSeg.rapid ? 1 : normFeed(curSeg)) : 0.5;
+        const slowFactor = 1 - feedN; // slower → bigger bloom & more sparks
+        const bloomR = 12 + 26 * slowFactor;
+
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
-        for (let k = 0; k < 3; k++) {
-          ctx.beginPath();
-          ctx.arc(tip[0], tip[1], 6 - k * 2, 0, Math.PI * 2);
-          ctx.fillStyle =
-            k === 0 ? "rgba(255,255,255,0.9)" :
-            k === 1 ? "rgba(255,200,120,0.5)" :
-                      "rgba(255,120,40,0.25)";
-          ctx.fill();
-        }
+        // inner white core
+        ctx.beginPath();
+        ctx.arc(tip[0], tip[1], 5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        ctx.fill();
+        // orange bloom
+        ctx.beginPath();
+        ctx.arc(tip[0], tip[1], bloomR, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,140,58,${0.18 + 0.25 * slowFactor})`;
+        ctx.fill();
+        // subtle heat haze ring
+        ctx.beginPath();
+        ctx.arc(tip[0], tip[1], bloomR * 1.35, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,180,120,${0.08 + 0.12 * slowFactor})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
         ctx.restore();
+
+        // spawn sparks
+        const baseSparks = cuttingNow ? (2 + Math.floor(5 * slowFactor)) : 0;
+        for (let s = 0; s < baseSparks; s++) {
+          const ang = (Math.random() * Math.PI) - Math.PI / 2; // mostly sideways/down
+          const sp = 70 + Math.random() * 140 * (0.5 + slowFactor);
+          partsRef.current.push({
+            x: tip[0],
+            y: tip[1],
+            vx: Math.cos(ang) * sp,
+            vy: Math.sin(ang) * sp - 30,
+            life: 0,
+            max: 0.35 + Math.random() * 0.5,
+            size: 1.2 + Math.random() * 1.6,
+            hot: true,
+          });
+        }
+        // occasional energetic burst
+        if (cuttingNow && Math.random() < (0.03 + 0.05 * slowFactor)) {
+          const bursts = 10 + Math.floor(Math.random() * 12);
+          for (let b = 0; b < bursts; b++) {
+            const ang = Math.random() * Math.PI - Math.PI / 2;
+            const sp = 160 + Math.random() * 260;
+            partsRef.current.push({
+              x: tip[0],
+              y: tip[1],
+              vx: Math.cos(ang) * sp,
+              vy: Math.sin(ang) * sp - 40,
+              life: 0,
+              max: 0.25 + Math.random() * 0.45,
+              size: 1.2 + Math.random() * 1.4,
+              hot: true,
+            });
+          }
+        }
       }
+
+      // draw particles (gravity + fade)
+      const g = 320; // px/s^2
+      const arr = partsRef.current;
+      for (let i = arr.length - 1; i >= 0; i--) {
+        const p = arr[i];
+        p.life += dt;
+        if (p.life > p.max) { arr.splice(i, 1); continue; }
+        p.vy += g * dt * 0.15;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+
+        const t = p.life / p.max;
+        const alpha = p.hot ? (1 - t) : (0.6 * (1 - t));
+        const size = p.size * (1 + 0.6 * (1 - t));
+        const col = p.hot ? `rgba(255,170,60,${alpha})` : `rgba(200,120,60,${alpha})`;
+
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+        ctx.restore();
+
+        // after half life, cool down to ember color
+        if (p.hot && p.life > p.max * 0.5) p.hot = false;
+      }
+
+      // audio mix
+      const cutVol = anyCutting ? 0.6 : 0;
+      const moveVol = anyMoving ? 0.5 : 0;
+      if (cutAudioRef.current) cutAudioRef.current.volume = cutVol;
+      if (moveAudioRef.current) moveAudioRef.current.volume = moveVol;
 
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(loop);
@@ -461,8 +616,11 @@ function MultiLaserOverlayAbsolute({
       window.removeEventListener("resize", onResize);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       startRef.current = null;
+      partsRef.current = [];
+      if (cutAudioRef.current) cutAudioRef.current.volume = 0;
+      if (moveAudioRef.current) moveAudioRef.current.volume = 0;
     };
-  }, [active, targets, durationMs, anchorRef, onDone]);
+  }, [active, targets, durationMs, anchorRef, feedMinMax, onDone]);
 
   return (
     <div
@@ -671,6 +829,14 @@ export default function TestimoniesAbout() {
     }
   }, [laserDone, scrollLocked]);
 
+  const worldBBox = useMemo(() => unionBBox(targets.map(t => t.bbox)), [targets]);
+  const ratio = useMemo(() => {
+    if (!worldBBox) return 2; // fallback
+    const w = worldBBox.xmax - worldBBox.xmin;
+    const h = worldBBox.ymax - worldBBox.ymin || 1;
+    return Math.max(0.2, Math.min(5, w / h));
+  }, [worldBBox]);
+
   /* === Rows driven by scroll progress (unchanged) === */
   const { col2Center, col3Center, col1Center } = threeColumnCenters(CARD_W_VW);
 
@@ -734,7 +900,7 @@ export default function TestimoniesAbout() {
   const block4TextFor = (id: string): ReactNode | undefined => {
     switch (id) {
       case "test1": return <>“Easy setup, powerful airflow with the new compressor, and no ash falling out. You can tell this was designed by someone who actually smokes food. Highly recommended!“</>;
-    case "test2": return <>“It works beautifully — the smoke is clean, the build quality is solid, and it fits my Kamado grill perfectly.”</>;
+      case "test2": return <>“It works beautifully — the smoke is clean, the build quality is solid, and it fits my Kamado grill perfectly.”</>;
       case "test3": return <>“Set it up in my small smokehouse. No hassle — it just works. The smoke is smooth and steady.“</>;
       case "test5": return <>“The best thing since sliced bread.”</>;
       case "test6": return <>“SG2 is really a great thing.”</>;
@@ -780,7 +946,7 @@ export default function TestimoniesAbout() {
           onDone={() => {
             setLaserActive(false);
             setLaserDone(true);
-            setShowFrame(true); // swap to frame.glb
+            setShowFrame(true); // swap to frame.glb after finish
           }}
         />
 
@@ -829,32 +995,24 @@ export default function TestimoniesAbout() {
                   zIndex: 3,
                 }}
               >
-                {/* GLB box (anchor for lasers) */}
+                {/* GLB box aligned to INC world extents with correct aspect ratio */}
                 <div
                   ref={glbBoxRef}
                   style={{
                     position: "relative",
                     width: "100%",
-                    height: "min(56vh, 680px)",
+                    aspectRatio: ratio,
+                    maxHeight: "680px",
                     overflow: "visible",
-                    transform: "translateY(-60px)",
-                    border: "3px dashed #ff0066",
                   }}
                 >
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 6,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: "100%",
-                      height: "calc(100% - 12px)",
-                    }}
-                  >
+                  <div style={{ position: "absolute", inset: 0 }}>
+                    {/* Show as perfectly flat: squash Z with a vector scale (handled inside component) */}
                     <ThreeModel
                       modelPath={showFrame ? "/about/frame.glb" : "/about/tiskre.glb"}
                       height={"100%"}
-                      scale={0.7}
+                      flat
+                      fitBBox={worldBBox || undefined}
                     />
                   </div>
                 </div>

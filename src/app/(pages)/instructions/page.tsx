@@ -1,69 +1,30 @@
-"use client";
 import Link from "next/link";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { sf } from "@/lib/shopify";
+import { GET_COLLECTIONS, GET_COLLECTION_PRODUCTS } from "@/lib/queries/products";
+import { DEFAULT_LOCALE } from "@/i18n/config";
+import { productPath } from "@/lib/paths";
 
-export default function InstructionsPage() {
-  const productCategories = [
-    {
-      name: "Clothing",
-      products: [
-        { name: "Minimalist Cotton T-Shirt", id: "tee-instructions", sku: "CLO-001" },
-        { name: "Organic Cotton Hoodie", id: "hoodie-instructions", sku: "CLO-002" },
-        { name: "Sustainable Denim Jacket", id: "jacket-instructions", sku: "CLO-003" },
-        { name: "Bamboo Fiber Socks", id: "socks-instructions", sku: "CLO-004" },
-      ]
-    },
-    {
-      name: "Accessories",
-      products: [
-        { name: "Leather Crossbody Bag", id: "bag-instructions", sku: "ACC-001" },
-        { name: "Minimalist Watch", id: "watch-instructions", sku: "ACC-002" },
-        { name: "Canvas Backpack", id: "backpack-instructions", sku: "ACC-003" },
-        { name: "Wool Beanie", id: "beanie-instructions", sku: "ACC-004" },
-      ]
-    },
-    {
-      name: "Home",
-      products: [
-        { name: "Ceramic Coffee Mug", id: "mug-instructions", sku: "HOM-001" },
-        { name: "Wooden Cutting Board", id: "board-instructions", sku: "HOM-002" },
-        { name: "Glass Water Bottle", id: "bottle-instructions", sku: "HOM-003" },
-        { name: "Linen Table Runner", id: "runner-instructions", sku: "HOM-004" },
-      ]
-    },
-    {
-      name: "Electronics",
-      products: [
-        { name: "Wireless Charging Pad", id: "charger-instructions", sku: "ELC-001" },
-        { name: "Bluetooth Speaker", id: "speaker-instructions", sku: "ELC-002" },
-        { name: "USB-C Cable", id: "cable-instructions", sku: "ELC-003" },
-        { name: "Power Bank", id: "powerbank-instructions", sku: "ELC-004" },
-      ]
-    },
-    {
-      name: "Beauty",
-      products: [
-        { name: "Natural Face Cream", id: "cream-instructions", sku: "BEA-001" },
-        { name: "Organic Shampoo Bar", id: "shampoo-instructions", sku: "BEA-002" },
-        { name: "Essential Oil Set", id: "oils-instructions", sku: "BEA-003" },
-        { name: "Bamboo Toothbrush", id: "toothbrush-instructions", sku: "BEA-004" },
-      ]
-    },
-    {
-      name: "Fitness",
-      products: [
-        { name: "Yoga Mat", id: "yoga-instructions", sku: "FIT-001" },
-        { name: "Resistance Bands Set", id: "bands-instructions", sku: "FIT-002" },
-        { name: "Water Bottle with Tracker", id: "tracker-instructions", sku: "FIT-003" },
-        { name: "Foam Roller", id: "roller-instructions", sku: "FIT-004" },
-      ]
-    }
-  ];
+export default async function InstructionsPage() {
+  // Fetch Shopify collections and a few products per collection
+  const collectionsRes = await sf<{ collections: { nodes: Array<{ id: string; handle: string; title: string }> } }>(GET_COLLECTIONS, { first: 20 });
+  const collections = collectionsRes?.collections?.nodes || [];
+
+  const categories = [] as Array<{ name: string; products: Array<{ name: string; handle: string }> }>;
+  for (const c of collections) {
+    try {
+      const prodsRes = await sf<{ collection: { products: { nodes: Array<{ handle: string; title: string }> } } }>(GET_COLLECTION_PRODUCTS, { handle: c.handle, first: 12 });
+      const nodes = prodsRes?.collection?.products?.nodes || [];
+      if (nodes.length) {
+        categories.push({ name: c.title, products: nodes.map((n) => ({ name: n.title, handle: n.handle })) });
+      }
+    } catch {}
+  }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #98a8b8 0%, #f8f8f8 100%)" }}>
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-medium text-foreground mb-6">Product Instructions</h1>
@@ -74,7 +35,7 @@ export default function InstructionsPage() {
 
         <div className="mb-8">
           <Accordion type="single" collapsible className="w-full space-y-4">
-            {productCategories.map((category, index) => (
+            {categories.map((category, index) => (
               <AccordionItem key={category.name} value={`category-${index}`} className="border rounded-lg">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <div className="flex items-center justify-between w-full">
@@ -87,18 +48,17 @@ export default function InstructionsPage() {
                 <AccordionContent className="px-6 pb-6">
                   <div className="space-y-3">
                     {category.products.map((product) => (
-                      <Card key={product.id} className="transition-colors">
+                      <Card key={product.handle} className="transition-colors">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
                               <h3 className="font-medium text-foreground">{product.name}</h3>
-                              <p className="text-sm text-muted-foreground mt-1">SKU: {product.sku}</p>
                             </div>
                             <Link 
-                              href={`/instructions/${product.id}`}
+                              href={productPath(DEFAULT_LOCALE as any, product.handle)}
                               className="inline-flex items-center text-foreground hover:underline"
                             >
-                              View Instructions
+                              View Product
                             </Link>
                           </div>
                         </CardContent>

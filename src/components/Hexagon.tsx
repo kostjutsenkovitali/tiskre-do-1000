@@ -12,20 +12,24 @@ import * as THREE from "three";
 import { bus } from "@/utils/visibilityBus";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
+import { sf, SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
+import { GET_BLOG_WITH_ARTICLES, LIST_ARTICLES } from "@/lib/queries/blog";
+import { usePathname } from "next/navigation";
+import { articlePath, detectLocaleFromPath } from "@/lib/paths";
 
 /* =========================================================
    Types
    ========================================================= */
-type WpPost = {
-  id: number;
-  title: { rendered: string };
-  excerpt?: { rendered?: string };
-  content?: { rendered?: string };
-  link?: string;
-  _embedded?: { ["wp:featuredmedia"]?: Array<{ source_url?: string }> };
+type Article = {
+  id?: string;
+  handle: string;
+  title: string;
+  excerpt?: string;
+  imageUrl?: string;
+  url: string;
 };
 type Slide = {
-  id: number;
+  id: string | number;
   title: string;
   quote: string;
   imageUrl: string;
@@ -46,13 +50,7 @@ const SHOW_DEBUG_ORBIT = false;
 // 3× bigger object (3D payload)
 const OBJECT_SCALE_MULT = 3;
 
-// posts order (drives which posts we fetch)
-const PERMALINKS = [
-  "https://tiskre-do.eu/the-best-hair-style-in-the-summer-2018/",
-  "https://tiskre-do.eu/how-to-decorate-the-new-design-projects/",
-  "https://tiskre-do.eu/gold-jewelry-trends/",
-  "https://tiskre-do.eu/inspiration-for-unique-sandy-color-design/",
-];
+// Prefer configured handle from lib/shopify (SHOPIFY_BLOG_HANDLE)
 
 /* =========================================================
    Tiny helpers for HTML content
@@ -113,6 +111,7 @@ export default function Hexagon() {
 
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pathname = usePathname();
 
   const [slides, setSlides] = useState<Slide[] | null>(null);
   const [index, setIndex] = useState(0);
@@ -140,39 +139,31 @@ export default function Hexagon() {
     bus.emit("footer:reveal", hexVisible === true);
   }, [hexVisible, footerVisible]);
 
-  /* ===== fetch posts ===== */
+  /* ===== fetch posts (Shopify) ===== */
   useEffect(() => {
     let cancelled = false;
-    const slugFromUrl = (url: string) => {
-      try {
-        const u = new URL(url);
-        const parts = u.pathname.replace(/^\/|\/$/g, "").split("/");
-        return parts[parts.length - 1] || "";
-      } catch { return ""; }
-    };
-    async function fetchOneBySlug(slug: string, fallbackUrl: string): Promise<Slide | null> {
-      if (!slug) return null;
-      try {
-        const res = await fetch(
-          `https://tiskre-do.eu/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&_embed`,
-          { cache: "no-store" }
-        );
-        if (!res.ok) return null;
-        const arr: WpPost[] = await res.json();
-        const p = arr?.[0]; if (!p) return null;
-        const title = stripHtml(p.title?.rendered || "").trim() || "Untitled";
-        const html = p.excerpt?.rendered || p.content?.rendered || "";
-        const quote = truncateForQuote(stripHtml(html));
-        const imageUrl = p._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "/placeholder.jpg";
-        const url = p.link || fallbackUrl;
-        return { id: p.id, title, quote, imageUrl, url };
-      } catch { return null; }
-    }
     (async () => {
-      const slugs = PERMALINKS.map(slugFromUrl);
-      const results = await Promise.all(slugs.map((s, i) => fetchOneBySlug(s, PERMALINKS[i])));
-      const cleaned = results.map((s, i) => s ?? fallbackFromUrl(PERMALINKS[i])).slice(0, 4);
-      if (!cancelled) setSlides(cleaned);
+      try {
+        // Try preferred blog; fallback to global list if blog is not accessible
+        const preferred = await sf<{ blog?: { articles?: { nodes?: any[] } } }>(GET_BLOG_WITH_ARTICLES, { blogHandle: SHOPIFY_BLOG_HANDLE, first: 4 });
+        let nodes = preferred?.blog?.articles?.nodes || [];
+        if (!nodes.length) {
+          const all = await sf<{ articles?: { nodes?: any[] } }>(LIST_ARTICLES, { first: 4 });
+          nodes = all?.articles?.nodes || [];
+        }
+        const locale = detectLocaleFromPath(pathname || "/");
+        const items: Slide[] = nodes.slice(0, 4).map((n: any) => ({
+          id: n.id || n.handle,
+          title: n.title || "Untitled",
+          quote: truncateForQuote(stripHtml(n.excerpt || "")),
+          imageUrl: n.image?.url || "/placeholder.jpg",
+          url: articlePath(locale as any, n.handle),
+        }));
+        if (!cancelled) setSlides(items);
+      } catch (e) {
+        console.warn("Hexagon: failed to load Shopify articles", e);
+        if (!cancelled) setSlides([]);
+      }
     })();
     return () => { cancelled = true; };
   }, []);

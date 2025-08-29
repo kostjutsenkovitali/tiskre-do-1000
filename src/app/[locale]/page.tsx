@@ -4,6 +4,7 @@ import { HeroSection } from "@/components/HeroSection";
 import PortfolioSection from "@/components/PortfolioSection";
 import TestimoniesAbout from "@/components/TestimoniesAbout";
 import Hexagon from "@/components/Hexagon";
+import ScrollDownButton from "@/components/ScrollDownButton";
 
 type Props = { params: { locale: string } };
 
@@ -16,6 +17,7 @@ export default async function LocaleHome({ params }: Props) {
       <PortfolioSection />
       <TestimoniesAbout />
       <Hexagon />
+      <ScrollDownButton scope="home" />
     </div>
   );
 }

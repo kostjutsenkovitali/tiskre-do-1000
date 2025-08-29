@@ -20,8 +20,10 @@ import {
 } from "lucide-react";
 type Product = any;
 import RelatedProducts from "@/components/shop/RelatedProducts";
+import { shopPath } from "@/lib/paths";
 
 type Props = {
+  locale: string;
   product: Product;
   related: Product[];
 };
@@ -30,7 +32,7 @@ function sanitizePrice(htmlish: string): string {
   return htmlish.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
 }
 
-export default function ProductDetailClient({ product, related }: Props) {
+export default function ProductDetailClient({ locale, product, related }: Props) {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
@@ -38,8 +40,8 @@ export default function ProductDetailClient({ product, related }: Props) {
   const images = useMemo(() => {
     const list = [
       product.image?.sourceUrl,
-      ...(product.galleryImages?.nodes?.map((n) => n.sourceUrl).filter(Boolean) ||
-        []),
+      ...((product.galleryImages?.nodes?.map((n: { sourceUrl?: string }) => n.sourceUrl).filter(Boolean) ||
+        []) as string[]),
     ].filter(Boolean) as string[];
     return Array.from(new Set(list));
   }, [product]);
@@ -75,15 +77,46 @@ export default function ProductDetailClient({ product, related }: Props) {
     { id: 3, author: "Emma K.", rating: 5, comment: "Love the minimalist design. Perfect for my needs." },
   ];
 
+  const labels: Record<string, {
+    backToShop: string;
+    product: string;
+    sku: string;
+    inStock: string;
+    outOfStock: string;
+    quantity: string;
+    addToCart: string;
+    description: string;
+    watchVideo: string;
+    technical: string;
+    noTechData: string;
+    reviews: string;
+    instructions: string;
+  }> = {
+    en: { backToShop: "Back to Shop", product: "Product", sku: "SKU", inStock: "In stock", outOfStock: "Out of stock", quantity: "Quantity:", addToCart: "Add to Cart", description: "Description", watchVideo: "Watch Video", technical: "Technical Parameters", noTechData: "No technical data available.", reviews: "Reviews", instructions: "Instructions" },
+    et: { backToShop: "Tagasi poodi", product: "Toode", sku: "SKU", inStock: "Laos", outOfStock: "Läbi müüdud", quantity: "Kogus:", addToCart: "Lisa ostukorvi", description: "Kirjeldus", watchVideo: "Vaata videot", technical: "Tehnilised andmed", noTechData: "Tehnilised andmed puuduvad.", reviews: "Arvustused", instructions: "Juhendid" },
+    de: { backToShop: "Zurück zum Shop", product: "Produkt", sku: "SKU", inStock: "Auf Lager", outOfStock: "Nicht auf Lager", quantity: "Menge:", addToCart: "In den Warenkorb", description: "Beschreibung", watchVideo: "Video ansehen", technical: "Technische Daten", noTechData: "Keine technischen Daten verfügbar.", reviews: "Bewertungen", instructions: "Anleitungen" },
+    fr: { backToShop: "Retour à la boutique", product: "Produit", sku: "SKU", inStock: "En stock", outOfStock: "Rupture de stock", quantity: "Quantité:", addToCart: "Ajouter au panier", description: "Description", watchVideo: "Regarder la vidéo", technical: "Paramètres techniques", noTechData: "Aucune donnée technique disponible.", reviews: "Avis", instructions: "Guides" },
+    fi: { backToShop: "Takaisin kauppaan", product: "Tuote", sku: "SKU", inStock: "Varastossa", outOfStock: "Loppu", quantity: "Määrä:", addToCart: "Lisää koriin", description: "Kuvaus", watchVideo: "Katso video", technical: "Tekniset tiedot", noTechData: "Teknisiä tietoja ei saatavilla.", reviews: "Arvostelut", instructions: "Ohjeet" },
+    sv: { backToShop: "Tillbaka till butik", product: "Produkt", sku: "SKU", inStock: "I lager", outOfStock: "Slut i lager", quantity: "Antal:", addToCart: "Lägg i varukorgen", description: "Beskrivning", watchVideo: "Titta på video", technical: "Tekniska parametrar", noTechData: "Inga tekniska data tillgängliga.", reviews: "Recensioner", instructions: "Instruktioner" },
+  };
+
+  const L = labels[locale] || labels.en;
+  const backHref = shopPath(locale as any);
+  const bulletPoints: string[] = Array.isArray(product?.bulletPoints)
+    ? (product.bulletPoints as string[]).filter((x) => typeof x === "string")
+    : [];
+  const instructionJpg: string | null = product?.instructionJpg || null;
+  const instructionPdf: string | null = product?.instructionPdf || null;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #e8d8c8 100%)" }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <Link
-          href="/shop"
+          href={backHref}
           className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors mb-8"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Shop
+          {L.backToShop}
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -187,19 +220,19 @@ export default function ProductDetailClient({ product, related }: Props) {
           <div className="flex flex-col space-y-6">
             <div>
               <Badge variant="secondary" className="mb-4 capitalize rounded-none">
-                Product
+                {L.product}
               </Badge>
               <h1 className="text-3xl font-medium text-foreground mb-2">
                 {product.name}
               </h1>
               <p className="text-sm text-muted-foreground mb-1">
-                SKU: {product.sku || "—"}
+                {L.sku}: {product.sku || "—"}
               </p>
               <p className="text-sm mb-4">
                 {product.stockStatus === "IN_STOCK" ? (
-                  <span className="text-green-700">In stock</span>
+                  <span className="text-green-700">{L.inStock}</span>
                 ) : (
-                  <span className="text-red-600">Out of stock</span>
+                  <span className="text-red-600">{L.outOfStock}</span>
                 )}
               </p>
               <p className="text-2xl font-medium text-foreground mb-6">
@@ -209,7 +242,7 @@ export default function ProductDetailClient({ product, related }: Props) {
 
             <div className="space-y-4">
               <div className="flex items-center space-x-4">
-                <span className="text-sm font-medium">Quantity:</span>
+                <span className="text-sm font-medium">{L.quantity}</span>
                 <div className="flex items-center border border-border rounded-none">
                   <Button
                     variant="ghost"
@@ -241,7 +274,7 @@ export default function ProductDetailClient({ product, related }: Props) {
                     alert(`Added ${quantity} x ${product.name} to cart!`)
                   }
                 >
-                  Add to Cart
+                  {L.addToCart}
                 </Button>
                 <div className="grid grid-cols-3 gap-3">
                   <Button variant="outline" size="sm" className="text-xs rounded-none">
@@ -254,6 +287,16 @@ export default function ProductDetailClient({ product, related }: Props) {
                     Klarna
                   </Button>
                 </div>
+
+                {bulletPoints.length > 0 && (
+                  <div className="mt-4 border border-gray-200 rounded-none bg-white p-4">
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-foreground">
+                      {bulletPoints.map((b, i) => (
+                        <li key={i}>{b}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -267,7 +310,7 @@ export default function ProductDetailClient({ product, related }: Props) {
               className="w-full border border-gray-200 rounded-none"
             >
               <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
-                Description
+                {L.description}
               </AccordionTrigger>
               <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
                 <p className="text-muted-foreground leading-relaxed">
@@ -282,20 +325,23 @@ export default function ProductDetailClient({ product, related }: Props) {
             >
               <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
                 <div className="flex items-center">
-                  <Play className="h-4 w-4 mr-2" /> Watch Video
+                  <Play className="h-4 w-4 mr-2" /> {L.watchVideo}
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
-                <div className="aspect-video border border-gray-200 rounded-none overflow-hidden">
-                  <iframe
-                    className="w-full h-full"
-                    src="https://www.youtube.com/embed/ou4FN92d0l8?start=245"
-                    title="Product video"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                </div>
+                {images.length > 0 ? (
+                  <div className="grid gap-3">
+                    {images.find((u: string) => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) ? (
+                      <video
+                        className="w-full aspect-video border border-gray-200 rounded-none"
+                        src={images.find((u: string) => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) as string}
+                        controls
+                      />
+                    ) : (
+                      <div className="text-sm text-muted-foreground">No video found.</div>
+                    )}
+                  </div>
+                ) : null}
               </AccordionContent>
             </AccordionItem>
 
@@ -304,13 +350,45 @@ export default function ProductDetailClient({ product, related }: Props) {
               className="w-full border border-gray-200 rounded-none"
             >
               <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
-                Technical Parameters
+                {L.technical}
               </AccordionTrigger>
               <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
                 <div className="space-y-3">
                   <div className="text-sm text-muted-foreground">
-                    No technical data available.
+                    {L.noTechData}
                   </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem
+              value="instructions"
+              className="w-full border border-gray-200 rounded-none"
+            >
+              <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
+                {L.instructions}
+              </AccordionTrigger>
+              <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
+                <div className="space-y-4 text-sm text-muted-foreground">
+                  {instructionJpg ? (
+                    <div className="border border-gray-200 rounded-none bg-white p-2">
+                      <Image src={instructionJpg} alt="Instruction" width={1200} height={1600} className="w-full h-auto object-contain" />
+                    </div>
+                  ) : (
+                    <p>No instructions available.</p>
+                  )}
+
+                  {instructionPdf ? (
+                    <div>
+                      <a
+                        href={instructionPdf}
+                        download
+                        className="inline-block px-4 py-2 border border-gray-300 rounded-none text-foreground hover:bg-gray-50"
+                      >
+                        Download PDF
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -320,7 +398,7 @@ export default function ProductDetailClient({ product, related }: Props) {
               className="w-full border border-gray-200 rounded-none"
             >
               <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
-                Reviews ({mockReviews.length})
+                {L.reviews} ({mockReviews.length})
               </AccordionTrigger>
               <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
                 <div className="space-y-4">
@@ -358,7 +436,7 @@ export default function ProductDetailClient({ product, related }: Props) {
         </div>
 
         {/* Related products (max 4) */}
-        <RelatedProducts products={related.slice(0, 4)} />
+        <RelatedProducts products={related.slice(0, 4)} hrefBase={backHref} />
       </div>
     </div>
   );

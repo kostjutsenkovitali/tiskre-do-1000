@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Youtube, Instagram } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { bus } from "@/utils/visibilityBus";
 
 /* 
@@ -20,33 +21,42 @@ const TikTokIcon = ({ className }: { className?: string }) => (
 export default function Footer() {
   const [visible, setVisible] = useState(false);
   const footerRef = useRef<HTMLElement | null>(null);
+  const pathname = usePathname() || "/";
+  const pathParts = pathname.split("/").filter(Boolean);
+  // Home is exactly '/{locale}' (one path segment). All other routes show footer always.
+  const isHome = pathParts.length === 1;
+  const locale = (pathParts[0] || "en").toLowerCase();
+
+  const labels: Record<string, { contact: string; instructions: string; delivery: string; terms: string }> = {
+    en: { contact: "Contact", instructions: "Instructions/Manuals", delivery: "Delivery", terms: "Terms & Conditions" },
+    et: { contact: "Kontakt", instructions: "Kasutusjuhendid", delivery: "Tarne", terms: "Üldtingimused" },
+    de: { contact: "Kontakt", instructions: "Anleitungen", delivery: "Versand", terms: "AGB" },
+    fr: { contact: "Contact", instructions: "Guides et manuels", delivery: "Livraison", terms: "Conditions générales" },
+    fi: { contact: "Yhteystiedot", instructions: "Käyttöohjeet", delivery: "Toimitus", terms: "Käyttöehdot" },
+    sv: { contact: "Kontakt", instructions: "Manualer", delivery: "Leverans", terms: "Villkor" },
+  };
+  const L = labels[locale] || labels.en;
 
   useEffect(() => {
+    if (!isHome) {
+      setVisible(true);
+      return;
+    }
     const off = bus.on("footer:reveal", (flag: boolean) => setVisible(!!flag));
     return off;
-  }, []);
-
-  useEffect(() => {
-    const el = footerRef.current;
-    const h = el ? el.getBoundingClientRect().height : 0;
-    if (visible) {
-      document.body.style.paddingBottom = `${h}px`;
-    } else {
-      document.body.style.paddingBottom = "0px";
-    }
-    return () => { document.body.style.paddingBottom = "0px"; };
-  }, [visible]);
+  }, [isHome]);
+  
   return (
     <>
-      {/* No default bottom padding; we control it via JS when visible */}
+      {/* Footer scrolls with content; visibility toggled on home via bus */}
 
       <footer
         ref={footerRef}
-        className="fixed inset-x-0 bottom-0 z-0 text-foreground transition-transform duration-300"
+        className="w-full text-foreground"
         style={{
           backgroundColor: "#f5f5f5",
           height: "420px",
-          transform: visible ? "translateY(0%)" : "translateY(100%)",
+          display: !isHome || visible ? "block" : "none",
         }}
       >
         <div className="max-w-[1971px] mx-auto px-4 h-full flex flex-col justify-between pt-10 pb-6">
@@ -97,16 +107,16 @@ export default function Footer() {
               </h4>
               <ul className="space-y-3 text-[1.333rem] leading-[1.15]">
                 <li>
-                  <Link href="/contact" className="hover:underline">Contact</Link>
+                  <Link href="/contact" className="hover:underline">{L.contact}</Link>
                 </li>
                 <li>
-                  <Link href="/instructions" className="hover:underline">Instructions/Manuals</Link>
+                  <Link href="/instructions" className="hover:underline">{L.instructions}</Link>
                 </li>
                 <li>
-                  <Link href="/delivery" className="hover:underline">Delivery</Link>
+                  <Link href="/delivery" className="hover:underline">{L.delivery}</Link>
                 </li>
                 <li>
-                  <Link href="/terms" className="hover:underline">Terms & Conditions</Link>
+                  <Link href="/terms" className="hover:underline">{L.terms}</Link>
                 </li>
               </ul>
             </nav>

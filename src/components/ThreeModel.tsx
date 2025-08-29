@@ -31,6 +31,10 @@ type Props = {
   flat?: boolean;
   /** Additional scale multiplier applied after fitting (1 = original fit) */
   scale?: number;
+  /** Optional union bbox from INC files to align GLB to absolute zero in world space */
+  fitBBox?: { xmin: number; ymin: number; xmax: number; ymax: number };
+  /** World-space origin (x,y,z) to place model against; defaults to [0,0,0] */
+  origin?: [number, number, number];
 };
 
 export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
@@ -44,6 +48,8 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
     height,
     flat = false,
     scale = 1,
+    fitBBox,
+    origin = [0, 0, 0],
   },
   ref
 ) {
@@ -59,7 +65,7 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
   const rootRef = useRef<THREE.Object3D | null>(null);
   const [ready, setReady] = useState(false);
 
-  // Helper to center and fit in ortho camera for flat mode
+  // Helper to center and fit in ortho camera for flat mode (used when no fitBBox provided)
   function centerAlignAndFit(target: THREE.Object3D, frustumH: number, isFlat: boolean) {
     if (!isFlat) return;
     const box = new THREE.Box3().setFromObject(target);
@@ -202,8 +208,26 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
           currentActionRef.current = action;
         }
 
-        // For flat mode, fit then apply extra scale
-        if (flat) {
+        // For flat mode with absolute world alignment (fitBBox provided):
+        if (flat && fitBBox) {
+          // Compute model bounds
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const worldW = Math.max(1e-6, fitBBox.xmax - fitBBox.xmin);
+          const worldH = Math.max(1e-6, fitBBox.ymax - fitBBox.ymin);
+          const sx = worldW / Math.max(1e-6, size.x);
+          const sy = worldH / Math.max(1e-6, size.y);
+          const s = Math.min(sx, sy);
+          const sz = s * 0.001; // keep z tiny for flatness
+          model.scale.multiply(new THREE.Vector3(s, s, sz));
+          // Recompute and place model so its min corner is at origin
+          const scaled = new THREE.Box3().setFromObject(model);
+          const min = scaled.min.clone();
+          model.position.x += -min.x + origin[0];
+          model.position.y += -min.y + origin[1];
+          model.position.z += -min.z + origin[2];
+        } else if (flat) {
+          // Default flat fit behavior (no absolute alignment)
           centerAlignAndFit(model, FRUSTUM_H, flat);
           if (typeof scale === "number" && scale !== 1) {
             model.scale.multiplyScalar(scale);
@@ -242,15 +266,23 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
       const h = mount.clientHeight;
       renderer.setSize(w, h, false);
       if (orthoRef.current) {
-        const a = Math.max(1e-6, w / h);
-        orthoRef.current.left = (-FRUSTUM_H * a) / 2;
-        orthoRef.current.right = (FRUSTUM_H * a) / 2;
-        orthoRef.current.top = FRUSTUM_H / 2;
-        orthoRef.current.bottom = -FRUSTUM_H / 2;
-        orthoRef.current.updateProjectionMatrix();
-        // Re-center and fit the model vertically
-        const target = rootRef.current;
-        if (target) centerAlignAndFit(target, FRUSTUM_H, flat);
+        if (fitBBox) {
+          // Map camera frustum directly to world extents so (0,0) is consistent
+          orthoRef.current.left = fitBBox.xmin;
+          orthoRef.current.right = fitBBox.xmax;
+          orthoRef.current.top = fitBBox.ymax;
+          orthoRef.current.bottom = fitBBox.ymin;
+          orthoRef.current.updateProjectionMatrix();
+        } else {
+          const a = Math.max(1e-6, w / h);
+          orthoRef.current.left = (-FRUSTUM_H * a) / 2;
+          orthoRef.current.right = (FRUSTUM_H * a) / 2;
+          orthoRef.current.top = FRUSTUM_H / 2;
+          orthoRef.current.bottom = -FRUSTUM_H / 2;
+          orthoRef.current.updateProjectionMatrix();
+          const target = rootRef.current;
+          if (target) centerAlignAndFit(target, FRUSTUM_H, flat);
+        }
       } else if (perspRef.current) {
         perspRef.current.aspect = w / h;
         perspRef.current.updateProjectionMatrix();
