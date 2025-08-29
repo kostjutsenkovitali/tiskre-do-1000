@@ -27,6 +27,10 @@ type Props = {
   // Back-compat props (used in Header)
   modelPath?: string;
   height?: number | string;
+  /** If true, render with an OrthographicCamera and unlit materials for a flat 2D look */
+  flat?: boolean;
+  /** Additional scale multiplier applied after fitting (1 = original fit) */
+  scale?: number;
 };
 
 export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
@@ -38,13 +42,16 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
     initialClip,
     modelPath,
     height,
+    flat = false,
+    scale = 1,
   },
   ref
 ) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer>();
   const sceneRef = useRef<THREE.Scene>();
-  const cameraRef = useRef<THREE.PerspectiveCamera>();
+  const perspRef = useRef<THREE.PerspectiveCamera>();
+  const orthoRef = useRef<THREE.OrthographicCamera>();
   const mixerRef = useRef<THREE.AnimationMixer>();
   const currentActionRef = useRef<THREE.AnimationAction | null>(null);
   const clipsRef = useRef<THREE.AnimationClip[]>([]);
@@ -52,23 +59,95 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
   const rootRef = useRef<THREE.Object3D | null>(null);
   const [ready, setReady] = useState(false);
 
+  // Helper to center and fit in ortho camera for flat mode
+  function centerAlignAndFit(target: THREE.Object3D, frustumH: number, isFlat: boolean) {
+    if (!isFlat) return;
+    const box = new THREE.Box3().setFromObject(target);
+    if (box.isEmpty()) return;
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    target.position.x -= center.x;
+    target.position.y -= center.y;
+    target.position.z -= center.z;
+    const scaleBy = (frustumH * 0.9) / Math.max(1e-6, size.y);
+    target.scale.setScalar(scaleBy);
+  }
+
+  // Helper to center and fit object for a PerspectiveCamera within the mount element
+  function fitInPerspective(mount: HTMLDivElement, camera: THREE.PerspectiveCamera, target: THREE.Object3D, padding = 1.05) {
+    // 1) Compute bounds
+    const box = new THREE.Box3().setFromObject(target);
+    if (box.isEmpty()) return;
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    // 2) Recenter model at origin
+    target.position.x -= center.x;
+    target.position.y -= center.y;
+    target.position.z -= center.z;
+
+    // 3) Compute distances to fit width/height
+    const w = Math.max(1, mount.clientWidth);
+    const h = Math.max(1, mount.clientHeight);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+
+    const vFov = (camera.fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+    const distY = (size.y / 2) / Math.tan(vFov / 2);
+    const distX = (size.x / 2) / Math.tan(hFov / 2);
+    const distance = padding * Math.max(distX, distY);
+
+    // 4) Place camera on +Z looking at origin
+    camera.position.set(0, 0, distance + Math.max(0, size.z / 2));
+    camera.near = Math.max(0.01, distance / 100);
+    camera.far = distance * 10 + size.z;
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  }
+
   useEffect(() => {
     const mount = mountRef.current!;
     const scene = new THREE.Scene();
     scene.background = null;
 
-    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-    camera.position.set(0, 0.6, 2);
+    // Camera setup
+    let camera: THREE.Camera;
+    const FRUSTUM_H = 3; // world units tall for ortho fit
+    if (flat) {
+      const w = Math.max(1, mount.clientWidth);
+      const h = Math.max(1, mount.clientHeight);
+      const aspect = w / h;
+      const ortho = new THREE.OrthographicCamera(
+        (-FRUSTUM_H * aspect) / 2,
+        (FRUSTUM_H * aspect) / 2,
+        FRUSTUM_H / 2,
+        -FRUSTUM_H / 2,
+        0.1,
+        1000
+      );
+      ortho.position.set(0, 0, 10);
+      ortho.lookAt(0, 0, 0);
+      camera = ortho;
+      orthoRef.current = ortho;
+    } else {
+      const persp = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+      persp.position.set(0, 0.6, 2);
+      camera = persp;
+      perspRef.current = persp;
+    }
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mount.clientWidth, mount.clientHeight, false);
     mount.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1));
-    const dir = new THREE.DirectionalLight(0xffffff, 1.2);
-    dir.position.set(2, 3, 2);
-    scene.add(dir);
+    if (!flat) {
+      scene.add(new THREE.AmbientLight(0xffffff, 1));
+      const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+      dir.position.set(2, 3, 2);
+      scene.add(dir);
+    }
 
     const loader = new GLTFLoader();
     const draco = new DRACOLoader();
@@ -91,6 +170,21 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
         rootRef.current = model;
         model.traverse((o) => {
           if (!o.name) o.name = o.uuid;
+          // Replace materials with unlit for flat mode
+          if (flat && (o as any).isMesh) {
+            const mesh = o as THREE.Mesh;
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            const basicMaterials = materials.map((m: any) => {
+              const mat = new THREE.MeshBasicMaterial({
+                map: m?.map || null,
+                color: m?.color ? (m.color as THREE.Color).getHex() : 0xffffff,
+                transparent: m?.transparent || false,
+                opacity: typeof m?.opacity === "number" ? m.opacity : 1,
+              });
+              return mat;
+            });
+            mesh.material = Array.isArray(mesh.material) ? (basicMaterials as any) : (basicMaterials[0] as any);
+          }
         });
         scene.add(model);
 
@@ -106,6 +200,23 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
           action.clampWhenFinished = true;
           action.loop = THREE.LoopOnce;
           currentActionRef.current = action;
+        }
+
+        // For flat mode, fit then apply extra scale
+        if (flat) {
+          centerAlignAndFit(model, FRUSTUM_H, flat);
+          if (typeof scale === "number" && scale !== 1) {
+            model.scale.multiplyScalar(scale);
+          }
+        } else {
+          // Fit for perspective camera
+          if (perspRef.current) {
+            fitInPerspective(mount, perspRef.current, model, 1.08);
+          }
+          if (typeof scale === "number" && scale !== 1) {
+            model.scale.multiplyScalar(scale);
+            if (perspRef.current) fitInPerspective(mount, perspRef.current, model, 1.08);
+          }
         }
 
         setReady(true);
@@ -130,15 +241,28 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
       const w = mount.clientWidth;
       const h = mount.clientHeight;
       renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
+      if (orthoRef.current) {
+        const a = Math.max(1e-6, w / h);
+        orthoRef.current.left = (-FRUSTUM_H * a) / 2;
+        orthoRef.current.right = (FRUSTUM_H * a) / 2;
+        orthoRef.current.top = FRUSTUM_H / 2;
+        orthoRef.current.bottom = -FRUSTUM_H / 2;
+        orthoRef.current.updateProjectionMatrix();
+        // Re-center and fit the model vertically
+        const target = rootRef.current;
+        if (target) centerAlignAndFit(target, FRUSTUM_H, flat);
+      } else if (perspRef.current) {
+        perspRef.current.aspect = w / h;
+        perspRef.current.updateProjectionMatrix();
+        const target = rootRef.current;
+        if (target) fitInPerspective(mount, perspRef.current, target, 1.08);
+      }
     };
     const ro = new ResizeObserver(onResize);
     ro.observe(mount);
 
     rendererRef.current = renderer;
     sceneRef.current = scene;
-    cameraRef.current = camera;
 
     return () => {
       cancelAnimationFrame(raf);

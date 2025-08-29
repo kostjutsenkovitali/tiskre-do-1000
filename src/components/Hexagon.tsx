@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 import * as THREE from "three";
+import { bus } from "@/utils/visibilityBus";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
 
@@ -135,6 +136,8 @@ export default function Hexagon() {
     if (canvasRef.current) {
       canvasRef.current.style.opacity = activeRef.current ? "1" : "0";
     }
+    // Notify footer reveal only when Hexagon itself becomes visible
+    bus.emit("footer:reveal", hexVisible === true);
   }, [hexVisible, footerVisible]);
 
   /* ===== fetch posts ===== */

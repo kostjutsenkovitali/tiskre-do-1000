@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
-import ThreeModel from "@/components/ThreeModel";
+import ThreeModel, { ThreeModelHandle } from "@/components/ThreeModel";
+import { bus } from "@/utils/visibilityBus";
+import { blogPath, detectLocaleFromPath, shopPath } from "@/lib/paths";
 
 // removed three.js debug imports
 
@@ -29,6 +31,7 @@ const navItemClass = (active: boolean) =>
 export default function Header() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const modelRef = useRef<ThreeModelHandle | null>(null);
 
   const cartData = useCart();
   const { count, total } = cartData ?? { count: 0, total: 0 };
@@ -51,13 +54,16 @@ export default function Header() {
   const currentLang =
     languages.find((l) => l.code === currentLangCode) || languages[0];
 
+  const locale = detectLocaleFromPath(pathname);
+  const shopHref = shopPath(locale);
+  const blogHref = blogPath(locale);
   const nav = [
-    { href: "/", label: "Home", isActive: isHomePath },
-    { href: "/shop", label: "Shop", isActive: pathname?.startsWith("/shop") },
+    { href: `/${locale}`, label: "Home", isActive: isHomePath },
+    { href: shopHref, label: "Shop", isActive: pathname?.startsWith(shopHref) },
     { href: "/about", label: "About", isActive: pathname?.startsWith("/about") },
     { href: "/instructions", label: "Instructions", isActive: pathname?.startsWith("/instructions") },
     { href: "/contact", label: "Contact", isActive: pathname?.startsWith("/contact") },
-    { href: "/blog", label: "Blog", isActive: pathname?.startsWith("/blog") },
+    { href: blogHref, label: "Blog", isActive: pathname?.startsWith(blogHref) },
   ];
 
   const langRef = useRef<HTMLDetailsElement | null>(null);
@@ -82,6 +88,23 @@ export default function Header() {
     };
   }, []);
 
+  // Drive header GLB animation from Hexagon visibility
+  useEffect(() => {
+    const onEnter = () => {
+      modelRef.current?.setSpeed(1.0);
+      modelRef.current?.play();
+    };
+    const onLeave = () => {
+      modelRef.current?.stop();
+    };
+    const offEnter = bus.on("hexagon:enter", onEnter);
+    const offLeave = bus.on("hexagon:leave", onLeave);
+    return () => {
+      offEnter();
+      offLeave();
+    };
+  }, []);
+
   const closeLangMenu = () => langRef.current?.removeAttribute("open");
 
   return (
@@ -95,13 +118,7 @@ export default function Header() {
           {/* Logo (unchanged size) */}
           <Link href="/" aria-label="Home" className="inline-flex items-center">
             <div className="h-16 sm:h-18 w-[360px] relative">
-              <ThreeModel
-                modelPath="/hexagon/hextext.glb"
-                height="100%"
-                align="center"
-                fitPadding={0.8}
-                background={null}
-              />
+              <ThreeModel ref={modelRef} src="/hexagon/hextext.glb" height="100%" flat scale={0.96} />
             </div>
           </Link>
 
@@ -232,12 +249,12 @@ export default function Header() {
         <div className="lg:hidden px-3 pb-1">
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
             {[
-              { href: "/", label: "Home", isActive: pathname === "/" || pathname === "/home" },
-              { href: "/shop", label: "Shop", isActive: pathname?.startsWith("/shop") },
+              { href: `/${locale}`, label: "Home", isActive: pathname === `/${locale}` },
+              { href: shopHref, label: "Shop", isActive: pathname?.startsWith(shopHref) },
               { href: "/about", label: "About", isActive: pathname?.startsWith("/about") },
               { href: "/instructions", label: "Instructions", isActive: pathname?.startsWith("/instructions") },
               { href: "/contact", label: "Contact", isActive: pathname?.startsWith("/contact") },
-              { href: "/blog", label: "Blog", isActive: pathname?.startsWith("/blog") },
+              { href: blogHref, label: "Blog", isActive: pathname?.startsWith(blogHref) },
             ].map((item) => (
               <Link
                 key={item.href}

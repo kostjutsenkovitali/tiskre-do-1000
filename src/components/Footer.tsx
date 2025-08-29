@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { blogPath, detectLocaleFromPath, shopPath } from "@/lib/paths";
 import { Youtube, Instagram } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { bus } from "@/utils/visibilityBus";
 
 /* 
   Footer stays fixed; main content gets bottom padding equal to footer height.
@@ -17,19 +18,36 @@ const TikTokIcon = ({ className }: { className?: string }) => (
 );
 
 export default function Footer() {
-  const locale = detectLocaleFromPath(typeof window !== "undefined" ? window.location.pathname : undefined);
+  const [visible, setVisible] = useState(false);
+  const footerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const off = bus.on("footer:reveal", (flag: boolean) => setVisible(!!flag));
+    return off;
+  }, []);
+
+  useEffect(() => {
+    const el = footerRef.current;
+    const h = el ? el.getBoundingClientRect().height : 0;
+    if (visible) {
+      document.body.style.paddingBottom = `${h}px`;
+    } else {
+      document.body.style.paddingBottom = "0px";
+    }
+    return () => { document.body.style.paddingBottom = "0px"; };
+  }, [visible]);
   return (
     <>
-      {/* Global helpers for the "reveal" behavior */}
-      <style jsx global>{`
-        :root { --footer-h: 420px; }
-        body { padding-bottom: var(--footer-h); }
-        main, #__next > div:not(footer) { position: relative; z-index: 1; }
-      `}</style>
+      {/* No default bottom padding; we control it via JS when visible */}
 
       <footer
-        className="fixed inset-x-0 bottom-0 z-0 text-foreground"
-        style={{ backgroundColor: "#f5f5f5", height: "var(--footer-h)" }}
+        ref={footerRef}
+        className="fixed inset-x-0 bottom-0 z-0 text-foreground transition-transform duration-300"
+        style={{
+          backgroundColor: "#f5f5f5",
+          height: "420px",
+          transform: visible ? "translateY(0%)" : "translateY(100%)",
+        }}
       >
         <div className="max-w-[1971px] mx-auto px-4 h-full flex flex-col justify-between pt-10 pb-6">
           <div className="grid flex-1 gap-8 md:grid-cols-3 relative">

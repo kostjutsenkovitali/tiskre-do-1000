@@ -60,11 +60,436 @@ function computeRowLefts(p: number, direction: Dir, starts: number[], travel: nu
 }
 
 /* =========================
+   Scroll lock helpers
+========================= */
+function lockScroll(): number {
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+  const body = document.body;
+  body.style.position = "fixed";
+  body.style.top = `-${scrollY}px`;
+  body.style.left = "0";
+  body.style.right = "0";
+  body.style.width = "100%";
+  body.style.overflow = "hidden";
+  return scrollY;
+}
+function unlockScroll(prevY: number) {
+  const body = document.body;
+  body.style.position = "";
+  body.style.top = "";
+  body.style.left = "";
+  body.style.right = "";
+  body.style.width = "";
+  body.style.overflow = "";
+  window.scrollTo(0, prevY || 0);
+}
+
+/* =========================
+   G-code parsing
+========================= */
+type Seg = { a: [number, number]; b: [number, number]; len: number };
+type BBox = { xmin: number; ymin: number; xmax: number; ymax: number };
+
+const WORD_RE = /([A-Za-z])\s*(?:=)?\s*([+\-]?(?:\d+(?:\.\d*)?|\.\d+))/g;
+
+function stripComments(text: string) {
+  return text.replace(/\([^)]*\)/g, "").replace(/;.*$/gm, "");
+}
+function parseWords(line: string) {
+  const out: Array<{ type?: "G" | "M" | "N"; val?: number; axis?: string }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = WORD_RE.exec(line))) {
+    const k = m[1].toUpperCase();
+    const v = parseFloat(m[2]);
+    if (!Number.isFinite(v)) continue;
+    if (k === "G" || k === "M" || k === "N") out.push({ type: k as any, val: Math.trunc(v) });
+    else if ("XYZIJKFR".includes(k)) out.push({ axis: k, val: v });
+  }
+  return out;
+}
+function centerFromR(x0: number, y0: number, x1: number, y1: number, R: number, cw: boolean) {
+  const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+  if (d === 0) return null;
+  const r = Math.abs(R);
+  if (d / 2 > r) return null;
+  const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  const h = Math.sqrt(Math.max(0, r * r - (d * d) / 4));
+  const ux = -dy / d, uy = dx / d;
+  const c1 = { x: mx + ux * h, y: my + uy * h };
+  const c2 = { x: mx - ux * h, y: my - uy * h };
+  function info(c: { x: number; y: number }) {
+    let a0 = Math.atan2(y0 - c.y, x0 - c.x);
+    let a1 = Math.atan2(y1 - c.y, x1 - c.x);
+    let ccw = a1 - a0;
+    if (ccw < 0) ccw += Math.PI * 2;
+    return { ccw, cw: Math.PI * 2 - ccw };
+  }
+  const wantMinor = R >= 0;
+  const s1 = info(c1), s2 = info(c2);
+  const score = (s: { ccw: number; cw: number }) => {
+    const ang = cw ? s.cw : s.ccw;
+    const minor = ang <= Math.PI + 1e-6;
+    return minor === wantMinor ? ang : Infinity;
+  };
+  const sc1 = score(s1), sc2 = score(s2);
+  if (sc1 === Infinity && sc2 === Infinity) return cw ? (s1.cw < s2.cw ? c1 : c2) : (s1.ccw < s2.ccw ? c1 : c2);
+  return sc1 <= sc2 ? c1 : c2;
+}
+function parseGcodeToSegments(text: string): { segs: Seg[]; bbox: BBox; total: number } {
+  const lines = stripComments(text).split(/\r?\n/);
+  let abs = true;
+  let cur = { x: 0, y: 0 };
+  let stroke: [number, number][] = [];
+  const segs: Seg[] = [];
+
+  function penUp() {
+    if (stroke.length >= 2) {
+      for (let i = 1; i < stroke.length; i++) {
+        const a = stroke[i - 1], b = stroke[i];
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (len > 0) segs.push({ a, b, len });
+      }
+    }
+    stroke = [];
+  }
+  function ensureStart() {
+    if (!stroke.length) stroke.push([cur.x, cur.y]);
+  }
+  function down(x: number, y: number) {
+    ensureStart();
+    stroke.push([x, y]);
+    cur.x = x;
+    cur.y = y;
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i].trim();
+    if (!raw) continue;
+    const words = parseWords(raw);
+    if (!words.length) continue;
+    let g: number | null = null;
+    const p: Record<string, number> = {};
+    for (const w of words) {
+      if (w.type === "G" && typeof w.val === "number") g = w.val;
+      if (w.axis && typeof w.val === "number") p[w.axis] = w.val;
+    }
+    if (g === 90) { abs = true; continue; }
+    if (g === 91) { abs = false; continue; }
+
+    const tx = p.X !== undefined ? (abs ? p.X : cur.x + p.X) : cur.x;
+    const ty = p.Y !== undefined ? (abs ? p.Y : cur.y + p.Y) : cur.y;
+
+    if (g === 0) { cur.x = tx; cur.y = ty; penUp(); continue; }
+    if (g === 1) { down(tx, ty); continue; }
+
+    if (g === 2 || g === 3) {
+      const cw = g === 2;
+      const hasIJ = p.I !== undefined && p.J !== undefined;
+      const hasR = p.R !== undefined;
+      if (!(hasIJ || hasR)) { down(tx, ty); continue; }
+      let cx: number, cy: number, r: number;
+      if (hasIJ) { cx = cur.x + p.I; cy = cur.y + p.J; r = Math.hypot(cur.x - cx, cur.y - cy); }
+      else {
+        const c = centerFromR(cur.x, cur.y, tx, ty, p.R as number, cw);
+        if (!c) { down(tx, ty); continue; }
+        cx = c.x; cy = c.y; r = Math.hypot(cur.x - cx, cur.y - cy);
+      }
+      let a0 = Math.atan2(cur.y - cy, cur.x - cx);
+      let a1 = Math.atan2(ty - cy, tx - cx);
+      if (cw) { if (a1 >= a0) a1 -= Math.PI * 2; } else { if (a1 <= a0) a1 += Math.PI * 2; }
+      const sweep = a1 - a0;
+      const steps = Math.max(6, Math.min(2000, Math.floor(Math.abs(sweep) * r / 2)));
+      ensureStart();
+      for (let k = 1; k <= steps; k++) {
+        const ang = a0 + sweep * (k / steps);
+        stroke.push([cx + r * Math.cos(ang), cy + r * Math.sin(ang)]);
+      }
+      cur.x = tx; cur.y = ty;
+      continue;
+    }
+  }
+  penUp();
+
+  // bbox + total
+  let xmin = +Infinity, ymin = +Infinity, xmax = -Infinity, ymax = -Infinity, total = 0;
+  for (const s of segs) {
+    xmin = Math.min(xmin, s.a[0], s.b[0]);
+    ymin = Math.min(ymin, s.a[1], s.b[1]);
+    xmax = Math.max(xmax, s.a[0], s.b[0]);
+    ymax = Math.max(ymax, s.a[1], s.b[1]);
+    total += s.len;
+  }
+  if (!isFinite(xmin)) { xmin = 0; ymin = 0; xmax = 1; ymax = 1; }
+  return { segs, bbox: { xmin, ymin, xmax, ymax }, total };
+}
+
+/* Fit world → screen (shared) */
+function makeFitter(b: BBox, W: number, H: number, pad = 20) {
+  const w = b.xmax - b.xmin, h = b.ymax - b.ymin;
+  const sx = (W - 2 * pad) / (w || 1), sy = (H - 2 * pad) / (h || 1);
+  const s = Math.min(sx, sy);
+  const ox = pad - b.xmin * s + (W - 2 * pad - w * s) / 2;
+  const oy = pad - b.ymin * s + (H - 2 * pad - h * s) / 2;
+  return (p: [number, number]) => [ox + p[0] * s, H - (oy + p[1] * s)] as [number, number];
+}
+function unionBBox(bs: (BBox | null | undefined)[]): BBox | null {
+  let xmin = +Infinity, ymin = +Infinity, xmax = -Infinity, ymax = -Infinity;
+  for (const b of bs) {
+    if (!b) continue;
+    xmin = Math.min(xmin, b.xmin);
+    ymin = Math.min(ymin, b.ymin);
+    xmax = Math.max(xmax, b.xmax);
+    ymax = Math.max(ymax, b.ymax);
+  }
+  if (!isFinite(xmin)) return null;
+  return { xmin, ymin, xmax, ymax };
+}
+
+/* =========================
+   Multi-laser overlay (absolute space)
+========================= */
+function MultiLaserOverlayAbsolute({
+  active,
+  targets,
+  durationMs = 20000,
+  anchorRef,
+  onDone,
+}: {
+  active: boolean;
+  targets: Array<{ segs: Seg[] | null; bbox: BBox | null }>;
+  durationMs?: number;
+  anchorRef?: React.RefObject<HTMLDivElement | null>;
+  onDone: () => void;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const startRef = useRef<number | null>(null);
+
+  const fitCanvasDPR = () => {
+    const c = ref.current;
+    if (!c) return;
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const rect = c.getBoundingClientRect();
+    c.width = Math.floor(rect.width * dpr);
+    c.height = Math.floor(rect.height * dpr);
+    const ctx = c.getContext("2d");
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+
+  useEffect(() => {
+    if (!active) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      startRef.current = null;
+      return;
+    }
+
+    fitCanvasDPR();
+    const c = ref.current!;
+    const ctx = c.getContext("2d")!;
+
+    const totals = targets.map(t => (t.segs || []).reduce((a, s) => a + s.len, 0));
+    const anySegs = totals.some(t => t > 0);
+    const worldBBox = unionBBox(targets.map(t => t.bbox));
+
+    const onResize = () => fitCanvasDPR();
+    window.addEventListener("resize", onResize);
+
+    const loop = (ts: number) => {
+      if (!anySegs || !worldBBox) {
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.fillRect(0, 0, c.clientWidth, c.clientHeight);
+        ctx.fillStyle = "#fff";
+        ctx.font = "16px system-ui, sans-serif";
+        ctx.fillText("Loading cutting paths…", 24, 40);
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      if (startRef.current === null) startRef.current = ts;
+      const elapsed = ts - startRef.current;
+      const progress = Math.min(1, elapsed / durationMs);
+
+      // Determine drawing area (GLB box) or fallback
+      const cvsRect = c.getBoundingClientRect();
+      const fitRect = (() => {
+        const el = anchorRef?.current || null;
+        if (el) {
+          const r = el.getBoundingClientRect();
+          const x = Math.max(0, r.left - cvsRect.left);
+          const y = Math.max(0, r.top - cvsRect.top);
+          const w = Math.max(40, Math.min(c.clientWidth, r.width));
+          const h = Math.max(40, Math.min(c.clientHeight, r.height));
+          return { x, y, w, h };
+        }
+        const padW = c.clientWidth * 0.1;
+        const padH = c.clientHeight * 0.15;
+        return { x: padW, y: padH, w: c.clientWidth - 2 * padW, h: c.clientHeight - 2 * padH };
+      })();
+
+      // Clear
+      ctx.clearRect(0, 0, c.width, c.height);
+
+      // Shared fitter from union bbox → glb box area
+      const baseFit = makeFitter(worldBBox, fitRect.w, fitRect.h, 24);
+      const fit = (p: [number, number]) => {
+        const r = baseFit(p);
+        return [r[0] + fitRect.x, r[1] + fitRect.y] as [number, number];
+      };
+
+      // Optional: draw world frame + origin
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 1;
+      const p0 = fit([worldBBox.xmin, worldBBox.ymin]);
+      const p1 = fit([worldBBox.xmax, worldBBox.ymin]);
+      const p2 = fit([worldBBox.xmax, worldBBox.ymax]);
+      const p3 = fit([worldBBox.xmin, worldBBox.ymax]);
+      ctx.beginPath();
+      ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]);
+      ctx.closePath(); ctx.stroke();
+      const o = fit([0,0]);
+      ctx.beginPath(); ctx.arc(o[0], o[1], 3, 0, Math.PI*2); ctx.fillStyle = "#fff"; ctx.fill();
+      ctx.restore();
+
+      // Draw each target in shared space
+      for (let i = 0; i < targets.length; i++) {
+        const segs = targets[i].segs || [];
+        const total = totals[i] || 0;
+        if (!segs.length || total <= 0) continue;
+
+        const progLen = total * progress;
+        const hotWindow = 0.06 * total;
+        const coolEnd = Math.max(0, progLen - hotWindow);
+
+        function drawPartial(seg: Seg, fromLen: number, toLen: number, moveEach = true) {
+          const t0 = fromLen / seg.len, t1 = toLen / seg.len;
+          const p0_ = fit([seg.a[0] + (seg.b[0] - seg.a[0]) * t0, seg.a[1] + (seg.b[1] - seg.a[1]) * t0]);
+          const p1_ = fit([seg.a[0] + (seg.b[0] - seg.a[0]) * t1, seg.a[1] + (seg.b[1] - seg.a[1]) * t1]);
+          if (moveEach) ctx.moveTo(p0_[0], p0_[1]); else ctx.lineTo(p0_[0], p0_[1]);
+          ctx.lineTo(p1_[0], p1_[1]);
+        }
+        function pointAtLen(L: number) {
+          let acc = 0;
+          for (const s of segs) {
+            if (acc + s.len >= L) {
+              const t = (L - acc) / s.len;
+              return [s.a[0] + (s.b[0] - s.a[0]) * t, s.a[1] + (s.b[1] - s.a[1]) * t] as [number, number];
+            }
+            acc += s.len;
+          }
+          const last = segs[segs.length - 1];
+          return last ? last.b : ([0, 0] as [number, number]);
+        }
+
+        // faint outline
+        ctx.save();
+        ctx.globalAlpha = 0.08;
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#ffffff";
+        ctx.beginPath();
+        for (const s of segs) {
+          const a = fit(s.a);
+          const b = fit(s.b);
+          ctx.moveTo(a[0], a[1]);
+          ctx.lineTo(b[0], b[1]);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // cooled trail
+        ctx.save();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#3a3f47";
+        ctx.beginPath();
+        let remainCool = coolEnd;
+        for (const s of segs) {
+          if (remainCool <= 0) break;
+          const use = Math.min(remainCool, s.len);
+          drawPartial(s, 0, use, false);
+          remainCool -= use;
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // hot trail
+        ctx.save();
+        ctx.lineWidth = 2.6;
+        ctx.strokeStyle = "#ff8c3a";
+        ctx.shadowColor = "#ff8c3a";
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        let remainHot = progLen - coolEnd;
+        let pos = coolEnd;
+        for (const s of segs) {
+          if (pos >= s.len) { pos -= s.len; continue; }
+          const use = Math.min(remainHot, s.len - pos);
+          drawPartial(s, pos, pos + use, true);
+          remainHot -= use;
+          pos = 0;
+          if (remainHot <= 0) break;
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // tip glow
+        const tip = fit(pointAtLen(progLen));
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (let k = 0; k < 3; k++) {
+          ctx.beginPath();
+          ctx.arc(tip[0], tip[1], 6 - k * 2, 0, Math.PI * 2);
+          ctx.fillStyle =
+            k === 0 ? "rgba(255,255,255,0.9)" :
+            k === 1 ? "rgba(255,200,120,0.5)" :
+                      "rgba(255,120,40,0.25)";
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(loop);
+      } else {
+        onDone();
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(loop);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      startRef.current = null;
+    };
+  }, [active, targets, durationMs, anchorRef, onDone]);
+
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 50,
+        pointerEvents: "none",
+        display: active ? "block" : "none",
+        background: "transparent",
+      }}
+    >
+      <canvas ref={ref} style={{ width: "100%", height: "100%", display: "block" }} />
+    </div>
+  );
+}
+
+/* =========================
    Main component
 ========================= */
 export default function TestimoniesAbout() {
   const spacerRef = useRef<HTMLDivElement>(null);
   const unveilContentRef = useRef<HTMLDivElement>(null);
+
+  // GLB box anchor for lasers
+  const glbBoxRef = useRef<HTMLDivElement>(null);
 
   const [headerHeight, setHeaderHeight] = useState(0);
   const [vp, setVp] = useState(0);
@@ -75,7 +500,10 @@ export default function TestimoniesAbout() {
   const [openingWidthVW, setOpeningWidthVW] = useState(0);
   const [unveilScale, setUnveilScale] = useState(1);
 
-  // Visibility to control header GLB via bus (unchanged)
+  // After laser finishes, swap models
+  const [showFrame, setShowFrame] = useState(false);
+
+  // Visibility for header GLB (unchanged)
   useEffect(() => {
     const host = spacerRef.current?.closest("section, div") as HTMLElement | null;
     const target = host || spacerRef.current;
@@ -104,11 +532,7 @@ export default function TestimoniesAbout() {
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  /* === Single-condition flow: move rows only when section is pinned ===
-     Pinned iff spacerRef.current.getBoundingClientRect().top <= 0
-     If not pinned => rowProgress = 0
-     If pinned => rowProgress = clamp01((-topNow) / OPEN_PX)
-  */
+  /* === Single-condition flow: rows move only while pinned === */
   useEffect(() => {
     if (!isMeasured) return;
 
@@ -118,23 +542,20 @@ export default function TestimoniesAbout() {
       ticking = true;
 
       requestAnimationFrame(() => {
-        const topNow = spacerRef.current?.getBoundingClientRect().top ?? 1e9; // px from viewport top
+        const topNow = spacerRef.current?.getBoundingClientRect().top ?? 1e9;
         if (topNow > 0) {
-          // Not pinned yet → no movement
           setRowProgress(0);
           setOpeningWidthVW(0);
           ticking = false;
           return;
         }
 
-        // Pinned → compute progress inside sticky
         const vh = window.innerHeight || vp || 1;
-        const localPx = -topNow; // how far past the top we are
+        const localPx = -topNow;
         const OPEN_PX = (OPEN_VH / 100) * vh;
         const p = clamp01(localPx / Math.max(1, OPEN_PX));
         setRowProgress(p);
 
-        // Gate the opening so it starts once cards reach center
         const { col1Center, col2Center, col3Center } = threeColumnCenters(CARD_W_VW);
 
         // Row 1 (LEFT)
@@ -160,7 +581,7 @@ export default function TestimoniesAbout() {
       });
     };
 
-    onScroll(); // init
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [isMeasured, vp]);
@@ -177,7 +598,80 @@ export default function TestimoniesAbout() {
     setUnveilScale(isFinite(target) ? target : 1);
   }, [isMeasured, vp, headerHeight, openingWidthVW]);
 
-  /* === Rows driven by scroll progress === */
+  /* =========================
+     Laser: state + load 3 files (absolute space)
+  ========================= */
+  const [laserActive, setLaserActive] = useState(false);
+  const [laserDone, setLaserDone] = useState(false);
+  const [scrollLocked, setScrollLocked] = useState(false);
+  const lockYRef = useRef(0);
+
+  const [targets, setTargets] = useState<Array<{ segs: Seg[] | null; bbox: BBox | null }>>([]);
+
+  // Prefetch and parse three G-code files (same absolute (0,0) as the GLB)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const files = ["/hexagon/t_RED.INC", "/hexagon/D_RED.INC", "/hexagon/O_RED.INC"];
+      try {
+        const results = await Promise.all(files.map(async (path) => {
+          try {
+            const res = await fetch(path, { cache: "force-cache" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const txt = await res.text();
+            const { segs, bbox } = parseGcodeToSegments(txt);
+            return { segs, bbox };
+          } catch {
+            const sample = `
+              G90
+              G00 X0 Y0
+              G01 X4500 Y0
+              G01 X4500 Y1900
+              G01 X0 Y1900
+              G01 X0 Y0
+            `;
+            const { segs, bbox } = parseGcodeToSegments(sample);
+            return { segs, bbox };
+          }
+        }));
+        if (!cancelled) setTargets(results);
+      } catch {
+        if (!cancelled) {
+          const sample = `
+            G90
+            G00 X0 Y0
+            G01 X4500 Y0
+            G01 X4500 Y1900
+            G01 X0 Y1900
+            G01 X0 Y0
+          `;
+          const { segs, bbox } = parseGcodeToSegments(sample);
+          setTargets([{ segs, bbox }, { segs, bbox }, { segs, bbox }]);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Start laser when veil fully open; lock scroll
+  useEffect(() => {
+    const fullyOpen = openingWidthVW >= 99.5;
+    if (fullyOpen && !laserActive && !laserDone) {
+      lockYRef.current = lockScroll();
+      setScrollLocked(true);
+      setLaserActive(true);
+    }
+  }, [openingWidthVW, laserActive, laserDone]);
+
+  // Unlock scroll after laser finishes (release vertical)
+  useEffect(() => {
+    if (laserDone && scrollLocked) {
+      unlockScroll(lockYRef.current);
+      setScrollLocked(false);
+    }
+  }, [laserDone, scrollLocked]);
+
+  /* === Rows driven by scroll progress (unchanged) === */
   const { col2Center, col3Center, col1Center } = threeColumnCenters(CARD_W_VW);
 
   // Row 1 (LEFT)
@@ -240,7 +734,7 @@ export default function TestimoniesAbout() {
   const block4TextFor = (id: string): ReactNode | undefined => {
     switch (id) {
       case "test1": return <>“Easy setup, powerful airflow with the new compressor, and no ash falling out. You can tell this was designed by someone who actually smokes food. Highly recommended!“</>;
-      case "test2": return <>“It works beautifully — the smoke is clean, the build quality is solid, and it fits my Kamado grill perfectly.”</>;
+    case "test2": return <>“It works beautifully — the smoke is clean, the build quality is solid, and it fits my Kamado grill perfectly.”</>;
       case "test3": return <>“Set it up in my small smokehouse. No hassle — it just works. The smoke is smooth and steady.“</>;
       case "test5": return <>“The best thing since sliced bread.”</>;
       case "test6": return <>“SG2 is really a great thing.”</>;
@@ -277,6 +771,19 @@ export default function TestimoniesAbout() {
         className="sticky top-0 h-screen overflow-hidden isolate"
         style={{ background: SECTION_GRADIENT }}
       >
+        {/* Laser overlay: ALL THREE files in the same absolute coordinate space */}
+        <MultiLaserOverlayAbsolute
+          active={laserActive}
+          targets={targets}
+          durationMs={20000}
+          anchorRef={glbBoxRef}
+          onDone={() => {
+            setLaserActive(false);
+            setLaserDone(true);
+            setShowFrame(true); // swap to frame.glb
+          }}
+        />
+
         {/* Opening (center) */}
         <div className="absolute inset-x-0" style={{ top: headerHeight, bottom: 0 }}>
           {openingWidthVW > 0 && (
@@ -322,9 +829,34 @@ export default function TestimoniesAbout() {
                   zIndex: 3,
                 }}
               >
-                {/* GLB box */}
-                <div style={{ position: "relative", width: "100%", height: "min(56vh, 680px)", overflow: "visible" }}>
-                  <ThreeModel modelPath="/about/tiskre.glb" height={"100%"} />
+                {/* GLB box (anchor for lasers) */}
+                <div
+                  ref={glbBoxRef}
+                  style={{
+                    position: "relative",
+                    width: "100%",
+                    height: "min(56vh, 680px)",
+                    overflow: "visible",
+                    transform: "translateY(-60px)",
+                    border: "3px dashed #ff0066",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: "100%",
+                      height: "calc(100% - 12px)",
+                    }}
+                  >
+                    <ThreeModel
+                      modelPath={showFrame ? "/about/frame.glb" : "/about/tiskre.glb"}
+                      height={"100%"}
+                      scale={0.7}
+                    />
+                  </div>
                 </div>
 
                 {/* Photos row */}

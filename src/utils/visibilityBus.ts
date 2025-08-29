@@ -1,31 +1,32 @@
 "use client";
 
-type Handler = (...args: any[]) => void;
+type EventMap = {
+  "hexagon:enter": void;
+  "hexagon:leave": void;
+  "footer:reveal": boolean;
+};
 
-class SimpleBus {
-  private map = new Map<string, Set<Handler>>();
+type Handler<T = any> = (payload: T) => void;
 
-  on(evt: string, fn: Handler) {
-    const s = this.map.get(evt) ?? new Set<Handler>();
-    s.add(fn);
-    this.map.set(evt, s);
-    return () => this.off(evt, fn);
+class Bus {
+  private map = new Map<keyof EventMap, Set<Handler>>();
+
+  on<K extends keyof EventMap>(type: K, cb: Handler<EventMap[K]>) {
+    if (!this.map.has(type)) this.map.set(type, new Set());
+    this.map.get(type)!.add(cb as Handler);
+    return () => this.off(type, cb);
   }
 
-  off(evt: string, fn: Handler) {
-    const s = this.map.get(evt);
-    if (!s) return;
-    s.delete(fn);
-    if (s.size === 0) this.map.delete(evt);
+  off<K extends keyof EventMap>(type: K, cb: Handler<EventMap[K]>) {
+    this.map.get(type)?.delete(cb as Handler);
+    if ((this.map.get(type)?.size || 0) === 0) this.map.delete(type);
   }
 
-  emit(evt: string, ...args: any[]) {
-    const s = this.map.get(evt);
-    if (!s) return;
-    for (const fn of Array.from(s)) fn(...args);
+  emit<K extends keyof EventMap>(type: K, payload?: EventMap[K]) {
+    this.map.get(type)?.forEach((cb) => (cb as Handler)(payload as any));
   }
 }
 
-export const bus = new SimpleBus();
+export const bus = new Bus();
 
 
