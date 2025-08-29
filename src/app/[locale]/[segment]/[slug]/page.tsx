@@ -8,7 +8,7 @@ import type { Metadata } from "next";
 import sanitizeHtml from "sanitize-html";
 import { SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
 import {sf} from "@/lib/shopify";
-import AddToCartButton from "@/components/AddToCartButton";
+import ProductDetailClient from "@/components/shop/ProductDetailClient";
 
 type Props = {
   params: { locale: string; segment: string; slug: string };
@@ -29,44 +29,27 @@ export default async function DetailBySegment({params}: Props) {
     const data = await sf<{ product: any }>(GET_PRODUCT, { handle: slug, country, language });
     const p = data.product;
     if (!p) notFound();
-    const mediaImages = (p.media.nodes || [])
+    // Map Shopify product to the expected ProductLike shape for the client component
+    const firstVariant = p.variants?.nodes?.[0];
+    const price = firstVariant ? `${firstVariant.price.amount} ${firstVariant.price.currencyCode}` : "";
+    const mainImage = (p.media?.nodes || [])
       .map((m: any) => (m.__typename === "MediaImage" ? m.image : null))
-      .filter(Boolean) as { url: string; altText?: string | null; width?: number | null; height?: number | null }[];
+      .filter(Boolean)?.[0] || null;
+    const productLike = {
+      id: p.id,
+      slug: p.handle,
+      name: p.title,
+      description: p.descriptionHtml,
+      sku: firstVariant?.sku,
+      stockStatus: firstVariant?.availableForSale ? "IN_STOCK" : "OUT_OF_STOCK",
+      image: mainImage ? { sourceUrl: mainImage.url, altText: mainImage.altText } : null,
+      price,
+      galleryImages: { nodes: (p.media?.nodes || []).map((m: any) => (m.__typename === "MediaImage" ? { sourceUrl: m.image?.url, altText: m.image?.altText } : null)).filter(Boolean) },
+    } as any;
+
+    // Reuse the existing client product detail component for visuals
     return (
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          <div>
-            <div className="relative aspect-square overflow-hidden border border-gray-300">
-              {mediaImages[0] ? (
-                <Image src={mediaImages[0].url} alt={mediaImages[0].altText || p.title} fill className="object-cover" />
-              ) : (
-                <div className="h-full w-full bg-muted" />
-              )}
-            </div>
-            {mediaImages.length > 1 ? (
-              <div className="mt-3 grid grid-cols-6 gap-2">
-                {mediaImages.slice(0, 6).map((img, i) => (
-                  <div key={img.url + i} className="relative aspect-square overflow-hidden border border-gray-200">
-                    <Image src={img.url} alt={img.altText || p.title} fill className="object-cover" />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-          <div className="flex flex-col gap-4">
-            <h1 className="text-2xl font-semibold">{p.title}</h1>
-            {p.variants.nodes[0] ? (
-              <div className="text-lg">{p.variants.nodes[0].price.amount} {p.variants.nodes[0].price.currencyCode}</div>
-            ) : null}
-            {p.variants.nodes[0]?.id ? (
-              <AddToCartButton variantId={p.variants.nodes[0].id} />
-            ) : (
-              <p className="text-sm text-red-600">No purchasable variant.</p>
-            )}
-            <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{__html: p.descriptionHtml}} />
-          </div>
-        </div>
-      </div>
+      <ProductDetailClient product={productLike} related={[]} />
     );
   }
 

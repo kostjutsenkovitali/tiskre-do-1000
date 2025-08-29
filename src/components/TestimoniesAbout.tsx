@@ -4,27 +4,28 @@
 import { useEffect, useLayoutEffect, useRef, useState, ReactNode } from "react";
 import Link from "next/link";
 import ThreeModel from "@/components/ThreeModel";
-import * as CANNON from "cannon-es";
-import * as THREE from "three";
 
 type Dir = "left" | "right";
 
+/* =========================
+   Visual + layout constants
+========================= */
 const LIGHT_GREY = "#e5e7eb";
 
-/* === Card geometry (external) === */
+/* Card geometry (external) */
 const CARD_W_VW = 28;
 const GAP_VW = 3;
 const SPACING_VW = CARD_W_VW + GAP_VW;
 
-/* === Card geometry (internal 22×15 grid) === */
+/* Card geometry (internal 22×15 grid) */
 const CARD_H_VW = CARD_W_VW * (15 / 22);
 
-/* === Titles === */
+/* Titles */
 const TOP_TEXT = "Happy campers";
 const BOT_TEXT = "Testimonies";
 const TITLE_FONT = "2.1vw";
 
-/* === Pinning / animation === */
+/* Pinning / animation */
 const OPEN_VH = 260; // distance to fully open unveil
 const SECTION_SCROLL_VH = 100 + OPEN_VH; // sticky range + one viewport
 
@@ -32,15 +33,18 @@ const SECTION_SCROLL_VH = 100 + OPEN_VH; // sticky range + one viewport
 const topCards = ["test3", "test1", "test7"]; // Row 1 (LEFT)
 const botCards = ["test2", "test6", "test5"]; // Row 2 (RIGHT)
 
+/* Section background gradient — based on #c8c8b8 */
+const SECTION_GRADIENT =
+  "linear-gradient(180deg, #c8c8b8 0%, #eaeae3 38%, #ffffff 100%)";
+
+/* Hex PNG sizing */
+const HEX_BASE_SIZE_VW = 26; // original footprint
+const HEX_SCALE = 3;         // 3× larger on screen
+const HEX_SIZE_VW = HEX_BASE_SIZE_VW * HEX_SCALE;
+
 /* Helpers */
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 const clampVW = (vw: number) => Math.max(0, Math.min(100, vw));
-
-function computeRowLefts(p: number, direction: Dir, starts: number[], travel: number) {
-  const offset = p * travel;
-  return starts.map((s) => (direction === "left" ? s - offset : s + offset));
-}
-
 function threeColumnCenters(sideColW: number) {
   const col1W = sideColW;
   const col3W = sideColW;
@@ -50,70 +54,61 @@ function threeColumnCenters(sideColW: number) {
   const col3Center = col1W + col2W + col3W / 2;
   return { col1Center, col2Center, col3Center };
 }
+function computeRowLefts(p: number, direction: Dir, starts: number[], travel: number) {
+  const offset = p * travel;
+  return starts.map((s) => (direction === "left" ? s - offset : s + offset));
+}
 
-/* === Section background gradient (from #c8c8b8 to white) === */
-const SECTION_GRADIENT =
-  "linear-gradient(180deg, #c8c8b8 0%, #eaeae3 38%, #ffffff 100%)";
-
-/* === Hex PNG sizing === */
-const HEX_BASE_SIZE_VW = 26; // original footprint
-const HEX_SCALE = 3;         // 3× larger on screen
-const HEX_SIZE_VW = HEX_BASE_SIZE_VW * HEX_SCALE;
-
-/* === Letter Drop Animation === */
-const LETTER_MODELS = [
-  { letter: 'T', path: '/about/t.glb' },
-  { letter: 'I', path: '/about/i1.glb' },
-  { letter: 'S', path: '/about/s.glb' },
-  { letter: 'K', path: '/about/k.glb' },
-  { letter: 'R', path: '/about/r.glb' },
-  { letter: 'E', path: '/about/e1.glb' }
-];
-
+/* =========================
+   Main component
+========================= */
 export default function TestimoniesAbout() {
   const spacerRef = useRef<HTMLDivElement>(null);
   const unveilContentRef = useRef<HTMLDivElement>(null);
 
   const [headerHeight, setHeaderHeight] = useState(0);
   const [vp, setVp] = useState(0);
-  const [spacerTop, setSpacerTop] = useState(0);
   const [isMeasured, setIsMeasured] = useState(false);
 
   // Derived from scroll (bidirectional)
   const [rowProgress, setRowProgress] = useState(0); // 0..1
   const [openingWidthVW, setOpeningWidthVW] = useState(0);
   const [unveilScale, setUnveilScale] = useState(1);
-  
-  // Letter drop animation state
-  const [showLetterDrop, setShowLetterDrop] = useState(false);
-  const [droppedLetters, setDroppedLetters] = useState<{
-    id: string;
-    letter: string;
-    path: string;
-    x: number;
-    y: number;
-    rotation: number;
-    isDropping: boolean;
-  }[]>([]);
+
+  // Visibility to control header GLB via bus (unchanged)
+  useEffect(() => {
+    const host = spacerRef.current?.closest("section, div") as HTMLElement | null;
+    const target = host || spacerRef.current;
+    if (!target) return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        import("@/utils/visibilityBus").then(({ bus }) => bus.emit("hexagon:enter"));
+      } else {
+        import("@/utils/visibilityBus").then(({ bus }) => bus.emit("hexagon:leave"));
+      }
+    }, { threshold: 0.5 });
+    io.observe(target);
+    return () => io.disconnect();
+  }, []);
 
   /* measurements */
   const measure = () => {
     const header = document.querySelector<HTMLElement>("header");
     setHeaderHeight(header ? header.getBoundingClientRect().height || 0 : 0);
-    const sp = spacerRef.current;
-    if (sp) setSpacerTop(sp.offsetTop);
     setVp(window.innerHeight);
   };
-
   useLayoutEffect(() => {
     measure();
     setIsMeasured(true);
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* === Derive progress directly from scroll (no lock, no delay) === */
+  /* === Single-condition flow: move rows only when section is pinned ===
+     Pinned iff spacerRef.current.getBoundingClientRect().top <= 0
+     If not pinned => rowProgress = 0
+     If pinned => rowProgress = clamp01((-topNow) / OPEN_PX)
+  */
   useEffect(() => {
     if (!isMeasured) return;
 
@@ -123,17 +118,23 @@ export default function TestimoniesAbout() {
       ticking = true;
 
       requestAnimationFrame(() => {
-        const vh = vp || window.innerHeight || 1;
-        const y = window.scrollY;
+        const topNow = spacerRef.current?.getBoundingClientRect().top ?? 1e9; // px from viewport top
+        if (topNow > 0) {
+          // Not pinned yet → no movement
+          setRowProgress(0);
+          setOpeningWidthVW(0);
+          ticking = false;
+          return;
+        }
 
-        const baseY = spacerTop - headerHeight; // sticky engage baseline (top of section)
-        const localPx = Math.max(0, y - baseY);
+        // Pinned → compute progress inside sticky
+        const vh = window.innerHeight || vp || 1;
+        const localPx = -topNow; // how far past the top we are
         const OPEN_PX = (OPEN_VH / 100) * vh;
-
         const p = clamp01(localPx / Math.max(1, OPEN_PX));
         setRowProgress(p);
 
-        // Gate: compute analytically per-frame
+        // Gate the opening so it starts once cards reach center
         const { col1Center, col2Center, col3Center } = threeColumnCenters(CARD_W_VW);
 
         // Row 1 (LEFT)
@@ -162,7 +163,7 @@ export default function TestimoniesAbout() {
     onScroll(); // init
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [isMeasured, vp, spacerTop, headerHeight]);
+  }, [isMeasured, vp]);
 
   /* scale-to-fit unveil inner content */
   useEffect(() => {
@@ -205,18 +206,15 @@ export default function TestimoniesAbout() {
   );
   const row2TextCenter = col2Center + rowProgress * row2_travel;
 
-  /* Corner PNGs that MOVE WITH THEIR ROWS */
-  const pineLeftVW = 0 - rowProgress * row1_travel; // top-left follows left row
-  const figueLeftVW = (100 - CARD_W_VW) + rowProgress * row2_travel; // bottom-right follows right row
+  /* Corner PNGs */
+  const pineLeftVW = 0 - rowProgress * row1_travel;
+  const figueLeftVW = (100 - CARD_W_VW) + rowProgress * row2_travel;
 
   /* Opening clip */
   const half = openingWidthVW / 2;
   const openingLeftVW = clampVW(col2Center - half);
   const openingRightVW = clampVW(col2Center + half);
-  const openingClip = `inset(0 ${Math.max(0, 100 - openingRightVW)}vw 0 ${Math.max(
-    0,
-    openingLeftVW
-  )}vw)`;
+  const openingClip = `inset(0 ${Math.max(0, 100 - openingRightVW)}vw 0 ${Math.max(0, openingLeftVW)}vw)`;
 
   /* assets / texts */
   const b1ImageFor = (id: string): string | undefined => {
@@ -228,46 +226,28 @@ export default function TestimoniesAbout() {
     if (id === "test7") return "/about/test7block1.jpg";
     return undefined;
   };
-
   const block3TextFor = (id: string): ReactNode => {
     switch (id) {
-      case "test1":
-        return <>Arvo Kaasin<br/>food blogger<br/>Estonia</>;
-      case "test2":
-        return <>Gunnar Gimbutas<br/>youtuber<br/>Finland</>;
-      case "test3":
-        return <>Ingvar Minnus<br/>food blogger<br/>Estonia</>;
-      case "test5":
-        return <>Kostjutsenko Vitali<br/>CEO<br/>Estonia</>;
-      case "test6":
-        return <>Svante Pettersson<br/>smoking food expert<br/>Sweeden</>;
-      case "test7":
-        return <>Tõnu Peit<br/>youtuber<br/>Estonia</>;
-      default:
-        return id;
+      case "test1": return <>Arvo Kaasin<br/>food blogger<br/>Estonia</>;
+      case "test2": return <>Gunnar Gimbutas<br/>youtuber<br/>Finland</>;
+      case "test3": return <>Ingvar Minnus<br/>food blogger<br/>Estonia</>;
+      case "test5": return <>Kostjutsenko Vitali<br/>CEO<br/>Estonia</>;
+      case "test6": return <>Svante Pettersson<br/>smoking food expert<br/>Sweeden</>;
+      case "test7": return <>Tõnu Peit<br/>youtuber<br/>Estonia</>;
+      default: return id;
     }
   };
-
   const block4TextFor = (id: string): ReactNode | undefined => {
     switch (id) {
-      case "test1":
-        return <>“Easy setup, powerful airflow with the new compressor, and no ash falling out. You can tell this was designed by someone who actually smokes food. Highly recommended!“</>;
-        // prettier-ignore
-      case "test2":
-        return <>“It works beautifully — the smoke is clean, the build quality is solid, and it fits my Kamado grill perfectly.”</>;
-      case "test3":
-        return <>“Set it up in my small smokehouse. No hassle — it just works. The smoke is smooth and steady.“</>;
-      case "test5":
-        return <>“The best thing since sliced bread.”</>;
-      case "test6":
-        return <>“SG2 is really a great thing.”</>;
-      case "test7":
-        return <>“Let’s see how SG2 works.”</>;
-      default:
-        return undefined;
+      case "test1": return <>“Easy setup, powerful airflow with the new compressor, and no ash falling out. You can tell this was designed by someone who actually smokes food. Highly recommended!“</>;
+      case "test2": return <>“It works beautifully — the smoke is clean, the build quality is solid, and it fits my Kamado grill perfectly.”</>;
+      case "test3": return <>“Set it up in my small smokehouse. No hassle — it just works. The smoke is smooth and steady.“</>;
+      case "test5": return <>“The best thing since sliced bread.”</>;
+      case "test6": return <>“SG2 is really a great thing.”</>;
+      case "test7": return <>“Let’s see how SG2 works.”</>;
+      default: return undefined;
     }
   };
-
   const block2For = (id: string):
     | { type: "iframe"; src: string; title: string; overlayHref?: string; overlayLabel?: string }
     | { type: "image"; src: string; alt?: string }
@@ -291,24 +271,20 @@ export default function TestimoniesAbout() {
   };
 
   return (
-    <div
-      ref={spacerRef}
-      className="relative"
-      style={{ height: `${SECTION_SCROLL_VH}vh` }} // sticky + unveil, no extra gap
-    >
+    <div ref={spacerRef} className="relative" style={{ height: `${SECTION_SCROLL_VH}vh` }}>
       <section
         aria-label="TestimoniesAbout"
         className="sticky top-0 h-screen overflow-hidden isolate"
         style={{ background: SECTION_GRADIENT }}
       >
+        {/* Opening (center) */}
         <div className="absolute inset-x-0" style={{ top: headerHeight, bottom: 0 }}>
-          {/* Opening (center) */}
           {openingWidthVW > 0 && (
             <div
               className="absolute inset-0"
               style={{ zIndex: 10, backgroundColor: LIGHT_GREY, clipPath: openingClip, overflow: "hidden" }}
             >
-              {/* Hex PNG INSIDE the opening, same position as before (left edge flush) */}
+              {/* Hex PNG inside opening */}
               <div
                 style={{
                   position: "absolute",
@@ -328,7 +304,7 @@ export default function TestimoniesAbout() {
                 />
               </div>
 
-              {/* Unveiled content (center stack) */}
+              {/* Unveiled content */}
               <div
                 ref={unveilContentRef}
                 style={{
@@ -346,21 +322,18 @@ export default function TestimoniesAbout() {
                   zIndex: 3,
                 }}
               >
-                <div style={{ width: "100%", height: "min(56vh, 680px)", overflow: "visible" }}>
+                {/* GLB box */}
+                <div style={{ position: "relative", width: "100%", height: "min(56vh, 680px)", overflow: "visible" }}>
                   <ThreeModel modelPath="/about/tiskre.glb" height={"100%"} />
                 </div>
 
                 {/* Photos row */}
-                <div
-                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2vw", width: "100%" }}
-                >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2vw", width: "100%" }}>
                   <img
                     src="/about/vitali.jpg"
                     alt="Vitali"
                     style={{ height: "min(40vh, 56vh)", aspectRatio: "1 / 1", objectFit: "cover" }}
                   />
-
-                  {/* TEAM with hover overlay linking to /about */}
                   <div className="relative group cursor-pointer" style={{ height: "min(40vh, 56vh)", aspectRatio: "2 / 1" }}>
                     <img
                       src="/about/team.jpg"
@@ -370,8 +343,8 @@ export default function TestimoniesAbout() {
                     <Link
                       href="/about"
                       aria-label="About us"
-                      className="absolute inset-0 flex items-center justify-center bg-black/40 text-white font-extrabold uppercase tracking-wide opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      style={{ textDecoration: "none", letterSpacing: "0.04em", fontSize: "clamp(12px, 1.2vw, 20px)" }}
+                      className="absolute inset-0 flex items-center justify-content-center bg-black/40 text-white font-extrabold uppercase tracking-wide opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      style={{ textDecoration: "none", letterSpacing: "0.04em", fontSize: "clamp(12px, 1.2vw, 20px)", display: "flex", justifyContent: "center" }}
                     >
                       About us
                     </Link>
@@ -379,7 +352,7 @@ export default function TestimoniesAbout() {
                 </div>
               </div>
 
-              {/* Grouser image pinned to bottom-right INSIDE the opening (clipped with it) */}
+              {/* Grouser bottom-right */}
               <img
                 src="/popular/grouser.png"
                 alt="Grouser"
@@ -399,7 +372,6 @@ export default function TestimoniesAbout() {
 
           {/* Row 1 — LEFT */}
           <div className="absolute inset-x-0 pointer-events-none" style={{ top: 0, height: "50%", zIndex: 2 }}>
-            {/* Moving corner PNG for top row */}
             <img
               src="/popular/pine.png"
               alt="Pine"
@@ -435,7 +407,6 @@ export default function TestimoniesAbout() {
 
           {/* Row 2 — RIGHT */}
           <div className="absolute inset-x-0 pointer-events-none" style={{ top: "50%", height: "50%", zIndex: 2 }}>
-            {/* Moving corner PNG for bottom row */}
             <img
               src="/popular/figue.png"
               alt="Figue"
@@ -474,6 +445,9 @@ export default function TestimoniesAbout() {
   );
 }
 
+/* =========================
+   Presentational bits
+========================= */
 function RowText({ centerLeftVW, text }: { centerLeftVW: number; text: string }) {
   return (
     <div

@@ -19,6 +19,8 @@ export const GET_PRODUCTS = gql`
       nodes {
         handle
         title
+        vendor
+        tags
         featuredImage {
           url
           altText
@@ -52,6 +54,8 @@ export const GET_PRODUCT = gql`
         nodes {
           id
           title
+          sku
+          availableForSale
           price { amount currencyCode }
         }
       }

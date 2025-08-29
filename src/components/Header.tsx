@@ -9,7 +9,6 @@ import { useCart } from "@/hooks/use-cart";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 import ThreeModel from "@/components/ThreeModel";
-import { blogPath, detectLocaleFromPath, shopPath } from "@/lib/paths";
 
 // removed three.js debug imports
 
@@ -52,16 +51,13 @@ export default function Header() {
   const currentLang =
     languages.find((l) => l.code === currentLangCode) || languages[0];
 
-  const locale = detectLocaleFromPath(pathname);
-  const shopHref = shopPath(locale);
-  const blogHref = blogPath(locale);
   const nav = [
-    { href: `/${locale}`, label: "Home", isActive: isHomePath },
-    { href: shopHref, label: "Shop", isActive: pathname?.startsWith(shopHref) },
+    { href: "/", label: "Home", isActive: isHomePath },
+    { href: "/shop", label: "Shop", isActive: pathname?.startsWith("/shop") },
     { href: "/about", label: "About", isActive: pathname?.startsWith("/about") },
     { href: "/instructions", label: "Instructions", isActive: pathname?.startsWith("/instructions") },
     { href: "/contact", label: "Contact", isActive: pathname?.startsWith("/contact") },
-    { href: blogHref, label: "Blog", isActive: pathname?.startsWith(blogHref) },
+    { href: "/blog", label: "Blog", isActive: pathname?.startsWith("/blog") },
   ];
 
   const langRef = useRef<HTMLDetailsElement | null>(null);
@@ -236,12 +232,12 @@ export default function Header() {
         <div className="lg:hidden px-3 pb-1">
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
             {[
-              { href: `/${locale}`, label: "Home", isActive: pathname === "/" || pathname === "/home" },
-              { href: shopHref, label: "Shop", isActive: pathname?.startsWith(shopHref) },
+              { href: "/", label: "Home", isActive: pathname === "/" || pathname === "/home" },
+              { href: "/shop", label: "Shop", isActive: pathname?.startsWith("/shop") },
               { href: "/about", label: "About", isActive: pathname?.startsWith("/about") },
               { href: "/instructions", label: "Instructions", isActive: pathname?.startsWith("/instructions") },
               { href: "/contact", label: "Contact", isActive: pathname?.startsWith("/contact") },
-              { href: blogHref, label: "Blog", isActive: pathname?.startsWith(blogHref) },
+              { href: "/blog", label: "Blog", isActive: pathname?.startsWith("/blog") },
             ].map((item) => (
               <Link
                 key={item.href}

@@ -1,207 +1,236 @@
-// src/components/ThreeModel.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
 
-type Props = {
-  modelPath: string;              // e.g. "/models/thing.glb"
-  height?: number | string;       // container height, e.g. "60vh"
-  /** Where to place the model vertically after centering to bounds */
-  align?: "center" | "bottom" | "top";
-  /** Extra vertical offset in world units: negative = move down, positive = up */
-  yOffset?: number;
-  /**
-   * How tightly to fit the model's height into the ortho frustum height.
-   * 1 = exact fit; 0.9 = 10% padding. Default 0.9
-   */
-  fitPadding?: number;
-  /** Optional background color (null => transparent) */
-  background?: number | null;
+export type ThreeModelHandle = {
+  play: (clipName?: string, fadeIn?: number) => void;
+  stop: (fadeOut?: number) => void;
+  setSpeed: (speed: number) => void;
+  playChild: (childName: string, opts?: { fadeIn?: number; procedural?: boolean }) => void;
 };
 
-export default function ThreeModel({
-  modelPath,
-  height = "60vh",
-  align = "center",
-  yOffset = 0,
-  fitPadding = 0.9,
-  background = null,
-}: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+type Props = {
+  // New API
+  src?: string;
+  dracoDecoderPath?: string;
+  className?: string;
+  initialClip?: string;
+  // Back-compat props (used in Header)
+  modelPath?: string;
+  height?: number | string;
+};
+
+export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
+  {
+    src,
+    // Use hosted DRACO decoders by default to avoid 404s when local files are missing
+    dracoDecoderPath = "https://www.gstatic.com/draco/versioned/decoders/1.5.7/",
+    className,
+    initialClip,
+    modelPath,
+    height,
+  },
+  ref
+) {
+  const mountRef = useRef<HTMLDivElement | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer>();
+  const sceneRef = useRef<THREE.Scene>();
+  const cameraRef = useRef<THREE.PerspectiveCamera>();
+  const mixerRef = useRef<THREE.AnimationMixer>();
+  const currentActionRef = useRef<THREE.AnimationAction | null>(null);
+  const clipsRef = useRef<THREE.AnimationClip[]>([]);
+  const clockRef = useRef(new THREE.Clock());
+  const rootRef = useRef<THREE.Object3D | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    // ----- Renderer -----
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: background === null });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    // @ts-ignore compat across three versions
-    renderer.outputColorSpace = THREE.SRGBColorSpace ?? renderer.outputEncoding;
-    container.appendChild(renderer.domElement);
-
-    // ----- Scene & Camera (Orthographic for flat look) -----
+    const mount = mountRef.current!;
     const scene = new THREE.Scene();
-    if (background !== null) scene.background = new THREE.Color(background);
+    scene.background = null;
 
-    // We use a fixed "frustum height" in world units; width depends on aspect.
-    const FRUSTUM_H = 3; // world units tall
-    const aspect = Math.max(1e-6, container.clientWidth / container.clientHeight);
-    const camera = new THREE.OrthographicCamera(
-      (-FRUSTUM_H * aspect) / 2,
-      (FRUSTUM_H * aspect) / 2,
-      FRUSTUM_H / 2,
-      -FRUSTUM_H / 2,
-      0.1,
-      1000
-    );
-    camera.position.set(0, 0, 10);
-    camera.lookAt(0, 0, 0);
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    camera.position.set(0, 0.6, 2);
 
-    // ----- Lights -----
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.1));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
-    dir.position.set(5, 10, 7.5);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(mount.clientWidth, mount.clientHeight, false);
+    mount.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1));
+    const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+    dir.position.set(2, 3, 2);
     scene.add(dir);
 
-    // ----- Loaders -----
     const loader = new GLTFLoader();
     const draco = new DRACOLoader();
-    const DRACO_PATH = "https://www.gstatic.com/draco/versioned/decoders/1.5.7/";
-    draco.setDecoderPath(DRACO_PATH);
+    draco.setDecoderPath(dracoDecoderPath);
+    // Some versions expose setWasmPath; set both for compatibility
     // @ts-ignore optional API
     if (typeof (draco as any).setWasmPath === "function") {
       // @ts-ignore
-      (draco as any).setWasmPath(DRACO_PATH);
-    } else {
-      draco.setDecoderConfig({ type: "wasm" });
+      (draco as any).setWasmPath(dracoDecoderPath);
     }
-    draco.preload();
+    draco.preload?.();
     loader.setDRACOLoader(draco);
 
-    let root: THREE.Object3D | null = null;
-
-    // ---- Fit, center, and align model (key for centering + vertical shifting) ----
-    function centerAlignAndFit(target: THREE.Object3D) {
-      // 1) Compute bounds in current scale
-      const box = new THREE.Box3().setFromObject(target);
-      if (box.isEmpty()) return;
-
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-
-      // 2) First, move model so its center is at the origin (0,0,0)
-      target.position.x -= center.x;
-      target.position.y -= center.y;
-      target.position.z -= center.z;
-
-      // 3) Scale to fit the height of the ortho frustum with padding
-      // Ortho height visible = FRUSTUM_H; we keep a margin via fitPadding
-      const pad = THREE.MathUtils.clamp(fitPadding, 0.1, 1.0); // safety
-      const scaleBy = (FRUSTUM_H * pad) / Math.max(1e-6, size.y);
-      target.scale.setScalar(scaleBy);
-
-      // 4) Recompute bounds after scaling & re-centering to know min/max/center
-      const box2 = new THREE.Box3().setFromObject(target);
-      const min = box2.min.clone();
-      const max = box2.max.clone();
-      const c2 = box2.getCenter(new THREE.Vector3());
-
-      // 5) Align vertically per prop
-      if (align === "bottom") {
-        // Put min.y at y = -FRUSTUM_H/2 * pad  (a bit above bottom, still safe)
-        const desiredMin = -FRUSTUM_H * 0.5 * pad;
-        const delta = desiredMin - min.y;
-        target.position.y += delta;
-      } else if (align === "top") {
-        const desiredMax = FRUSTUM_H * 0.5 * pad;
-        const delta = desiredMax - max.y;
-        target.position.y += delta;
-      } else {
-        // "center": keep the model centered at origin (already done above),
-        // but if the scaled center drifted, correct it
-        target.position.y -= c2.y;
-      }
-
-      // 6) Apply extra user offset (negative moves down, positive up)
-      if (yOffset) target.position.y += yOffset;
-    }
-
-    // Keep camera frustum in sync with container aspect
-    function updateCamera() {
-      const w = Math.max(1, container.clientWidth);
-      const h = Math.max(1, container.clientHeight);
-      const a = w / h;
-      camera.left = (-FRUSTUM_H * a) / 2;
-      camera.right = (FRUSTUM_H * a) / 2;
-      camera.top = FRUSTUM_H / 2;
-      camera.bottom = -FRUSTUM_H / 2;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h, false);
-
-      // Re-fit model to the updated frustum (keeps it centered after resize)
-      if (root) centerAlignAndFit(root);
-      render();
-    }
-
-    // Render loop
     let raf = 0;
-    const render = () => renderer.render(scene, camera);
-    const tick = () => {
-      raf = requestAnimationFrame(tick);
-      render();
-    };
-    tick();
 
-    // Load model
     loader.load(
-      modelPath,
+      src || modelPath || "",
       (gltf) => {
-        root = gltf.scene;
-        scene.add(root);
-        centerAlignAndFit(root);
-        render();
+        const model = gltf.scene;
+        rootRef.current = model;
+        model.traverse((o) => {
+          if (!o.name) o.name = o.uuid;
+        });
+        scene.add(model);
+
+        const mixer = new THREE.AnimationMixer(model);
+        mixerRef.current = mixer;
+        clipsRef.current = gltf.animations || [];
+
+        if (clipsRef.current.length) {
+          const wanted =
+            (initialClip && clipsRef.current.find((c) => c.name === initialClip)) ||
+            clipsRef.current[0];
+          const action = mixer.clipAction(wanted);
+          action.clampWhenFinished = true;
+          action.loop = THREE.LoopOnce;
+          currentActionRef.current = action;
+        }
+
+        setReady(true);
       },
       undefined,
-      (err) => console.error("Failed to load GLB", err)
+      (e) => {
+        console.error("GLB load error:", e);
+        setReady(true);
+      }
     );
 
-    // Resize handling
-    const ro = new ResizeObserver(updateCamera);
-    ro.observe(container);
+    const onFrame = () => {
+      raf = requestAnimationFrame(onFrame);
+      const dt = clockRef.current.getDelta();
+      mixerRef.current?.update(dt);
+      renderer.render(scene, camera);
+    };
+    onFrame();
 
-    // Cleanup
+    const onResize = () => {
+      if (!mount) return;
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    };
+    const ro = new ResizeObserver(onResize);
+    ro.observe(mount);
+
+    rendererRef.current = renderer;
+    sceneRef.current = scene;
+    cameraRef.current = camera;
+
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
-
-      if (root) {
-        root.traverse((o: any) => {
-          o.geometry?.dispose?.();
-          const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
-          mats.forEach((m: any) => {
-            m.map?.dispose?.();
-            m.normalMap?.dispose?.();
-            m.roughnessMap?.dispose?.();
-            m.metalnessMap?.dispose?.();
-            m.dispose?.();
-          });
-        });
-        scene.remove(root);
-        root = null;
-      }
-
-      draco.dispose?.();
       renderer.dispose();
-      if (renderer.domElement.parentElement === container) {
-        container.removeChild(renderer.domElement);
-      }
+      mount.removeChild(renderer.domElement);
+      mixerRef.current?.stopAllAction();
+      scene.traverse((obj: any) => {
+        if (obj.isMesh) {
+          obj.geometry?.dispose?.();
+          if (obj.material?.dispose) obj.material.dispose();
+        }
+      });
     };
-  }, [modelPath, align, yOffset, fitPadding, background]);
+  }, [src, modelPath, dracoDecoderPath, initialClip]);
 
-  return <div ref={containerRef} style={{ width: "100%", height }} />;
-}
+  function makeSubclipForChild(childName: string): THREE.AnimationClip | null {
+    const clips = clipsRef.current;
+    if (!clips.length) return null;
+    const tracks: THREE.KeyframeTrack[] = [];
+    for (const clip of clips) {
+      for (const t of clip.tracks) {
+        if (t.name.startsWith(childName + ".")) {
+          tracks.push(t);
+        }
+      }
+    }
+    if (!tracks.length) return null;
+    return new THREE.AnimationClip(`${childName}__derived`, -1, tracks);
+  }
+
+  function makeProceduralSpin(child: THREE.Object3D): THREE.AnimationClip {
+    const times = [0, 0.75, 1.5];
+    const values = [0, Math.PI, Math.PI * 2];
+    const track = new THREE.NumberKeyframeTrack(`${child.name}.rotation[y]`, times, values);
+    return new THREE.AnimationClip(`${child.name}__spin`, 1.5, [track]);
+  }
+
+  function playAction(clip: THREE.AnimationClip, fadeIn = 0.2) {
+    if (!mixerRef.current) return;
+    const action = mixerRef.current.clipAction(clip);
+    action.reset().setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = true;
+    const prev = currentActionRef.current;
+    if (prev && prev !== action) prev.fadeOut(fadeIn);
+    action.fadeIn(fadeIn).play();
+    currentActionRef.current = action;
+  }
+
+  useImperativeHandle(ref, () => ({
+    play: (clipName?: string, fadeIn = 0.2) => {
+      if (!mixerRef.current) return;
+      const clips = clipsRef.current;
+      const clip = clipName ? clips.find((c) => c.name === clipName) : clips[0];
+      if (!clip) return;
+      playAction(clip, fadeIn);
+    },
+    stop: (fadeOut = 0.2) => {
+      currentActionRef.current?.fadeOut(fadeOut);
+    },
+    setSpeed: (speed: number) => {
+      if (mixerRef.current) mixerRef.current.timeScale = speed;
+    },
+    playChild: (childName: string, opts) => {
+      const fadeIn = opts?.fadeIn ?? 0.2;
+      const root = rootRef.current;
+      if (!root) return;
+      const child = root.getObjectByName(childName);
+      if (!child) {
+        console.warn(`[ThreeModel] Child '${childName}' not found in GLB.`);
+        return;
+      }
+      const sub = makeSubclipForChild(childName);
+      if (sub) {
+        playAction(sub, fadeIn);
+        return;
+      }
+      if (opts?.procedural) {
+        const spin = makeProceduralSpin(child);
+        playAction(spin, fadeIn);
+      } else {
+        console.warn(`[ThreeModel] No tracks found for '${childName}'. Pass {procedural:true} to generate a simple spin.`);
+      }
+    },
+  }));
+
+  return (
+    <div
+      className={className}
+      ref={mountRef}
+      style={{ width: "100%", height: height ?? "100%" }}
+      aria-busy={!ready}
+    />
+  );
+});

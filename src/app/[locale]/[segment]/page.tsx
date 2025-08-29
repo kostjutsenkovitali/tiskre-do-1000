@@ -6,6 +6,7 @@ import {GET_PRODUCTS} from "@/lib/queries/products";
 import {LIST_ARTICLES, GET_BLOG_WITH_ARTICLES} from "@/lib/queries/blog";
 import {sf} from "@/lib/shopify";
 import type {GetProductsResponse} from "@/lib/types/shopify";
+import ShopClient from "./ShopClient";
 
 type Props = {
   params: { locale: string; segment: string };
@@ -34,7 +35,18 @@ export default async function IndexBySegment({params, searchParams}: Props) {
       country,
       language,
     });
-    const products = data.products.nodes;
+    const products = data.products.nodes.map((n) => ({
+      id: n.handle,
+      slug: n.handle,
+      title: n.title,
+      description: "",
+      price: n.priceRange.minVariantPrice.amount,
+      currencyCode: n.priceRange.minVariantPrice.currencyCode,
+      featuredImage: n.featuredImage ? { url: n.featuredImage.url, altText: n.featuredImage.altText || undefined } : null,
+      availableForSale: true,
+      tags: (n as any).tags || [],
+      vendor: (n as any).vendor,
+    }));
     const pageInfo = data.products.pageInfo;
     const basePath = `/${rawLocale}/${segment}`;
     const nextHref = pageInfo.hasNextPage && pageInfo.endCursor
@@ -44,34 +56,9 @@ export default async function IndexBySegment({params, searchParams}: Props) {
       ? `${basePath}${q ? `?${new URLSearchParams({ q }).toString()}` : ""}`
       : null;
 
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <h1 className="mb-6 text-2xl font-semibold">Shop</h1>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          {products.map((p) => (
-            <Link key={p.handle} href={`/${rawLocale}/${segment}/${p.handle}`} className="rounded border p-3">
-              <div className="relative aspect-square w-full overflow-hidden bg-muted">
-                {p.featuredImage ? (
-                  <Image src={p.featuredImage.url} alt={p.featuredImage.altText || p.title} fill className="object-cover" />
-                ) : null}
-              </div>
-              <div className="mt-2 text-sm font-medium">{p.title}</div>
-              <div className="text-xs text-muted-foreground">
-                {p.priceRange.minVariantPrice.amount} {p.priceRange.minVariantPrice.currencyCode}
-              </div>
-            </Link>
-          ))}
-        </div>
-        <div className="mt-8 flex items-center justify-between">
-          <div>
-            {prevHref ? <Link href={prevHref} className="text-sm underline">Prev</Link> : <span className="text-sm text-muted-foreground">Prev</span>}
-          </div>
-          <div>
-            {nextHref ? <Link href={nextHref} className="text-sm underline">Next</Link> : <span className="text-sm text-muted-foreground">Next</span>}
-          </div>
-        </div>
-      </div>
-    );
+    // Collections are not fetched yet; provide empty list for now or wire GET_COLLECTIONS.
+    const collections: Array<{ id: string; slug: string; name: string }> = [];
+    return <ShopClient products={products as any} collections={collections} hrefBase={`/${rawLocale}/${segment}`} />;
   }
 
   // Blog index
