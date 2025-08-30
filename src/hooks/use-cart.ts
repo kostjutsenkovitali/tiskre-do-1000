@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cartCreate, cartLinesAdd, cartLinesRemove, cartLinesUpdate, type Cart } from "@/lib/cart";
+import { cartCreate, cartGet, cartLinesAdd, cartLinesRemove, cartLinesUpdate, type Cart } from "@/lib/cart";
 
 const CART_ID_KEY = "sf_cart_id";
 
@@ -22,9 +22,17 @@ export function useCart() {
       if (typeof window === "undefined" || loadingRef.current) return;
       loadingRef.current = true;
       try {
-        const id = await ensureCartId();
-        if (!id) return;
-        setCart((prev) => prev ?? { id, totalQuantity: 0, checkoutUrl: "", lines: { nodes: [] } } as Cart);
+        const existing = localStorage.getItem(CART_ID_KEY);
+        if (existing) {
+          try {
+            const existingCart = await cartGet(existing);
+            setCart(existingCart);
+            return;
+          } catch {}
+        }
+        const created = await cartCreate();
+        localStorage.setItem(CART_ID_KEY, created.id);
+        setCart(created);
       } finally {
         loadingRef.current = false;
       }

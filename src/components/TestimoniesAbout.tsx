@@ -179,7 +179,6 @@ function parseGcodeToSegments(text: string): { segs: Seg[]; bbox: BBox; total: n
     const ty = p.Y !== undefined ? (abs ? p.Y : cur.y + p.Y) : cur.y;
 
     if (g === 0) { // rapid
-      // represent jogs as segments marked 'rapid' (we won't render them but we can use feed/state)
       pushSeg(tx, ty, true);
       continue;
     }
@@ -315,9 +314,12 @@ function MultiLaserOverlayAbsolute({
   type P = { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; hot: boolean };
   const partsRef = useRef<P[]>([]);
 
-  // Audio
+  // Audio (global)
   const moveAudioRef = useRef<HTMLAudioElement | null>(null);
   const cutAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Two extra tracks for the first two INC files
+  const incAudioRefs = useRef<Array<HTMLAudioElement | null>>([null, null]);
+
   const audioReadyRef = useRef<boolean>(false);
 
   // feed stats (to detect "high speed")
@@ -332,6 +334,10 @@ function MultiLaserOverlayAbsolute({
     return { min, max };
   }, [targets]);
 
+  // Drawing options
+  const SKIP_TOO_FAST = true; // optionally hide segments with very high feed
+  const FAST_FEED_NORM = 0.75; // normalized feed threshold considered "too fast"
+
   const fitCanvasDPR = () => {
     const c = ref.current;
     if (!c) return;
@@ -343,9 +349,10 @@ function MultiLaserOverlayAbsolute({
     if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
-  // prepare audio
+  // prepare audio (use files from /public root)
   useEffect(() => {
     if (!active) return;
+
     if (!moveAudioRef.current) {
       moveAudioRef.current = new Audio("/sounds/laser_move.mp3");
       moveAudioRef.current.loop = true;
@@ -356,10 +363,24 @@ function MultiLaserOverlayAbsolute({
       cutAudioRef.current.loop = true;
       cutAudioRef.current.volume = 0;
     }
+    // Per-INC (1 & 2) use the same cut file from public
+    if (!incAudioRefs.current[0]) {
+      incAudioRefs.current[0] = new Audio("/sounds//laser_cut.mp3");
+      incAudioRefs.current[0].loop = true;
+      incAudioRefs.current[0].volume = 0;
+    }
+    if (!incAudioRefs.current[1]) {
+      incAudioRefs.current[1] = new Audio("/sounds/laser_cut.mp3");
+      incAudioRefs.current[1].loop = true;
+      incAudioRefs.current[1].volume = 0;
+    }
+
     const tryPlay = async () => {
       try {
         await moveAudioRef.current!.play();
         await cutAudioRef.current!.play();
+        await incAudioRefs.current[0]!.play();
+        await incAudioRefs.current[1]!.play();
         audioReadyRef.current = true;
       } catch {
         audioReadyRef.current = false;
@@ -370,11 +391,11 @@ function MultiLaserOverlayAbsolute({
     // retry on first user gesture if blocked
     const resume = () => {
       if (audioReadyRef.current) return;
-      try {
-        moveAudioRef.current!.play().catch(() => {});
-        cutAudioRef.current!.play().catch(() => {});
-        audioReadyRef.current = true;
-      } catch {}
+      moveAudioRef.current?.play().catch(() => {});
+      cutAudioRef.current?.play().catch(() => {});
+      incAudioRefs.current[0]?.play().catch(() => {});
+      incAudioRefs.current[1]?.play().catch(() => {});
+      audioReadyRef.current = true;
       window.removeEventListener("pointerdown", resume);
       window.removeEventListener("keydown", resume);
       window.removeEventListener("scroll", resume, { capture: true } as any);
@@ -386,8 +407,13 @@ function MultiLaserOverlayAbsolute({
     return () => {
       moveAudioRef.current?.pause();
       cutAudioRef.current?.pause();
-      moveAudioRef.current && (moveAudioRef.current.currentTime = 0);
-      cutAudioRef.current && (cutAudioRef.current.currentTime = 0);
+      incAudioRefs.current[0]?.pause();
+      incAudioRefs.current[1]?.pause();
+
+      if (moveAudioRef.current) moveAudioRef.current.currentTime = 0;
+      if (cutAudioRef.current) cutAudioRef.current.currentTime = 0;
+      if (incAudioRefs.current[0]) incAudioRefs.current[0]!.currentTime = 0;
+      if (incAudioRefs.current[1]) incAudioRefs.current[1]!.currentTime = 0;
     };
   }, [active]);
 
@@ -402,7 +428,15 @@ function MultiLaserOverlayAbsolute({
     const c = ref.current!;
     const ctx = c.getContext("2d")!;
 
-    const totals = targets.map(t => (t.segs || []).reduce((a, s) => a + s.len, 0));
+    // Filter out non-drawing segments (G0 rapids and optionally too-fast feeds)
+    const normFeed = (s: Seg) => {
+      if (!feedMinMax || !s.feed) return 0.5;
+      if (feedMinMax.max <= feedMinMax.min) return 0.5;
+      return clamp01((s.feed - feedMinMax.min) / (feedMinMax.max - feedMinMax.min));
+    };
+    const isSkipped = (s: Seg) => s.hidden || s.rapid || (SKIP_TOO_FAST && normFeed(s) >= FAST_FEED_NORM);
+    const drawSegsArr = targets.map(t => (t.segs || []).filter(s => !isSkipped(s)));
+    const totals = drawSegsArr.map(segs => segs.reduce((a, s) => a + s.len, 0));
     const anySegs = totals.some(t => t > 0);
     const worldBBox = SHEET_BBOX;
 
@@ -424,7 +458,7 @@ function MultiLaserOverlayAbsolute({
       if (startRef.current === null) startRef.current = ts;
       const elapsed = ts - startRef.current;
       const progress = Math.min(1, elapsed / durationMs);
-      const dt = Math.max(0.016, Math.min(0.05, (rafRef.current ? (ts - (startRef.current + (progress - (elapsed / durationMs)) )) : 0) / 1000)); // conservative
+      const dt = 0.016;
 
       const cvsRect = c.getBoundingClientRect();
       const fitRect = (() => {
@@ -452,8 +486,11 @@ function MultiLaserOverlayAbsolute({
       let anyCutting = false;
       let anyMoving = false;
 
+      // track which of the first two INCs are actively cutting
+      const incCuttingFlags: boolean[] = [false, false];
+
       for (let i = 0; i < targets.length; i++) {
-        const segs = targets[i].segs || [];
+        const segs = drawSegsArr[i] || [];
         const total = totals[i] || 0;
         if (!segs.length || total <= 0) continue;
 
@@ -466,37 +503,18 @@ function MultiLaserOverlayAbsolute({
           if (acc + s.len >= progLen) { curSeg = s; break; }
           acc += s.len;
         }
-        // thresholds
-        const normFeed = (s: Seg) => {
-          if (!feedMinMax || !s.feed) return 0.5;
-          if (feedMinMax.max <= feedMinMax.min) return 0.5;
-          return clamp01((s.feed - feedMinMax.min) / (feedMinMax.max - feedMinMax.min));
-        };
-        const isFast = (s: Seg | null) => s ? (s.hidden || s.rapid || normFeed(s) >= 0.75) : false;
+        const isFast = (s: Seg | null) => s ? isSkipped(s) : false;
 
-        // draw trails with fast segments *omitted*
-        const hotWindow = 0.06 * total;
-        const coolEnd = Math.max(0, progLen - hotWindow);
-
-        function drawPartial(seg: Seg, fromLen: number, toLen: number, moveEach = true) {
+        function drawPartial(seg: Seg, fromLen: number, toLen: number) {
           const t0 = fromLen / seg.len, t1 = toLen / seg.len;
           const p0_ = fit([seg.a[0] + (seg.b[0] - seg.a[0]) * t0, seg.a[1] + (seg.b[1] - seg.a[1]) * t0]);
           const p1_ = fit([seg.a[0] + (seg.b[0] - seg.a[0]) * t1, seg.a[1] + (seg.b[1] - seg.a[1]) * t1]);
-          if (moveEach) ctx.moveTo(p0_[0], p0_[1]); else ctx.lineTo(p0_[0], p0_[1]);
+          ctx.moveTo(p0_[0], p0_[1]);
           ctx.lineTo(p1_[0], p1_[1]);
         }
-        function pointAtLen(L: number) {
-          let acc2 = 0;
-          for (const s of segs) {
-            if (acc2 + s.len >= L) {
-              const t = (L - acc2) / s.len;
-              return [s.a[0] + (s.b[0] - s.a[0]) * t, s.a[1] + (s.b[1] - s.a[1]) * t] as [number, number];
-            }
-            acc2 += s.len;
-          }
-          const last = segs[segs.length - 1];
-          return last ? last.b : ([0, 0] as [number, number]);
-        }
+
+        const hotWindow = 0.06 * total;
+        const coolEnd = Math.max(0, progLen - hotWindow);
 
         // cooled trail (skip fast segments)
         ctx.save();
@@ -506,9 +524,9 @@ function MultiLaserOverlayAbsolute({
         let remainCool = coolEnd;
         for (const s of segs) {
           if (remainCool <= 0) break;
-          if (isFast(s)) { remainCool -= s.len; continue; } // hide high-speed lines
+          if (isFast(s)) { remainCool -= s.len; continue; }
           const use = Math.min(remainCool, s.len);
-          drawPartial(s, 0, use, false);
+          drawPartial(s, 0, use);
           remainCool -= use;
         }
         ctx.stroke();
@@ -527,7 +545,7 @@ function MultiLaserOverlayAbsolute({
         for (const s of segs) {
           if (pos >= s.len) { pos -= s.len; continue; }
           const use = Math.min(remainHot, s.len - pos);
-          if (!isFast(s)) drawPartial(s, pos, pos + use, true);
+          if (!isFast(s)) drawPartial(s, pos, pos + use);
           remainHot -= use;
           pos = 0;
           if (remainHot <= 0) break;
@@ -536,6 +554,18 @@ function MultiLaserOverlayAbsolute({
         ctx.restore();
 
         // tip glow + sparks
+        function pointAtLen(L: number) {
+          let acc2 = 0;
+          for (const s of segs) {
+            if (acc2 + s.len >= L) {
+              const t = (L - acc2) / s.len;
+              return [s.a[0] + (s.b[0] - s.a[0]) * t, s.a[1] + (s.b[1] - s.a[1]) * t] as [number, number];
+            }
+            acc2 += s.len;
+          }
+          const last = segs[segs.length - 1];
+          return last ? last.b : ([0, 0] as [number, number]);
+        }
         const tipW = pointAtLen(progLen);
         const tip = fit(tipW);
 
@@ -545,24 +575,23 @@ function MultiLaserOverlayAbsolute({
         anyCutting = anyCutting || cuttingNow;
         anyMoving = anyMoving || movingFast;
 
-        // heat bloom (stronger when slower)
+        if (i === 0) incCuttingFlags[0] = cuttingNow;
+        if (i === 1) incCuttingFlags[1] = cuttingNow;
+
         const feedN = curSeg ? (curSeg.rapid ? 1 : normFeed(curSeg)) : 0.5;
-        const slowFactor = 1 - feedN; // slower → bigger bloom & more sparks
+        const slowFactor = 1 - feedN;
         const bloomR = 12 + 26 * slowFactor;
 
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
-        // inner white core
         ctx.beginPath();
         ctx.arc(tip[0], tip[1], 5, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255,255,255,0.95)";
         ctx.fill();
-        // orange bloom
         ctx.beginPath();
         ctx.arc(tip[0], tip[1], bloomR, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255,140,58,${0.18 + 0.25 * slowFactor})`;
         ctx.fill();
-        // subtle heat haze ring
         ctx.beginPath();
         ctx.arc(tip[0], tip[1], bloomR * 1.35, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(255,180,120,${0.08 + 0.12 * slowFactor})`;
@@ -570,10 +599,10 @@ function MultiLaserOverlayAbsolute({
         ctx.stroke();
         ctx.restore();
 
-        // spawn sparks
+        // sparks
         const baseSparks = cuttingNow ? (2 + Math.floor(5 * slowFactor)) : 0;
         for (let s = 0; s < baseSparks; s++) {
-          const ang = (Math.random() * Math.PI) - Math.PI / 2; // mostly sideways/down
+          const ang = (Math.random() * Math.PI) - Math.PI / 2;
           const sp = 70 + Math.random() * 140 * (0.5 + slowFactor);
           partsRef.current.push({
             x: tip[0],
@@ -586,7 +615,6 @@ function MultiLaserOverlayAbsolute({
             hot: true,
           });
         }
-        // occasional energetic burst
         if (cuttingNow && Math.random() < (0.03 + 0.05 * slowFactor)) {
           const bursts = 10 + Math.floor(Math.random() * 12);
           for (let b = 0; b < bursts; b++) {
@@ -630,15 +658,17 @@ function MultiLaserOverlayAbsolute({
         ctx.fill();
         ctx.restore();
 
-        // after half life, cool down to ember color
         if (p.hot && p.life > p.max * 0.5) p.hot = false;
       }
 
-      // audio mix
+      // audio mix (global) + per-INC volumes
       const cutVol = anyCutting ? 0.6 : 0;
       const moveVol = anyMoving ? 0.5 : 0;
       if (cutAudioRef.current) cutAudioRef.current.volume = cutVol;
       if (moveAudioRef.current) moveAudioRef.current.volume = moveVol;
+
+      if (incAudioRefs.current[0]) incAudioRefs.current[0]!.volume = anyCutting ? 0.7 : 0;
+      if (incAudioRefs.current[1]) incAudioRefs.current[1]!.volume = anyCutting ? 0.7 : 0;
 
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(loop);
@@ -655,6 +685,8 @@ function MultiLaserOverlayAbsolute({
       partsRef.current = [];
       if (cutAudioRef.current) cutAudioRef.current.volume = 0;
       if (moveAudioRef.current) moveAudioRef.current.volume = 0;
+      if (incAudioRefs.current[0]) incAudioRefs.current[0]!.volume = 0;
+      if (incAudioRefs.current[1]) incAudioRefs.current[1]!.volume = 0;
     };
   }, [active, targets, durationMs, anchorRef, feedMinMax, onDone]);
 
@@ -1041,7 +1073,8 @@ export default function TestimoniesAbout() {
                     aspectRatio: "4500 / 1900",
                     margin: "0 auto",
                     overflow: "visible",
-                    transform: "none",
+                    transform: "translateY(-250px) scale(1.3)",
+                    transformOrigin: "center top",
                   }}
                 >
                   <div style={{ position: "absolute", inset: 0 }}>
@@ -1055,7 +1088,7 @@ export default function TestimoniesAbout() {
                 </div>
 
                 {/* Photos row */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2vw", width: "100%" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2vw", width: "100%", transform: "translateY(-100px)" }}>
                   <img
                     src="/about/vitali.jpg"
                     alt="Vitali"

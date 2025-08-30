@@ -59,6 +59,13 @@ const CART_LINES_REMOVE = gql`
   }
 `;
 
+const CART_GET = gql`
+  ${CART_FRAGMENT}
+  query GetCart($id: ID!) {
+    cart(id: $id) { ...CartBasic }
+  }
+`;
+
 export type Cart = {
   id: string;
   totalQuantity: number;
@@ -92,6 +99,12 @@ export async function cartLinesRemove(cartId: string, lineIds: string[]): Promis
   const cart = res.cartLinesRemove.cart;
   if (!cart) throw new Error(res.cartLinesRemove.userErrors?.map((e) => e.message).join(", ") || "Cart remove failed");
   return cart;
+}
+
+export async function cartGet(cartId: string): Promise<Cart> {
+  const res = await sf<{ cart: Cart }>(CART_GET, { id: cartId });
+  if (!res || !res.cart) throw new Error("Cart not found");
+  return res.cart;
 }
 
 

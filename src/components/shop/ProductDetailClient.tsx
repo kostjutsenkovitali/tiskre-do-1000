@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useMemo } from "react";
+import AddToCartButton from "@/components/AddToCartButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -268,14 +269,16 @@ export default function ProductDetailClient({ locale, product, related }: Props)
               </div>
 
               <div className="space-y-3">
-                <Button
-                  className="w-full rounded-none"
-                  onClick={() =>
-                    alert(`Added ${quantity} x ${product.name} to cart!`)
-                  }
-                >
-                  {L.addToCart}
-                </Button>
+                {product?.variants?.nodes?.[0]?.id ? (
+                  <AddToCartButton
+                    className="w-full rounded-none"
+                    variantId={product.variants.nodes[0].id}
+                  />
+                ) : (
+                  <Button className="w-full rounded-none" disabled>
+                    {L.addToCart}
+                  </Button>
+                )}
                 <div className="grid grid-cols-3 gap-3">
                   <Button variant="outline" size="sm" className="text-xs rounded-none">
                     Google Pay
