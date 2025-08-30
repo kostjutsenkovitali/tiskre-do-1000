@@ -93,8 +93,10 @@ type Seg = {
   len: number;
   feed?: number;      // mm/min (or your machine units/min)
   rapid?: boolean;    // true for G0 jogs (we won't render them)
+  hidden?: boolean;   // crossing marker – render invisible but keep timing
 };
 type BBox = { xmin: number; ymin: number; xmax: number; ymax: number };
+const SHEET_BBOX: BBox = { xmin: 0, ymin: 0, xmax: 4500, ymax: 1900 };
 const WORD_RE = /([A-Za-z])\s*(?:=)?\s*([+\-]?(?:\d+(?:\.\d*)?|\.\d+))/g;
 
 function stripComments(text: string) {
@@ -255,6 +257,40 @@ function unionBBox(bs: (BBox | null | undefined)[]): BBox | null {
   return { xmin, ymin, xmax, ymax };
 }
 
+// Strict segment/segment intersection (not touching endpoints)
+function segIntersect(a: [number, number], b: [number, number], c: [number, number], d: [number, number]) {
+  const ax = a[0], ay = a[1], bx = b[0], by = b[1];
+  const cx = c[0], cy = c[1], dx = d[0], dy = d[1];
+  const rpx = bx - ax, rpy = by - ay;
+  const spx = dx - cx, spy = dy - cy;
+  const denom = rpx * spy - rpy * spx;
+  if (Math.abs(denom) < 1e-9) return null; // parallel or collinear
+  const t = ((cx - ax) * spy - (cy - ay) * spx) / denom;
+  const u = ((cx - ax) * rpy - (cy - ay) * rpx) / denom;
+  if (t > 0.02 && t < 0.98 && u > 0.02 && u < 0.98) return { t, u };
+  return null;
+}
+
+// Mark later segments that cross any earlier segment at a real angle
+function markCrossingSegs(segs: Seg[], minAngleDeg = 20) {
+  const cosTol = Math.cos((minAngleDeg * Math.PI) / 180);
+  for (let i = 0; i < segs.length; i++) {
+    const s = segs[i];
+    const v1x = s.b[0] - s.a[0], v1y = s.b[1] - s.a[1];
+    const v1n = Math.hypot(v1x, v1y) || 1;
+    for (let j = 0; j < i - 1; j++) {
+      const t = segs[j];
+      const hit = segIntersect(s.a, s.b, t.a, t.b);
+      if (!hit) continue;
+      const v2x = t.b[0] - t.a[0], v2y = t.b[1] - t.a[1];
+      const v2n = Math.hypot(v2x, v2y) || 1;
+      const dot = (v1x * v2x + v1y * v2y) / (v1n * v2n);
+      if (Math.abs(dot) < cosTol) { s.hidden = true; break; }
+    }
+  }
+  return segs;
+}
+
 /* =========================
    Multi-laser overlay (absolute space) with particles + audio
 ========================= */
@@ -368,7 +404,7 @@ function MultiLaserOverlayAbsolute({
 
     const totals = targets.map(t => (t.segs || []).reduce((a, s) => a + s.len, 0));
     const anySegs = totals.some(t => t > 0);
-    const worldBBox = unionBBox(targets.map(t => t.bbox));
+    const worldBBox = SHEET_BBOX;
 
     const onResize = () => fitCanvasDPR();
     window.addEventListener("resize", onResize);
@@ -436,7 +472,7 @@ function MultiLaserOverlayAbsolute({
           if (feedMinMax.max <= feedMinMax.min) return 0.5;
           return clamp01((s.feed - feedMinMax.min) / (feedMinMax.max - feedMinMax.min));
         };
-        const isFast = (s: Seg | null) => s ? (s.rapid || normFeed(s) >= 0.75) : false;
+        const isFast = (s: Seg | null) => s ? (s.hidden || s.rapid || normFeed(s) >= 0.75) : false;
 
         // draw trails with fast segments *omitted*
         const hotWindow = 0.06 * total;
@@ -778,6 +814,7 @@ export default function TestimoniesAbout() {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const txt = await res.text();
             const { segs, bbox } = parseGcodeToSegments(txt);
+            markCrossingSegs(segs, 20);
             return { segs, bbox };
           } catch {
             const sample = `
@@ -804,6 +841,7 @@ export default function TestimoniesAbout() {
             G01 X0 Y0
           `;
           const { segs, bbox } = parseGcodeToSegments(sample);
+          markCrossingSegs(segs, 20);
           setTargets([{ segs, bbox }, { segs, bbox }, { segs, bbox }]);
         }
       }
@@ -829,7 +867,7 @@ export default function TestimoniesAbout() {
     }
   }, [laserDone, scrollLocked]);
 
-  const worldBBox = useMemo(() => unionBBox(targets.map(t => t.bbox)), [targets]);
+  const worldBBox = useMemo(() => SHEET_BBOX, []);
   const ratio = useMemo(() => {
     if (!worldBBox) return 2; // fallback
     const w = worldBBox.xmax - worldBBox.xmin;
@@ -946,7 +984,6 @@ export default function TestimoniesAbout() {
           onDone={() => {
             setLaserActive(false);
             setLaserDone(true);
-            setShowFrame(true); // swap to frame.glb after finish
           }}
         />
 
@@ -995,24 +1032,24 @@ export default function TestimoniesAbout() {
                   zIndex: 3,
                 }}
               >
-                {/* GLB box aligned to INC world extents with correct aspect ratio */}
+                {/* GLB box locked to 4500:1900 (INC world) */}
                 <div
                   ref={glbBoxRef}
                   style={{
                     position: "relative",
-                    width: "100%",
-                    aspectRatio: ratio,
-                    maxHeight: "680px",
+                    width: "min(1100px, 92vw)",
+                    aspectRatio: "4500 / 1900",
+                    margin: "0 auto",
                     overflow: "visible",
+                    transform: "none",
                   }}
                 >
                   <div style={{ position: "absolute", inset: 0 }}>
-                    {/* Show as perfectly flat: squash Z with a vector scale (handled inside component) */}
                     <ThreeModel
-                      modelPath={showFrame ? "/about/frame.glb" : "/about/tiskre.glb"}
+                      modelPath={"/about/tiskre.glb"}
                       height={"100%"}
                       flat
-                      fitBBox={worldBBox || undefined}
+                      fitBBox={{ xmin: 0, ymin: 0, xmax: 4500, ymax: 1900 }}
                     />
                   </div>
                 </div>
