@@ -16,6 +16,7 @@ export type ThreeModelHandle = {
   stop: (fadeOut?: number) => void;
   setSpeed: (speed: number) => void;
   playChild: (childName: string, opts?: { fadeIn?: number; procedural?: boolean }) => void;
+  getScene: () => THREE.Scene | null;
 };
 
 type Props = {
@@ -345,6 +346,7 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
   }
 
   useImperativeHandle(ref, () => ({
+    getScene: () => sceneRef.current || null,
     play: (clipName?: string, fadeIn = 0.2) => {
       if (!mixerRef.current) return;
       const clips = clipsRef.current;

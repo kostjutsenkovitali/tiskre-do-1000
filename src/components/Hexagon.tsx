@@ -44,7 +44,7 @@ const GRADIENT_BG = "linear-gradient(to bottom, #f8f8f8 0%, #b8c8c8 100%)";
 
 const FRAME_COLOR = "#9ca3af";
 const FRAME_THICKNESS_PX = 4;
-const PIN_DURATION_MS = 5000;
+const PIN_DURATION_MS = 5000; // legacy pin; we'll override with flight-based pin
 const SHOW_DEBUG_ORBIT = false;
 
 // 3× bigger object (3D payload)
@@ -179,30 +179,102 @@ export default function Hexagon() {
     [slides, index]
   );
 
-  /* ===== pin logic ===== */
+  /* ===== full-viewport detection + pin → fly → release ===== */
   useEffect(() => {
     const el = sectionRef.current; if (!el) return;
-    if (observerRef.current) observerRef.current.disconnect();
+    const sticky = el; // our section fills viewport (height:100vh)
 
-    observerRef.current = new IntersectionObserver((entries) => {
-      const e = entries[0]; if (!e) return; const fully = e.intersectionRatio >= 0.95;
-      const timeSinceUnpin = Date.now() - unpinnedTime.current;
-      const blockRepin = recentlyUnpinned.current && timeSinceUnpin < 2000;
-      if (fully && !pinned && !blockRepin) {
-        lockScroll(); setPinned(true);
-        const timeoutId = setTimeout(() => {
-          setPinned(false); unlockScroll(); recentlyUnpinned.current = true; unpinnedTime.current = Date.now();
-        }, PIN_DURATION_MS);
-        return () => clearTimeout(timeoutId);
-      } else if (!fully && pinned) {
-        unlockScroll(); setPinned(false); recentlyUnpinned.current = true; unpinnedTime.current = Date.now();
+    let isFull = false;
+    let prevY = 0;
+    let pending = false;
+    let released = false;
+    let onDoneRef: ((...a: any[]) => void) | null = null;
+
+    const TOL = 1; // px tolerance
+    const COOLDOWN_MS = 400; // guard against rapid re-entry/flicker
+
+    // Fixed-body scroll lock to avoid iOS bounce and layout shifts
+    function lockScrollFixed(): number {
+      const y = window.scrollY || window.pageYOffset || 0;
+      const root = document.documentElement;
+      const body = document.body;
+      const sbw = window.innerWidth - root.clientWidth;
+      if (sbw > 0) { root.style.paddingRight = `${sbw}px`; body.style.paddingRight = `${sbw}px`; }
+      body.style.position = "fixed";
+      body.style.top = `-${y}px`;
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+      body.style.overflow = "hidden";
+      return y;
+    }
+    function unlockScrollFixed(y: number) {
+      const root = document.documentElement;
+      const body = document.body;
+      body.style.position = "";
+      body.style.top = "";
+      body.style.left = "";
+      body.style.right = "";
+      body.style.width = "";
+      body.style.overflow = "";
+      root.style.paddingRight = "";
+      body.style.paddingRight = "";
+      window.scrollTo(0, y || 0);
+    }
+
+    const check = () => {
+      const r = sticky.getBoundingClientRect();
+      const full = Math.abs(r.top) <= TOL && Math.abs(r.bottom - window.innerHeight) <= TOL;
+      if (full !== isFull) {
+        isFull = full;
+        if (full) {
+          bus.emit("hex:page-full-on");
+          if (!pending) {
+            const now = Date.now();
+            if (recentlyUnpinned.current && now - (unpinnedTime.current || 0) < COOLDOWN_MS) {
+              return; // skip pin during cooldown
+            }
+            pending = true;
+            // lock and request header flight
+            prevY = lockScrollFixed();
+            const onDone = () => { bus.off("header:logo-flyToHex:done", onDone as any); onDoneRef = null; unlockScrollFixed(prevY); pending = false; setPinned(false); recentlyUnpinned.current = true; unpinnedTime.current = Date.now(); released = true; };
+            setPinned(true);
+            onDoneRef = onDone;
+            bus.on("header:logo-flyToHex:done", onDone as any);
+            bus.emit("header:logo-flyToHex");
+          }
+        } else {
+          bus.emit("hex:page-full-off");
+          if (pending) {
+            bus.emit("header:resetLogoFlight");
+            unlockScrollFixed(prevY); pending = false; setPinned(false); recentlyUnpinned.current = true; unpinnedTime.current = Date.now();
+          }
+        }
       }
-      if (!fully && recentlyUnpinned.current && timeSinceUnpin > 2000) { recentlyUnpinned.current = false; }
-    }, { threshold: [0, 0.95, 1], rootMargin: "50px 0px" });
+    };
 
-    observerRef.current.observe(el);
-    return () => { observerRef.current?.disconnect(); unlockScroll(); };
-  }, [pinned]);
+    let ticking = false;
+    const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { check(); ticking = false; }); } };
+    const onResize = () => onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+
+    const io = new IntersectionObserver(([entry]) => {
+      const full = entry?.intersectionRatio === 1;
+      if (full) { /* rely on check() to lock/emit for tolerance */ }
+    }, { threshold: [1] });
+    io.observe(sticky);
+
+    check();
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      io.disconnect();
+      if (onDoneRef) bus.off("header:logo-flyToHex:done", onDoneRef as any);
+      if (!released && pending) { bus.emit("header:resetLogoFlight"); unlockScrollFixed(prevY); }
+    };
+  }, []);
 
   // Visibility watchers: section + footer
   useEffect(() => {

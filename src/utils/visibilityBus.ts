@@ -4,6 +4,12 @@ type EventMap = {
   "hexagon:enter": void;
   "hexagon:leave": void;
   "footer:reveal": boolean;
+  // New events for full-viewport hex section and header logo flight
+  "hex:page-full-on": void;
+  "hex:page-full-off": void;
+  "header:logo-flyToHex": void;
+  "header:logo-flyToHex:done": void;
+  "header:resetLogoFlight": void;
 };
 
 type Handler<T = any> = (payload: T) => void;
