@@ -44,13 +44,10 @@ const GRADIENT_BG = "linear-gradient(to bottom, #f8f8f8 0%, #b8c8c8 100%)";
 
 const FRAME_COLOR = "#9ca3af";
 const FRAME_THICKNESS_PX = 4;
-const PIN_DURATION_MS = 5000; // legacy pin; we'll override with flight-based pin
 const SHOW_DEBUG_ORBIT = false;
 
 // 3× bigger object (3D payload)
 const OBJECT_SCALE_MULT = 3;
-
-// Prefer configured handle from lib/shopify (SHOPIFY_BLOG_HANDLE)
 
 /* =========================================================
    Tiny helpers for HTML content
@@ -104,6 +101,31 @@ function OrbitDebug({
 }
 
 /* =========================================================
+   Scroll lock helpers (simple fixed-body pattern)
+   ========================================================= */
+function lockScroll(): number {
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+  const body = document.body;
+  body.style.position = "fixed";
+  body.style.top = `-${scrollY}px`;
+  body.style.left = "0";
+  body.style.right = "0";
+  body.style.width = "100%";
+  body.style.overflow = "hidden";
+  return scrollY;
+}
+function unlockScroll(prevY: number) {
+  const body = document.body;
+  body.style.position = "";
+  body.style.top = "";
+  body.style.left = "";
+  body.style.right = "";
+  body.style.width = "";
+  body.style.overflow = "";
+  window.scrollTo(0, prevY || 0);
+}
+
+/* =========================================================
    Component
    ========================================================= */
 export default function Hexagon() {
@@ -116,17 +138,7 @@ export default function Hexagon() {
   const [slides, setSlides] = useState<Slide[] | null>(null);
   const [index, setIndex] = useState(0);
 
-  const [pinned, setPinned] = useState(false);
-  const recentlyUnpinned = useRef<boolean>(false);
-  const unpinnedTime = useRef<number>(0);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
-  // orbit params
-  const [orbitParams, setOrbitParams] = useState({ a: 20, b: 14.6, yOffset: -3.1 });
-  const orbitParamsRef = useRef(orbitParams);
-  useEffect(() => { orbitParamsRef.current = orbitParams; }, [orbitParams]);
-
-  // Active ONLY when this section or footer visible
+  // Active ONLY when this section or footer visible (kept)
   const [hexVisible, setHexVisible] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
   const activeRef = useRef(false);
@@ -144,8 +156,10 @@ export default function Hexagon() {
     let cancelled = false;
     (async () => {
       try {
-        // Try preferred blog; fallback to global list if blog is not accessible
-        const preferred = await sf<{ blog?: { articles?: { nodes?: any[] } } }>(GET_BLOG_WITH_ARTICLES, { blogHandle: SHOPIFY_BLOG_HANDLE, first: 4 });
+        const preferred = await sf<{ blog?: { articles?: { nodes?: any[] } } }>(
+          GET_BLOG_WITH_ARTICLES,
+          { blogHandle: SHOPIFY_BLOG_HANDLE, first: 4 }
+        );
         let nodes = preferred?.blog?.articles?.nodes || [];
         if (!nodes.length) {
           const all = await sf<{ articles?: { nodes?: any[] } }>(LIST_ARTICLES, { first: 4 });
@@ -179,104 +193,52 @@ export default function Hexagon() {
     [slides, index]
   );
 
-  /* ===== full-viewport detection + pin → fly → release ===== */
+  /* ===== Scroll lock: lock when ≥98% visible, release when header flight done ===== */
+  const [scrollLocked, setScrollLocked] = useState(false);
+  const lockYRef = useRef(0);
   useEffect(() => {
-    const el = sectionRef.current; if (!el) return;
-    const sticky = el; // our section fills viewport (height:100vh)
+    const section = sectionRef.current;
+    if (!section) return;
 
-    let isFull = false;
-    let prevY = 0;
-    let pending = false;
-    let released = false;
-    let onDoneRef: ((...a: any[]) => void) | null = null;
+    let doneHandler: ((...a: any[]) => void) | null = null;
+    let testimoniesDone = false;
 
-    const TOL = 1; // px tolerance
-    const COOLDOWN_MS = 400; // guard against rapid re-entry/flicker
+    const offTestDone = bus.on("testimonies:done", () => { testimoniesDone = true; });
 
-    // Fixed-body scroll lock to avoid iOS bounce and layout shifts
-    function lockScrollFixed(): number {
-      const y = window.scrollY || window.pageYOffset || 0;
-      const root = document.documentElement;
-      const body = document.body;
-      const sbw = window.innerWidth - root.clientWidth;
-      if (sbw > 0) { root.style.paddingRight = `${sbw}px`; body.style.paddingRight = `${sbw}px`; }
-      body.style.position = "fixed";
-      body.style.top = `-${y}px`;
-      body.style.left = "0";
-      body.style.right = "0";
-      body.style.width = "100%";
-      body.style.overflow = "hidden";
-      return y;
-    }
-    function unlockScrollFixed(y: number) {
-      const root = document.documentElement;
-      const body = document.body;
-      body.style.position = "";
-      body.style.top = "";
-      body.style.left = "";
-      body.style.right = "";
-      body.style.width = "";
-      body.style.overflow = "";
-      root.style.paddingRight = "";
-      body.style.paddingRight = "";
-      window.scrollTo(0, y || 0);
-    }
+    const observer = new IntersectionObserver(([entry]) => {
+      // threshold is 0.99, but we accept ≥0.98 to be tolerant across browsers
+      if (entry.intersectionRatio >= 0.98 && !scrollLocked && testimoniesDone) {
+        // lock vertical
+        lockYRef.current = lockScroll();
+        setScrollLocked(true);
 
-    const check = () => {
-      const r = sticky.getBoundingClientRect();
-      const full = Math.abs(r.top) <= TOL && Math.abs(r.bottom - window.innerHeight) <= TOL;
-      if (full !== isFull) {
-        isFull = full;
-        if (full) {
-          bus.emit("hex:page-full-on");
-          if (!pending) {
-            const now = Date.now();
-            if (recentlyUnpinned.current && now - (unpinnedTime.current || 0) < COOLDOWN_MS) {
-              return; // skip pin during cooldown
-            }
-            pending = true;
-            // lock and request header flight
-            prevY = lockScrollFixed();
-            const onDone = () => { bus.off("header:logo-flyToHex:done", onDone as any); onDoneRef = null; unlockScrollFixed(prevY); pending = false; setPinned(false); recentlyUnpinned.current = true; unpinnedTime.current = Date.now(); released = true; };
-            setPinned(true);
-            onDoneRef = onDone;
-            bus.on("header:logo-flyToHex:done", onDone as any);
-            bus.emit("header:logo-flyToHex");
-          }
-        } else {
-          bus.emit("hex:page-full-off");
-          if (pending) {
-            bus.emit("header:resetLogoFlight");
-            unlockScrollFixed(prevY); pending = false; setPinned(false); recentlyUnpinned.current = true; unpinnedTime.current = Date.now();
-          }
-        }
+        // set up one-time release on header flight completion
+        doneHandler = () => {
+          bus.off("header:logo-flyToHex:done", doneHandler as any);
+          doneHandler = null;
+          unlockScroll(lockYRef.current);
+          setScrollLocked(false);
+        };
+        bus.on("header:logo-flyToHex:done", doneHandler as any);
+
+        // trigger header flight
+        bus.emit("header:logo-flyToHex");
       }
-    };
+    }, { threshold: 0.99 });
 
-    let ticking = false;
-    const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { check(); ticking = false; }); } };
-    const onResize = () => onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-
-    const io = new IntersectionObserver(([entry]) => {
-      const full = entry?.intersectionRatio === 1;
-      if (full) { /* rely on check() to lock/emit for tolerance */ }
-    }, { threshold: [1] });
-    io.observe(sticky);
-
-    check();
+    observer.observe(section);
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-      io.disconnect();
-      if (onDoneRef) bus.off("header:logo-flyToHex:done", onDoneRef as any);
-      if (!released && pending) { bus.emit("header:resetLogoFlight"); unlockScrollFixed(prevY); }
+      observer.disconnect();
+      offTestDone();
+      if (doneHandler) {
+        bus.off("header:logo-flyToHex:done", doneHandler as any);
+        doneHandler = null;
+      }
     };
-  }, []);
+  }, [scrollLocked]);
 
-  // Visibility watchers: section + footer
+  // Visibility watchers: section + footer (kept)
   useEffect(() => {
     const sec = sectionRef.current;
     const footer = document.querySelector<HTMLElement>("footer");
@@ -391,7 +353,7 @@ export default function Hexagon() {
       const active = activeRef.current;
 
       // Orbit math
-      const { a, b, yOffset } = orbitParamsRef.current;
+      const { a, b, yOffset } = { a: 20, b: 14.6, yOffset: -3.1 }; // use state if you want live controls
       if (active) t = (t + dt * REV_RATE) % 1;
       const angle = t * Math.PI * 2;
 
@@ -609,10 +571,10 @@ export default function Hexagon() {
       </div>
 
       <OrbitDebug
-        a={orbitParams.a}
-        b={orbitParams.b}
-        y={orbitParams.yOffset}
-        onChange={(a, b, y) => setOrbitParams({ a, b, yOffset: y })}
+        a={20}
+        b={14.6}
+        y={-3.1}
+        onChange={() => {}}
       />
     </section>
   );
@@ -659,20 +621,4 @@ function fallbackFromUrl(url: string): Slide {
     imageUrl: "/placeholder.jpg",
     url,
   };
-}
-
-/* =========================================================
-   Scroll lock helpers
-   ========================================================= */
-function lockScroll() {
-  if (typeof document === "undefined") return;
-  const root = document.documentElement; const body = document.body;
-  const sbw = window.innerWidth - root.clientWidth;
-  root.style.overflow = "hidden"; body.style.overflow = "hidden";
-  if (sbw > 0) { root.style.paddingRight = `${sbw}px`; body.style.paddingRight = `${sbw}px`; }
-}
-function unlockScroll() {
-  if (typeof document === "undefined") return;
-  const root = document.documentElement; const body = document.body;
-  root.style.overflow = ""; body.style.overflow = ""; root.style.paddingRight = ""; body.style.paddingRight = "";
 }

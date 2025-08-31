@@ -10,6 +10,8 @@ type EventMap = {
   "header:logo-flyToHex": void;
   "header:logo-flyToHex:done": void;
   "header:resetLogoFlight": void;
+  // Coordination with Testimonies section
+  "testimonies:done": void;
 };
 
 type Handler<T = any> = (payload: T) => void;

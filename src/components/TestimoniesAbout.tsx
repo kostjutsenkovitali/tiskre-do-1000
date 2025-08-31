@@ -4,6 +4,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, ReactNode } from "react";
 import Link from "next/link";
 import ThreeModel from "@/components/ThreeModel";
+import { bus } from "@/utils/visibilityBus";
 
 type Dir = "left" | "right";
 
@@ -831,6 +832,7 @@ export default function TestimoniesAbout() {
   const [laserDone, setLaserDone] = useState(false);
   const [scrollLocked, setScrollLocked] = useState(false);
   const lockYRef = useRef(0);
+  const sectionRef = useRef<HTMLElement | null>(null);
 
   const [targets, setTargets] = useState<Array<{ segs: Seg[] | null; bbox: BBox | null }>>([]);
 
@@ -881,23 +883,52 @@ export default function TestimoniesAbout() {
     return () => { cancelled = true; };
   }, []);
 
-  // Start laser when veil fully open; lock scroll
+  // Start laser when veil fully open; (scroll lock handled separately)
   useEffect(() => {
     const fullyOpen = openingWidthVW >= 99.5;
     if (fullyOpen && !laserActive && !laserDone) {
-      lockYRef.current = lockScroll();
-      setScrollLocked(true);
       setLaserActive(true);
     }
   }, [openingWidthVW, laserActive, laserDone]);
 
-  // Unlock scroll after laser finishes (release vertical)
+  // ===== Scroll lock: lock when ≥98% visible, release when header flight done =====
   useEffect(() => {
-    if (laserDone && scrollLocked) {
-      unlockScroll(lockYRef.current);
-      setScrollLocked(false);
-    }
-  }, [laserDone, scrollLocked]);
+    const section = sectionRef.current;
+    if (!section) return;
+
+    let doneHandler: ((...a: any[]) => void) | null = null;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      // threshold is 0.99, but we accept ≥0.98 to be tolerant across browsers
+      if (entry.intersectionRatio >= 0.98 && !scrollLocked) {
+        // lock vertical
+        lockYRef.current = lockScroll();
+        setScrollLocked(true);
+
+        // set up one-time release on header flight completion
+        doneHandler = () => {
+          bus.off("header:logo-flyToHex:done", doneHandler as any);
+          doneHandler = null;
+          unlockScroll(lockYRef.current);
+          setScrollLocked(false);
+        };
+        bus.on("header:logo-flyToHex:done", doneHandler as any);
+
+        // trigger header flight
+        bus.emit("header:logo-flyToHex");
+      }
+    }, { threshold: 0.99 });
+
+    observer.observe(section);
+
+    return () => {
+      observer.disconnect();
+      if (doneHandler) {
+        bus.off("header:logo-flyToHex:done", doneHandler as any);
+        doneHandler = null;
+      }
+    };
+  }, [scrollLocked]);
 
   const worldBBox = useMemo(() => SHEET_BBOX, []);
   const ratio = useMemo(() => {
@@ -1016,6 +1047,7 @@ export default function TestimoniesAbout() {
           onDone={() => {
             setLaserActive(false);
             setLaserDone(true);
+            try { bus.emit("testimonies:done"); } catch {}
           }}
         />
 
