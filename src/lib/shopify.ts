@@ -92,3 +92,23 @@ export async function sf<T>(query: string, variables?: Record<string, unknown>):
 }
 
 
+// Branded checkout helper: optionally rewrite checkoutUrl host to your custom domain
+// Usage: brandedCheckoutUrl(cart.checkoutUrl)
+const RAW_CHECKOUT_HOST =
+  process.env.NEXT_PUBLIC_SHOPIFY_CHECKOUT_HOST ||
+  process.env.SHOPIFY_CHECKOUT_HOST ||
+  "";
+
+export function brandedCheckoutUrl(url: string): string {
+  if (!RAW_CHECKOUT_HOST) return url;
+  try {
+    const u = new URL(url);
+    const host = RAW_CHECKOUT_HOST.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (host) u.host = host;
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+

@@ -51,6 +51,15 @@ export const CUSTOMER_QUERY = gql`
   }
 `;
 
+export const CUSTOMER_UPDATE = gql`
+  mutation CustomerUpdate($accessToken: String!, $customer: CustomerUpdateInput!) {
+    customerUpdate(customerAccessToken: $accessToken, customer: $customer) {
+      customer { id firstName lastName email }
+      userErrors { field message }
+    }
+  }
+`;
+
 export async function customerCreate(input: { email: string; password: string; firstName?: string; lastName?: string }) {
   const res = await sf<{ customerCreate: { customer: any; userErrors?: Array<{ message: string }> } }>(CUSTOMER_CREATE, { input });
   if (!res.customerCreate.customer) throw new Error(res.customerCreate.userErrors?.map(e => e.message).join(", ") || "Customer create failed");
@@ -71,6 +80,12 @@ export async function customerAccessTokenDelete(accessToken: string) {
 export async function getCustomer(accessToken: string) {
   const res = await sf<{ customer: any }>(CUSTOMER_QUERY, { accessToken });
   return res.customer || null;
+}
+
+export async function customerUpdateProfile(accessToken: string, customer: { firstName?: string; lastName?: string; email?: string }) {
+  const res = await sf<{ customerUpdate: { customer: any; userErrors?: Array<{ message: string }> } }>(CUSTOMER_UPDATE, { accessToken, customer });
+  if (!res.customerUpdate.customer) throw new Error(res.customerUpdate.userErrors?.map(e => e.message).join(", ") || "Update failed");
+  return res.customerUpdate.customer;
 }
 
 

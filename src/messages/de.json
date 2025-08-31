@@ -1,0 +1,50 @@
+{
+  "Account": {
+    "title": "Mein Konto",
+    "accountAccess": "Kontozugang",
+    "login": "Anmelden",
+    "createAccount": "Konto erstellen",
+    "orCreate": "— oder Konto erstellen —",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "logout": "Abmelden",
+    "profileInfo": "Profilinformationen",
+    "updateProfile": "Profil aktualisieren",
+    "orderHistory": "Bestellverlauf",
+    "accountSettings": "Kontoeinstellungen",
+    "currentPassword": "Aktuelles Passwort",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Neues Passwort bestätigen",
+    "updatePassword": "Passwort aktualisieren",
+    "fullName": "Vollständiger Name"
+  },
+  "Contact": {
+    "title": "Kontakt aufnehmen",
+    "intro": "Wir freuen uns, von Ihnen zu hören. Senden Sie uns eine Nachricht und wir antworten so schnell wie möglich.",
+    "sendMessageTitle": "Senden Sie uns eine Nachricht",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "email": "E-Mail",
+    "subject": "Betreff",
+    "message": "Nachricht",
+    "firstNamePlaceholder": "Max",
+    "lastNamePlaceholder": "Mustermann",
+    "emailPlaceholder": "max@beispiel.de",
+    "subjectPlaceholder": "Wie können wir helfen?",
+    "messagePlaceholder": "Erzählen Sie uns mehr über Ihre Anfrage...",
+    "sendMessage": "Nachricht senden",
+    "infoTitle": "Kontaktinformationen",
+    "phone": "Telefon",
+    "phoneHours": "Mo-Fr 9-18 Uhr",
+    "address": "Adresse",
+    "businessHours": "Öffnungszeiten",
+    "weekdays": "Montag - Freitag",
+    "saturday": "Samstag",
+    "sunday": "Sonntag",
+    "closed": "Geschlossen"
+  }
+}
+
+

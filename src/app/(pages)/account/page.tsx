@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { cartBuyerIdentityUpdate } from "@/lib/cart";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function Account() {
+  const { t, locale } = useI18n();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const { cart } = useCart();
   const [me, setMe] = useState<any>(null);
@@ -43,7 +45,7 @@ export default function Account() {
         const tok = (document.cookie.split(";").find(c => c.trim().startsWith("sf_customer_token=")) || "").split("=")[1];
         if (tok && cart?.id) await cartBuyerIdentityUpdate(cart.id, { customerAccessToken: tok });
       } catch {}
-      try { router.push("/account"); } catch {}
+      try { router.push(`/${locale}/account?welcome=1`); } catch {}
     } else {
       alert(res?.error || "Auth failed");
     }
@@ -54,31 +56,31 @@ export default function Account() {
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-md px-4 sm:px-6 lg:px-8 py-16">
           <div className="border rounded-lg">
-            <div className="p-4 border-b"><h2 className="text-center text-lg font-medium">Account Access</h2></div>
+            <div className="p-4 border-b"><h2 className="text-center text-lg font-medium">{t("Account.accountAccess")}</h2></div>
             <div className="p-4 space-y-6">
               <form id="login-form" className="space-y-2" onSubmit={(e) => { e.preventDefault(); doAuth("login"); }}>
-                <label htmlFor="email" className="text-sm">Email</label>
+                <label htmlFor="email" className="text-sm">{t("Account.email")}</label>
                 <input name="email" id="email" type="email" placeholder="your@email.com" className="w-full h-10 px-3 border rounded-md" />
                 <div className="space-y-2">
-                <label htmlFor="password" className="text-sm">Password</label>
+                <label htmlFor="password" className="text-sm">{t("Account.password")}</label>
                 <input name="password" id="password" type="password" className="w-full h-10 px-3 border rounded-md" />
                 </div>
-                <Button type="submit" className="w-full">Login</Button>
+                <Button type="submit" className="w-full">{t("Account.login")}</Button>
               </form>
-              <div className="text-center text-sm text-muted-foreground">— or create an account —</div>
+              <div className="text-center text-sm text-muted-foreground">{t("Account.orCreate")}</div>
               <form id="signup-form" className="space-y-2" onSubmit={(e) => { e.preventDefault(); doAuth("signup"); }}>
-                <label htmlFor="name" className="text-sm">Full Name</label>
+                <label htmlFor="name" className="text-sm">{t("Account.fullName")}</label>
                 <input name="firstName" placeholder="John" className="w-full h-10 px-3 border rounded-md" />
                 <input name="lastName" placeholder="Doe" className="w-full h-10 px-3 border rounded-md" />
                 <div className="space-y-2">
-                <label htmlFor="reg-email" className="text-sm">Email</label>
+                <label htmlFor="reg-email" className="text-sm">{t("Account.email")}</label>
                 <input name="email" id="reg-email" type="email" placeholder="your@email.com" className="w-full h-10 px-3 border rounded-md" />
                 </div>
                 <div className="space-y-2">
-                <label htmlFor="reg-password" className="text-sm">Password</label>
+                <label htmlFor="reg-password" className="text-sm">{t("Account.password")}</label>
                 <input name="password" id="reg-password" type="password" className="w-full h-10 px-3 border rounded-md" />
                 </div>
-                <Button type="submit" className="w-full">Create Account</Button>
+                <Button type="submit" className="w-full">{t("Account.createAccount")}</Button>
               </form>
             </div>
           </div>
@@ -91,34 +93,41 @@ export default function Account() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-medium text-foreground">My Account</h1>
-          <Button variant="outline" onClick={async () => { await fetch("/api/auth", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "logout" }) }); setIsLoggedIn(false); setMe(null); }}>Logout</Button>
+          <h1 className="text-2xl font-medium text-foreground">{t("Account.title")}</h1>
+          <Button variant="outline" onClick={async () => { await fetch("/api/auth", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "logout" }) }); setIsLoggedIn(false); setMe(null); }}>{t("Account.logout")}</Button>
         </div>
 
         <div className="grid gap-6">
           <div className="border rounded-lg">
-            <div className="p-4 border-b"><h2 className="font-medium">Profile Information</h2></div>
-            <div className="p-4 space-y-4">
+            <div className="p-4 border-b"><h2 className="font-medium">{t("Account.profileInfo")}</h2></div>
+            <form className="p-4 space-y-4" onSubmit={async (e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget as HTMLFormElement);
+              const payload: any = {};
+              fd.forEach((v, k) => (payload[k] = v));
+              const res = await fetch("/api/me", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }).then(r => r.json());
+              if (res?.error) alert(res.error); else await refreshMe();
+            }}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="profile-name" className="text-sm">Full Name</label>
-                  <input id="profile-name" defaultValue={user.name} className="w-full h-10 px-3 border rounded-md" />
+                  <label htmlFor="firstName" className="text-sm">{t("Account.firstName")}</label>
+                  <input name="firstName" id="firstName" defaultValue={me?.firstName || ""} className="w-full h-10 px-3 border rounded-md" />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="profile-email" className="text-sm">Email</label>
-                  <input id="profile-email" type="email" defaultValue={user.email} className="w-full h-10 px-3 border rounded-md" />
+                  <label htmlFor="lastName" className="text-sm">{t("Account.lastName")}</label>
+                  <input name="lastName" id="lastName" defaultValue={me?.lastName || ""} className="w-full h-10 px-3 border rounded-md" />
                 </div>
               </div>
               <div className="space-y-2">
-                <label htmlFor="address" className="text-sm">Address</label>
-                <input id="address" defaultValue={user.address} className="w-full h-10 px-3 border rounded-md" />
+                <label htmlFor="email" className="text-sm">{t("Account.email")}</label>
+                <input name="email" id="email" type="email" defaultValue={me?.email || ""} className="w-full h-10 px-3 border rounded-md" />
               </div>
-              <Button>Update Profile</Button>
-            </div>
+              <Button type="submit">{t("Account.updateProfile")}</Button>
+            </form>
           </div>
 
           <div className="border rounded-lg">
-            <div className="p-4 border-b"><h2 className="font-medium">Order History</h2></div>
+            <div className="p-4 border-b"><h2 className="font-medium">{t("Account.orderHistory")}</h2></div>
             <div className="p-4 space-y-4">
               {(me?.orders?.nodes || []).map((order: any) => (
                 <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -136,21 +145,21 @@ export default function Account() {
           </div>
 
           <div className="border rounded-lg">
-            <div className="p-4 border-b"><h2 className="font-medium">Account Settings</h2></div>
+            <div className="p-4 border-b"><h2 className="font-medium">{t("Account.accountSettings")}</h2></div>
             <div className="p-4 space-y-4">
               <div className="space-y-2">
-                <label htmlFor="current-password" className="text-sm">Current Password</label>
+                <label htmlFor="current-password" className="text-sm">{t("Account.currentPassword")}</label>
                 <input id="current-password" type="password" className="w-full h-10 px-3 border rounded-md" />
               </div>
               <div className="space-y-2">
-                <label htmlFor="new-password" className="text-sm">New Password</label>
+                <label htmlFor="new-password" className="text-sm">{t("Account.newPassword")}</label>
                 <input id="new-password" type="password" className="w-full h-10 px-3 border rounded-md" />
               </div>
               <div className="space-y-2">
-                <label htmlFor="confirm-password" className="text-sm">Confirm New Password</label>
+                <label htmlFor="confirm-password" className="text-sm">{t("Account.confirmPassword")}</label>
                 <input id="confirm-password" type="password" className="w-full h-10 px-3 border rounded-md" />
               </div>
-              <Button>Update Password</Button>
+              <Button>{t("Account.updatePassword")}</Button>
             </div>
           </div>
         </div>

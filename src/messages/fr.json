@@ -1,0 +1,50 @@
+{
+  "Account": {
+    "title": "Mon compte",
+    "accountAccess": "Accès au compte",
+    "login": "Se connecter",
+    "createAccount": "Créer un compte",
+    "orCreate": "— ou créer un compte —",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "logout": "Se déconnecter",
+    "profileInfo": "Informations du profil",
+    "updateProfile": "Mettre à jour le profil",
+    "orderHistory": "Historique des commandes",
+    "accountSettings": "Paramètres du compte",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "updatePassword": "Mettre à jour le mot de passe",
+    "fullName": "Nom complet"
+  },
+  "Contact": {
+    "title": "Contactez-nous",
+    "intro": "Nous serions ravis d'avoir de vos nouvelles. Envoyez-nous un message et nous vous répondrons dès que possible.",
+    "sendMessageTitle": "Envoyez-nous un message",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "email": "E-mail",
+    "subject": "Sujet",
+    "message": "Message",
+    "firstNamePlaceholder": "Jean",
+    "lastNamePlaceholder": "Dupont",
+    "emailPlaceholder": "jean@exemple.fr",
+    "subjectPlaceholder": "Comment pouvons-nous aider ?",
+    "messagePlaceholder": "Dites-nous en plus sur votre demande...",
+    "sendMessage": "Envoyer le message",
+    "infoTitle": "Informations de contact",
+    "phone": "Téléphone",
+    "phoneHours": "Lun–Ven 9h–18h",
+    "address": "Adresse",
+    "businessHours": "Horaires d'ouverture",
+    "weekdays": "Lundi - Vendredi",
+    "saturday": "Samedi",
+    "sunday": "Dimanche",
+    "closed": "Fermé"
+  }
+}
+
+

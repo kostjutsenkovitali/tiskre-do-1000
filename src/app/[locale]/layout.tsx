@@ -1,8 +1,8 @@
-import {notFound} from "next/navigation";
+import { notFound } from "next/navigation";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { I18nProvider, type Messages } from "@/contexts/I18nProvider";
 import CartDrawer from "@/components/CartDrawer";
-import {isLocale, resolveInContext} from "@/i18n/config";
-import type {CountryCode, LanguageCode, Locale} from "@/i18n/config";
+import { isLocale, resolveInContext, LOCALES, type Locale } from "@/i18n/config";
 
 // Context is provided by a client provider to avoid client hook usage in a server layout.
 
@@ -11,19 +11,37 @@ type Props = {
   params: { locale: string };
 };
 
-export default async function LocaleLayout({children, params}: Props) {
+export const dynamic = "force-dynamic";
+
+export default async function LocaleLayout({ children, params }: Props) {
   const { locale: raw } = await params;
   if (!isLocale(raw)) {
     notFound();
   }
   const locale = raw as Locale;
   const ctx = resolveInContext(locale);
+  // Dynamically load messages for the current locale (never hardcode English)
+  let messages: Messages = {};
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    messages = (await import(`@/messages/${locale}.json`)).default as Messages;
+  } catch {
+    try {
+      messages = (await import("@/messages/en.json")).default as Messages;
+    } catch {}
+  }
   return (
     <LanguageProvider value={ctx}>
-      {children}
-      <CartDrawer />
+      <I18nProvider locale={locale} messages={messages}>
+        {children}
+        <CartDrawer />
+      </I18nProvider>
     </LanguageProvider>
   );
+}
+
+export async function generateStaticParams() {
+  return LOCALES.map((l) => ({ locale: l }));
 }
 
 

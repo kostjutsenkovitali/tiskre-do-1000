@@ -5,6 +5,7 @@ import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { usePathname } from "next/navigation";
 import { detectLocaleFromPath, shopPath } from "@/lib/paths";
+import { brandedCheckoutUrl } from "@/lib/shopify";
 
 export default function Cart() {
   const { cart, update, remove } = useCart();
@@ -88,7 +89,7 @@ export default function Cart() {
                   <div className="flex justify-between font-medium text-lg"><span>Total</span><span>{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(subtotal)}</span></div>
                 </div>
                 {cart?.checkoutUrl ? (
-                  <Link href={cart.checkoutUrl}><Button className="w-full">Proceed to Checkout</Button></Link>
+                  <Link href={brandedCheckoutUrl(cart.checkoutUrl)}><Button className="w-full">Proceed to Checkout</Button></Link>
                 ) : null}
                 <Link href={shopHref}><Button variant="outline" className="w-full">Continue Shopping</Button></Link>
               </div>

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cartBuyerIdentityUpdate, cartCreate, cartGet, cartLinesAdd, cartLinesRemove, cartLinesUpdate, type Cart } from "@/lib/cart";
+import { brandedCheckoutUrl } from "@/lib/shopify";
 
 const CART_ID_KEY = "sf_cart_id";
 
@@ -91,8 +92,28 @@ export function useCart() {
     }
   }, [cart]);
 
+  const addAndCheckout = useCallback(async (merchandiseId: string, quantity: number) => {
+    const id = await ensureCartId();
+    const next = await cartLinesAdd(id, [{ merchandiseId, quantity }]);
+    localStorage.setItem(CART_ID_KEY, next.id);
+    setCart(next);
+    if (typeof window !== "undefined" && next.id) {
+      try {
+        const res = await fetch("/api/cart/prepareCheckout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ cartId: next.id }) });
+        const json = await res.json();
+        if (json?.checkoutUrl) {
+          window.location.href = json.checkoutUrl;
+          return;
+        }
+      } catch {}
+      if (next.checkoutUrl) {
+        try { window.location.href = brandedCheckoutUrl(next.checkoutUrl); } catch {}
+      }
+    }
+  }, []);
+
   const count = useMemo(() => cart?.totalQuantity ?? 0, [cart]);
 
-  return { cart, add, update, remove, count };
+  return { cart, add, update, remove, count, addAndCheckout };
 }
 

@@ -112,15 +112,17 @@ export default async function DetailBySegment({params}: Props) {
   }
 
   // blog detail
+  const { language } = resolveInContext(rawLocale);
   const data = await sf<{ blog: { articleByHandle: any } }>(GET_ARTICLE, {
     blogHandle: SHOPIFY_BLOG_HANDLE,
     articleHandle: slug,
+    language,
   });
   const a = data.blog?.articleByHandle;
   if (!a) notFound();
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
-      <div className="text-sm text-muted-foreground">{new Date(a.publishedAt).toLocaleDateString()}</div>
+      <div className="text-sm text-muted-foreground">{new Date(a.publishedAt).toLocaleDateString(rawLocale)}</div>
       <h1 className="mb-4 text-3xl font-semibold">{a.title}</h1>
       {a.image ? (
         <div className="relative mb-6 aspect-[16/9] overflow-hidden rounded border border-gray-200">

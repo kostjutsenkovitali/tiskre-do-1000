@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import AddToCartButton from "@/components/AddToCartButton";
+import { useCart } from "@/hooks/use-cart";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,6 +35,7 @@ function sanitizePrice(htmlish: string): string {
 }
 
 export default function ProductDetailClient({ locale, product, related }: Props) {
+  const { addAndCheckout } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
@@ -281,7 +283,10 @@ export default function ProductDetailClient({ locale, product, related }: Props)
                     type="button"
                     aria-label="Google Pay"
                     className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-black text-white shadow-sm hover:opacity-90 transition-opacity"
-                    onClick={() => { /* hook express checkout later */ }}
+                    onClick={() => {
+                      const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
+                      if (merchId) addAndCheckout(merchId, quantity);
+                    }}
                   >
                     <svg width="18" height="18" viewBox="0 0 256 262" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                       <path fill="#4285F4" d="M255.68 133.5c0-10.2-.92-20-2.64-29.5H130v55.8h70.56c-3.04 16.4-12.14 30.3-25.88 39.6v32.9h41.88c24.52-22.6 39.12-56 39.12-98.8z"/>
@@ -297,7 +302,10 @@ export default function ProductDetailClient({ locale, product, related }: Props)
                     type="button"
                     aria-label="PayPal"
                     className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#FFC439] text-[#003087] shadow-sm hover:opacity-95 transition-opacity"
-                    onClick={() => { /* hook express checkout later */ }}
+                    onClick={() => {
+                      const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
+                      if (merchId) addAndCheckout(merchId, quantity);
+                    }}
                   >
                     <svg width="20" height="20" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                       <path fill="#003087" d="M30.3 8.2c-1-4.1-5.1-6.2-9.7-6.2H11c-.6 0-1.1.4-1.2 1l-3.6 22c-.1.6.3 1.2 1 1.2h5.7l.8-4.6c.1-.6.6-1 1.2-1h2.5c5.9 0 10.8-2.3 12.2-8.9.1-.5.1-1.1.1-1.7s0-1.1-.1-1.8z"/>
@@ -311,7 +319,10 @@ export default function ProductDetailClient({ locale, product, related }: Props)
                     type="button"
                     aria-label="Klarna"
                     className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#ffb3c7] text-black shadow-sm hover:opacity-95 transition-opacity"
-                    onClick={() => { /* hook express checkout later */ }}
+                    onClick={() => {
+                      const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
+                      if (merchId) addAndCheckout(merchId, quantity);
+                    }}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                       <circle cx="4" cy="12" r="2" fill="currentColor" />

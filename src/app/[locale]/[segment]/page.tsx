@@ -85,6 +85,22 @@ export default async function IndexBySegment({params, searchParams}: Props) {
     de: "Neuigkeiten",
     fr: "Actualités",
   };
+  const noArticlesByLocale: Record<string, string> = {
+    en: "No articles yet.",
+    et: "Artikleid veel ei ole.",
+    fi: "Ei artikkeleita vielä.",
+    sv: "Inga artiklar ännu.",
+    de: "Noch keine Artikel.",
+    fr: "Pas encore d’articles.",
+  };
+  const readMoreByLocale: Record<string, string> = {
+    en: "Read more →",
+    et: "Loe edasi →",
+    fi: "Lue lisää →",
+    sv: "Läs mer →",
+    de: "Weiterlesen →",
+    fr: "Lire la suite →",
+  };
   let blogTitle = titleByLocale[rawLocale] || "News";
   try {
     const data = await sf<{ blog: { title: string; articles: { nodes: any[] } } }>(GET_BLOG_WITH_ARTICLES, { blogHandle, first, language });
@@ -119,11 +135,11 @@ export default async function IndexBySegment({params, searchParams}: Props) {
       <div className="mx-auto max-w-5xl px-4 py-10">
         <header className="mb-8">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">{blogTitle}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Latest updates and stories</p>
+          <p className="mt-2 text-sm text-muted-foreground">{/* localized via Shopify blog title/excerpt; static subheading removed or could be localized via messages if needed */}</p>
         </header>
 
         {nodes.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No articles yet.</div>
+          <div className="text-sm text-muted-foreground">{noArticlesByLocale[rawLocale] || noArticlesByLocale.en}</div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
             {nodes.slice(0, 4).map((a: any) => (
@@ -146,7 +162,7 @@ export default async function IndexBySegment({params, searchParams}: Props) {
                 </div>
                 <div className="p-4">
                   <div className="text-xs text-muted-foreground">
-                    {new Date(a.publishedAt).toLocaleDateString()}
+                    {new Date(a.publishedAt).toLocaleDateString(rawLocale)}
                   </div>
                   <h2 className="mt-1 text-lg font-medium text-foreground line-clamp-2">
                     {a.title}
@@ -155,7 +171,7 @@ export default async function IndexBySegment({params, searchParams}: Props) {
                     <p className="mt-2 text-sm text-muted-foreground line-clamp-3">{a.excerpt}</p>
                   ) : null}
                   <span className="mt-3 inline-block text-sm font-medium text-foreground/80 group-hover:underline">
-                    Read more →
+                    {readMoreByLocale[rawLocale] || readMoreByLocale.en}
                   </span>
                 </div>
               </Link>

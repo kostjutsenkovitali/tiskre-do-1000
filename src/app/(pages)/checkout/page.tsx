@@ -2,21 +2,21 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CreditCard, Truck } from "lucide-react";
-
-type CartItem = { id: string; name: string; price: number; image: string; quantity: number };
-
-const mockCartItems: CartItem[] = [
-  { id: "1", name: "Minimalist Cotton Tee", price: 45, image: "/about-img-1.webp", quantity: 2 },
-  { id: "2", name: "Leather Crossbody Bag", price: 120, image: "/about-img-2.webp", quantity: 1 },
-];
+import { useCart } from "@/hooks/use-cart";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { detectLocaleFromPath, shopPath } from "@/lib/paths";
+import { brandedCheckoutUrl } from "@/lib/shopify";
 
 export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal" | "klarna">("card");
-
-  const subtotal = mockCartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shipping = subtotal > 100 ? 0 : 10;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  const { cart } = useCart();
+  const pathname = usePathname();
+  const locale = detectLocaleFromPath(pathname);
+  const shopHref = shopPath(locale);
+  const lines = cart?.lines.nodes || [];
+  const currency = lines[0]?.merchandise?.price?.currencyCode || "EUR";
+  const subtotal = lines.reduce((sum: number, line: any) => sum + Number(line?.merchandise?.price?.amount || 0) * (line?.quantity || 0), 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,29 +120,40 @@ export default function Checkout() {
               <div className="p-4 border-b"><h2 className="font-medium">Order Summary</h2></div>
               <div className="p-4 space-y-4">
                 <div className="space-y-3">
-                  {mockCartItems.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3">
-                      <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
-                      <div className="flex-1">
-                        <h4 className="font-medium text-sm">{item.name}</h4>
-                        <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                      </div>
-                      <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
+                  {lines.length ? (
+                    lines.map((line: any) => {
+                      const title = line?.merchandise?.product?.title || line?.merchandise?.title;
+                      const image = line?.merchandise?.image?.url || null;
+                      const price = Number(line?.merchandise?.price?.amount || 0);
+                      return (
+                        <div key={line.id} className="flex items-center gap-3">
+                          {image ? <img src={image} alt="" className="w-12 h-12 object-cover rounded" /> : <div className="w-12 h-12 bg-muted rounded" />}
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{title}</h4>
+                            <p className="text-sm text-muted-foreground">Qty: {line.quantity}</p>
+                          </div>
+                          <span className="font-medium">{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(price * line.quantity)}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Your cart is empty. <Link className="underline" href={shopHref}>Continue shopping</Link></div>
+                  )}
                 </div>
 
                 <hr className="border-border" />
 
                 <div className="space-y-2">
-                  <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-                  <div className="flex justify-between"><span>Shipping</span><span>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span></div>
-                  <div className="flex justify-between"><span>Tax</span><span>${tax.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span>Subtotal</span><span>{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(subtotal)}</span></div>
                   <hr className="border-border" />
-                  <div className="flex justify-between font-medium text-lg"><span>Total</span><span>${total.toFixed(2)}</span></div>
+                  <div className="flex justify-between font-medium text-lg"><span>Total</span><span>{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(subtotal)}</span></div>
                 </div>
 
-                <Button className="w-full mt-2">Place Order</Button>
+                {cart?.checkoutUrl ? (
+                  <Link href={brandedCheckoutUrl(cart.checkoutUrl)}><Button className="w-full mt-2">Proceed to Shopify Checkout</Button></Link>
+                ) : (
+                  <Link href={shopHref}><Button variant="outline" className="w-full mt-2">Continue Shopping</Button></Link>
+                )}
               </div>
             </div>
           </div>

@@ -1,0 +1,50 @@
+{
+  "Account": {
+    "title": "Oma tili",
+    "accountAccess": "Tilitunnistus",
+    "login": "Kirjaudu",
+    "createAccount": "Luo tili",
+    "orCreate": "— tai luo tili —",
+    "email": "Sähköposti",
+    "password": "Salasana",
+    "firstName": "Etunimi",
+    "lastName": "Sukunimi",
+    "logout": "Kirjaudu ulos",
+    "profileInfo": "Profiilitiedot",
+    "updateProfile": "Päivitä profiili",
+    "orderHistory": "Tilaushistoria",
+    "accountSettings": "Tiliasetukset",
+    "currentPassword": "Nykyinen salasana",
+    "newPassword": "Uusi salasana",
+    "confirmPassword": "Vahvista uusi salasana",
+    "updatePassword": "Päivitä salasana",
+    "fullName": "Koko nimi"
+  },
+  "Contact": {
+    "title": "Ota yhteyttä",
+    "intro": "Haluaisimme kuulla sinusta. Lähetä viesti, niin vastaamme mahdollisimman pian.",
+    "sendMessageTitle": "Lähetä viesti",
+    "firstName": "Etunimi",
+    "lastName": "Sukunimi",
+    "email": "Sähköposti",
+    "subject": "Aihe",
+    "message": "Viesti",
+    "firstNamePlaceholder": "Matti",
+    "lastNamePlaceholder": "Meikäläinen",
+    "emailPlaceholder": "matti@esimerkki.fi",
+    "subjectPlaceholder": "Miten voimme auttaa?",
+    "messagePlaceholder": "Kerro lisää kyselystäsi...",
+    "sendMessage": "Lähetä viesti",
+    "infoTitle": "Yhteystiedot",
+    "phone": "Puhelin",
+    "phoneHours": "Ma–Pe 9–18",
+    "address": "Osoite",
+    "businessHours": "Aukioloajat",
+    "weekdays": "Maanantai - Perjantai",
+    "saturday": "Lauantai",
+    "sunday": "Sunnuntai",
+    "closed": "Suljettu"
+  }
+}
+
+

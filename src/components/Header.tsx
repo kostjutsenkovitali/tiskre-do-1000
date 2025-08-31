@@ -72,7 +72,7 @@ export default function Header() {
     { href: shopHref, label: L.shop, isActive: pathname?.startsWith(shopHref) },
     { href: "/about", label: L.about, isActive: pathname?.startsWith("/about") },
     { href: "/instructions", label: L.instructions, isActive: pathname?.startsWith("/instructions") },
-    { href: "/contact", label: L.contact, isActive: pathname?.startsWith("/contact") },
+    { href: `/${locale}/contact`, label: L.contact, isActive: pathname?.startsWith(`/${locale}/contact`) },
     { href: blogHref, label: L.blog, isActive: pathname?.startsWith(blogHref) },
   ];
 
@@ -232,7 +232,7 @@ export default function Header() {
             </details>
 
             {/* Account (unchanged size) */}
-            <Link href="/account" aria-label="Account" className="inline-flex">
+            <Link href={`/${locale}/account`} aria-label="Account" className="inline-flex">
               <Button
                 variant="ghost"
                 size="icon"
@@ -278,12 +278,12 @@ export default function Header() {
         <div className="lg:hidden px-3 pb-1">
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
             {[
-              { href: `/${locale}`, label: "Home", isActive: pathname === `/${locale}` },
-              { href: shopHref, label: "Shop", isActive: pathname?.startsWith(shopHref) },
-              { href: "/about", label: "About", isActive: pathname?.startsWith("/about") },
-              { href: "/instructions", label: "Instructions", isActive: pathname?.startsWith("/instructions") },
-              { href: "/contact", label: "Contact", isActive: pathname?.startsWith("/contact") },
-              { href: blogHref, label: "Blog", isActive: pathname?.startsWith(blogHref) },
+              { href: `/${locale}`, label: L.home, isActive: pathname === `/${locale}` },
+              { href: shopHref, label: L.shop, isActive: pathname?.startsWith(shopHref) },
+              { href: "/about", label: L.about, isActive: pathname?.startsWith("/about") },
+              { href: "/instructions", label: L.instructions, isActive: pathname?.startsWith("/instructions") },
+              { href: `/${locale}/contact`, label: L.contact, isActive: pathname?.startsWith(`/${locale}/contact`) },
+              { href: blogHref, label: L.blog, isActive: pathname?.startsWith(blogHref) },
             ].map((item) => (
               <Link
                 key={item.href}

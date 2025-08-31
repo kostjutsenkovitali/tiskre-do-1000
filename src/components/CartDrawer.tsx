@@ -2,10 +2,12 @@
 import { useEffect, useState } from "react";
 import { useCart } from "@/hooks/use-cart";
 import Link from "next/link";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function CartDrawer() {
   const { cart, update, remove } = useCart();
   const [open, setOpen] = useState(false);
+  const { locale } = useI18n();
 
   useEffect(() => {
     const onOpen = () => setOpen(true);
@@ -59,9 +61,6 @@ export default function CartDrawer() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm truncate">{title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Intl.NumberFormat(undefined, { style: "currency", currency }).format(price)} × {line.quantity}
-                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button className="rounded-none border px-2 text-sm" onClick={() => update(line.id, Math.max(1, line.quantity - 1))}>-</button>
@@ -70,7 +69,7 @@ export default function CartDrawer() {
                     <button className="rounded-none border px-2 text-sm" onClick={() => remove(line.id)}>Remove</button>
                   </div>
                   <div className="text-sm w-20 text-right">
-                    {new Intl.NumberFormat(undefined, { style: "currency", currency }).format(lineTotal)}
+                    {new Intl.NumberFormat(locale, { style: "currency", currency }).format(lineTotal)}
                   </div>
                 </div>
               );
@@ -83,10 +82,19 @@ export default function CartDrawer() {
           <div className="text-sm">
             Items: {cart?.totalQuantity ?? 0}
           </div>
-          {cart?.checkoutUrl ? (
-            <Link href={cart.checkoutUrl} className="rounded-none border px-4 py-2 text-sm">
+          {cart?.id ? (
+            <button
+              className="rounded-none border px-4 py-2 text-sm"
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/cart/prepareCheckout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ cartId: cart.id }) });
+                  const json = await res.json();
+                  if (json?.checkoutUrl) window.location.href = json.checkoutUrl;
+                } catch {}
+              }}
+            >
               Checkout
-            </Link>
+            </button>
           ) : null}
         </div>
       </aside>

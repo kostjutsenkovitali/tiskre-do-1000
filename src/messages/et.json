@@ -1,0 +1,50 @@
+{
+  "Account": {
+    "title": "Minu konto",
+    "accountAccess": "Konto ligipääs",
+    "login": "Logi sisse",
+    "createAccount": "Loo konto",
+    "orCreate": "— või loo konto —",
+    "email": "E-post",
+    "password": "Parool",
+    "firstName": "Eesnimi",
+    "lastName": "Perekonnanimi",
+    "logout": "Logi välja",
+    "profileInfo": "Profiili andmed",
+    "updateProfile": "Uuenda profiili",
+    "orderHistory": "Tellimuste ajalugu",
+    "accountSettings": "Konto seaded",
+    "currentPassword": "Praegune parool",
+    "newPassword": "Uus parool",
+    "confirmPassword": "Kinnita uus parool",
+    "updatePassword": "Uuenda parooli",
+    "fullName": "Täisnimi"
+  },
+  "Contact": {
+    "title": "Võta ühendust",
+    "intro": "Meil on hea meel sinust kuulda. Saada meile sõnum ja vastame esimesel võimalusel.",
+    "sendMessageTitle": "Saada meile sõnum",
+    "firstName": "Eesnimi",
+    "lastName": "Perekonnanimi",
+    "email": "E-post",
+    "subject": "Teema",
+    "message": "Sõnum",
+    "firstNamePlaceholder": "Jaan",
+    "lastNamePlaceholder": "Tamm",
+    "emailPlaceholder": "jaan@näide.ee",
+    "subjectPlaceholder": "Kuidas saame aidata?",
+    "messagePlaceholder": "Räägi meile oma päringust...",
+    "sendMessage": "Saada sõnum",
+    "infoTitle": "Kontaktandmed",
+    "phone": "Telefon",
+    "phoneHours": "E-R 9-18",
+    "address": "Aadress",
+    "businessHours": "Lahtiolekuajad",
+    "weekdays": "Esmaspäev - Reede",
+    "saturday": "Laupäev",
+    "sunday": "Pühapäev",
+    "closed": "Suletud"
+  }
+}
+
+

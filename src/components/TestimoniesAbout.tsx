@@ -1011,7 +1011,7 @@ export default function TestimoniesAbout() {
         <MultiLaserOverlayAbsolute
           active={laserActive}
           targets={targets}
-          durationMs={20000}
+          durationMs={5000}
           anchorRef={glbBoxRef}
           onDone={() => {
             setLaserActive(false);

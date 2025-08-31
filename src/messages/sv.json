@@ -1,0 +1,50 @@
+{
+  "Account": {
+    "title": "Mitt konto",
+    "accountAccess": "Kontoinloggning",
+    "login": "Logga in",
+    "createAccount": "Skapa konto",
+    "orCreate": "— eller skapa ett konto —",
+    "email": "E-post",
+    "password": "Lösenord",
+    "firstName": "Förnamn",
+    "lastName": "Efternamn",
+    "logout": "Logga ut",
+    "profileInfo": "Profilinformation",
+    "updateProfile": "Uppdatera profil",
+    "orderHistory": "Beställningshistorik",
+    "accountSettings": "Kontoinställningar",
+    "currentPassword": "Nuvarande lösenord",
+    "newPassword": "Nytt lösenord",
+    "confirmPassword": "Bekräfta nytt lösenord",
+    "updatePassword": "Uppdatera lösenord",
+    "fullName": "Fullständigt namn"
+  },
+  "Contact": {
+    "title": "Kontakta oss",
+    "intro": "Vi vill gärna höra från dig. Skicka ett meddelande så svarar vi så snart som möjligt.",
+    "sendMessageTitle": "Skicka ett meddelande",
+    "firstName": "Förnamn",
+    "lastName": "Efternamn",
+    "email": "E-post",
+    "subject": "Ämne",
+    "message": "Meddelande",
+    "firstNamePlaceholder": "Anna",
+    "lastNamePlaceholder": "Andersson",
+    "emailPlaceholder": "anna@exempel.se",
+    "subjectPlaceholder": "Hur kan vi hjälpa till?",
+    "messagePlaceholder": "Berätta mer om din förfrågan...",
+    "sendMessage": "Skicka meddelande",
+    "infoTitle": "Kontaktinformation",
+    "phone": "Telefon",
+    "phoneHours": "Mån–Fre 9–18",
+    "address": "Adress",
+    "businessHours": "Öppettider",
+    "weekdays": "Måndag - Fredag",
+    "saturday": "Lördag",
+    "sunday": "Söndag",
+    "closed": "Stängt"
+  }
+}
+
+

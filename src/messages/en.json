@@ -1,0 +1,50 @@
+{
+  "Account": {
+    "title": "My Account",
+    "accountAccess": "Account Access",
+    "login": "Login",
+    "createAccount": "Create Account",
+    "orCreate": "— or create an account —",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "logout": "Logout",
+    "profileInfo": "Profile Information",
+    "updateProfile": "Update Profile",
+    "orderHistory": "Order History",
+    "accountSettings": "Account Settings",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password",
+    "updatePassword": "Update Password",
+    "fullName": "Full Name"
+  },
+  "Contact": {
+    "title": "Get in Touch",
+    "intro": "We'd love to hear from you. Send us a message and we'll respond as soon as possible.",
+    "sendMessageTitle": "Send us a Message",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "subject": "Subject",
+    "message": "Message",
+    "firstNamePlaceholder": "John",
+    "lastNamePlaceholder": "Doe",
+    "emailPlaceholder": "john@example.com",
+    "subjectPlaceholder": "How can we help?",
+    "messagePlaceholder": "Tell us more about your inquiry...",
+    "sendMessage": "Send Message",
+    "infoTitle": "Contact Information",
+    "phone": "Phone",
+    "phoneHours": "Mon-Fri 9am-6pm EST",
+    "address": "Address",
+    "businessHours": "Business Hours",
+    "weekdays": "Monday - Friday",
+    "saturday": "Saturday",
+    "sunday": "Sunday",
+    "closed": "Closed"
+  }
+}
+
+
