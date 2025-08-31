@@ -1,7 +1,8 @@
 import {gql} from "graphql-request";
 
 export const LIST_ARTICLES = gql`
-  query ListArticles($first: Int!, $query: String) {
+  query ListArticles($first: Int!, $query: String, $language: LanguageCode)
+  @inContext(language: $language) {
     articles(first: $first, query: $query, sortKey: PUBLISHED_AT, reverse: true) {
       pageInfo { hasNextPage endCursor }
       nodes {
@@ -17,7 +18,8 @@ export const LIST_ARTICLES = gql`
 `;
 
 export const GET_BLOG_WITH_ARTICLES = gql`
-  query GetBlogWithArticles($blogHandle: String!, $first: Int!) {
+  query GetBlogWithArticles($blogHandle: String!, $first: Int!, $language: LanguageCode)
+  @inContext(language: $language) {
     blog(handle: $blogHandle) {
       title
       articles(first: $first, sortKey: PUBLISHED_AT, reverse: true) {
@@ -36,7 +38,8 @@ export const GET_BLOG_WITH_ARTICLES = gql`
 `;
 
 export const GET_ARTICLE = gql`
-  query GetArticle($blogHandle: String!, $articleHandle: String!) {
+  query GetArticle($blogHandle: String!, $articleHandle: String!, $language: LanguageCode)
+  @inContext(language: $language) {
     blog(handle: $blogHandle) {
       articleByHandle(handle: $articleHandle) {
         id

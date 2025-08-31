@@ -35,8 +35,7 @@ export default function Header() {
   const router = useRouter();
   const modelRef = useRef<ThreeModelHandle | null>(null);
 
-  const cartData = useCart();
-  const { count, total } = cartData ?? { count: 0, total: 0 };
+  const { count } = useCart();
 
   const isHomePath = pathname === "/" || pathname === "/home";
 
@@ -118,7 +117,7 @@ export default function Header() {
 
   const closeLangMenu = () => langRef.current?.removeAttribute("open");
 
-  // Language switch handler: preserves path, query, hash; remaps shop slug when needed
+  // Language switch handler: preserves path, query, hash; remaps shop/blog slugs when needed
   const onChangeLocale = (nextLocale: string) => {
     try {
       const currentHash = typeof window !== "undefined" ? window.location.hash : "";
@@ -131,10 +130,15 @@ export default function Header() {
         parts[0] = nextLocale;
       }
 
-      // If inside shop, remap the second segment to the target locale's shop slug
-      const allShop = new Set(Object.values(segments.shop));
-      if (parts.length >= 2 && allShop.has(parts[1])) {
-        parts[1] = segments.shop[nextLocale as keyof typeof segments.shop];
+      // If inside shop/blog, remap the second segment to the target locale's slug
+      const allShop = new Set<string>(Object.values(segments.shop));
+      const allBlog = new Set<string>(Object.values(segments.blog));
+      if (parts.length >= 2) {
+        if (allShop.has(parts[1])) {
+          parts[1] = segments.shop[nextLocale as keyof typeof segments.shop];
+        } else if (allBlog.has(parts[1])) {
+          parts[1] = segments.blog[nextLocale as keyof typeof segments.blog];
+        }
       }
 
       const targetPath = `/${parts.join("/")}` + (qs ? `?${qs}` : "") + currentHash;
@@ -260,20 +264,7 @@ export default function Header() {
                 draggable={false}
                 className="h-5 w-5 object-contain"
               />
-              <span
-                className={[
-                  baseCaps,
-                  "text-[12px] sm:text-[13px] text-black/80 dark:text-white/80",
-                ].join(" ")}
-              >
-                {typeof total === "number"
-                  ? new Intl.NumberFormat(undefined, {
-                      style: "currency",
-                      currency: "EUR",
-                      maximumFractionDigits: 2,
-                    }).format(total)
-                  : "€0.00"}
-              </span>
+              <span className={[baseCaps, "text-[12px] sm:text-[13px] text-black/80 dark:text-white/80"].join(" ")}>Cart</span>
               {count > 0 && (
                 <span className="ml-1 text-[11px] tabular-nums text-black/60 dark:text-white/60">
                   ({count})

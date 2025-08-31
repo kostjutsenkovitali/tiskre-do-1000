@@ -1,9 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useCart } from "@/hooks/use-cart";
+import { cartBuyerIdentityUpdate } from "@/lib/cart";
+import { useRouter } from "next/navigation";
 
 export default function Account() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { cart } = useCart();
+  const [me, setMe] = useState<any>(null);
+  const router = useRouter();
 
   const user = {
     name: "John Doe",
@@ -16,6 +22,33 @@ export default function Account() {
     { id: "ORD002", date: "2024-01-15", status: "processing", total: 45, items: 1 },
   ];
 
+  async function refreshMe() {
+    const res = await fetch("/api/me", { cache: "no-store" }).then(r => r.json()).catch(() => ({ customer: null }));
+    setMe(res.customer);
+    setIsLoggedIn(Boolean(res.customer));
+  }
+
+  useEffect(() => { refreshMe(); }, []);
+
+  async function doAuth(action: "login" | "signup") {
+    const form = document.getElementById(action === "login" ? "login-form" : "signup-form") as HTMLFormElement;
+    const fd = new FormData(form);
+    const payload: any = { action };
+    fd.forEach((v, k) => (payload[k] = v));
+    const res = await fetch("/api/auth", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }).then(r => r.json());
+    if (res?.ok) {
+      await refreshMe();
+      // Attach customer to cart for prefilled checkout
+      try {
+        const tok = (document.cookie.split(";").find(c => c.trim().startsWith("sf_customer_token=")) || "").split("=")[1];
+        if (tok && cart?.id) await cartBuyerIdentityUpdate(cart.id, { customerAccessToken: tok });
+      } catch {}
+      try { router.push("/account"); } catch {}
+    } else {
+      alert(res?.error || "Auth failed");
+    }
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-background">
@@ -23,29 +56,30 @@ export default function Account() {
           <div className="border rounded-lg">
             <div className="p-4 border-b"><h2 className="text-center text-lg font-medium">Account Access</h2></div>
             <div className="p-4 space-y-6">
-              <div className="space-y-2">
+              <form id="login-form" className="space-y-2" onSubmit={(e) => { e.preventDefault(); doAuth("login"); }}>
                 <label htmlFor="email" className="text-sm">Email</label>
-                <input id="email" type="email" placeholder="your@email.com" className="w-full h-10 px-3 border rounded-md" />
-              </div>
-              <div className="space-y-2">
+                <input name="email" id="email" type="email" placeholder="your@email.com" className="w-full h-10 px-3 border rounded-md" />
+                <div className="space-y-2">
                 <label htmlFor="password" className="text-sm">Password</label>
-                <input id="password" type="password" className="w-full h-10 px-3 border rounded-md" />
-              </div>
-              <Button className="w-full" onClick={() => setIsLoggedIn(true)}>Login</Button>
+                <input name="password" id="password" type="password" className="w-full h-10 px-3 border rounded-md" />
+                </div>
+                <Button type="submit" className="w-full">Login</Button>
+              </form>
               <div className="text-center text-sm text-muted-foreground">— or create an account —</div>
-              <div className="space-y-2">
+              <form id="signup-form" className="space-y-2" onSubmit={(e) => { e.preventDefault(); doAuth("signup"); }}>
                 <label htmlFor="name" className="text-sm">Full Name</label>
-                <input id="name" placeholder="John Doe" className="w-full h-10 px-3 border rounded-md" />
-              </div>
-              <div className="space-y-2">
+                <input name="firstName" placeholder="John" className="w-full h-10 px-3 border rounded-md" />
+                <input name="lastName" placeholder="Doe" className="w-full h-10 px-3 border rounded-md" />
+                <div className="space-y-2">
                 <label htmlFor="reg-email" className="text-sm">Email</label>
-                <input id="reg-email" type="email" placeholder="your@email.com" className="w-full h-10 px-3 border rounded-md" />
-              </div>
-              <div className="space-y-2">
+                <input name="email" id="reg-email" type="email" placeholder="your@email.com" className="w-full h-10 px-3 border rounded-md" />
+                </div>
+                <div className="space-y-2">
                 <label htmlFor="reg-password" className="text-sm">Password</label>
-                <input id="reg-password" type="password" className="w-full h-10 px-3 border rounded-md" />
-              </div>
-              <Button className="w-full" onClick={() => setIsLoggedIn(true)}>Create Account</Button>
+                <input name="password" id="reg-password" type="password" className="w-full h-10 px-3 border rounded-md" />
+                </div>
+                <Button type="submit" className="w-full">Create Account</Button>
+              </form>
             </div>
           </div>
         </div>
@@ -58,7 +92,7 @@ export default function Account() {
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-medium text-foreground">My Account</h1>
-          <Button variant="outline" onClick={() => setIsLoggedIn(false)}>Logout</Button>
+          <Button variant="outline" onClick={async () => { await fetch("/api/auth", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "logout" }) }); setIsLoggedIn(false); setMe(null); }}>Logout</Button>
         </div>
 
         <div className="grid gap-6">
@@ -86,15 +120,15 @@ export default function Account() {
           <div className="border rounded-lg">
             <div className="p-4 border-b"><h2 className="font-medium">Order History</h2></div>
             <div className="p-4 space-y-4">
-              {orders.map((order) => (
+              {(me?.orders?.nodes || []).map((order: any) => (
                 <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
-                    <h3 className="font-medium">Order #{order.id}</h3>
-                    <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleDateString()} • {order.items} items</p>
+                    <h3 className="font-medium">{order.name}</h3>
+                    <p className="text-sm text-muted-foreground">{new Date(order.processedAt).toLocaleDateString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">${order.total}</p>
-                    <span className={"inline-flex items-center px-2 py-1 text-xs rounded-md " + (order.status === "delivered" ? "bg-black text-white" : "bg-gray-200")}>{order.status}</span>
+                    <p className="font-medium">{order.totalPrice?.amount} {order.totalPrice?.currencyCode}</p>
+                    <span className="inline-flex items-center px-2 py-1 text-xs rounded-md bg-gray-200">{order.financialStatus}</span>
                   </div>
                 </div>
               ))}

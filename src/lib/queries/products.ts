@@ -21,6 +21,7 @@ export const GET_PRODUCTS = gql`
         title
         vendor
         tags
+        collections(first: 10) { nodes { handle title } }
         featuredImage {
           url
           altText

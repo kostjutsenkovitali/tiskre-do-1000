@@ -12,7 +12,13 @@ const CART_FRAGMENT = gql`
         quantity
         merchandise {
           __typename
-          ... on ProductVariant { id title product { title handle } price { amount currencyCode } }
+          ... on ProductVariant {
+            id
+            title
+            image { url altText }
+            product { title handle }
+            price { amount currencyCode }
+          }
         }
       }
     }
@@ -66,6 +72,16 @@ const CART_GET = gql`
   }
 `;
 
+const CART_BUYER_IDENTITY_UPDATE = gql`
+  ${CART_FRAGMENT}
+  mutation CartBuyerIdentityUpdate($cartId: ID!, $buyerIdentity: CartBuyerIdentityInput!) {
+    cartBuyerIdentityUpdate(cartId: $cartId, buyerIdentity: $buyerIdentity) {
+      cart { ...CartBasic }
+      userErrors { field message }
+    }
+  }
+`;
+
 export type Cart = {
   id: string;
   totalQuantity: number;
@@ -105,6 +121,13 @@ export async function cartGet(cartId: string): Promise<Cart> {
   const res = await sf<{ cart: Cart }>(CART_GET, { id: cartId });
   if (!res || !res.cart) throw new Error("Cart not found");
   return res.cart;
+}
+
+export async function cartBuyerIdentityUpdate(cartId: string, buyerIdentity: { customerAccessToken?: string }) {
+  const res = await sf<{ cartBuyerIdentityUpdate: { cart: Cart; userErrors?: Array<{ message: string }> } }>(CART_BUYER_IDENTITY_UPDATE, { cartId, buyerIdentity });
+  const cart = res.cartBuyerIdentityUpdate.cart;
+  if (!cart) throw new Error(res.cartBuyerIdentityUpdate.userErrors?.map(e => e.message).join(", ") || "Buyer identity update failed");
+  return cart;
 }
 
 

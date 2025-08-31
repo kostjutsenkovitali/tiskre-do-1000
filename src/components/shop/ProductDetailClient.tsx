@@ -269,26 +269,57 @@ export default function ProductDetailClient({ locale, product, related }: Props)
               </div>
 
               <div className="space-y-3">
-                {product?.variants?.nodes?.[0]?.id ? (
-                  <AddToCartButton
-                    className="w-full rounded-none"
-                    variantId={product.variants.nodes[0].id}
-                  />
-                ) : (
-                  <Button className="w-full rounded-none" disabled>
-                    {L.addToCart}
-                  </Button>
-                )}
+                <AddToCartButton
+                  className="w-full h-11 rounded-none bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  variantId={product?.variants?.nodes?.[0]?.id}
+                  productId={!product?.variants?.nodes?.length ? product?.id : undefined}
+                  quantity={quantity}
+                />
                 <div className="grid grid-cols-3 gap-3">
-                  <Button variant="outline" size="sm" className="text-xs rounded-none">
-                    Google Pay
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs rounded-none">
-                    PayPal
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs rounded-none">
-                    Klarna
-                  </Button>
+                  {/* Google Pay */}
+                  <button
+                    type="button"
+                    aria-label="Google Pay"
+                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-black text-white shadow-sm hover:opacity-90 transition-opacity"
+                    onClick={() => { /* hook express checkout later */ }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 256 262" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path fill="#4285F4" d="M255.68 133.5c0-10.2-.92-20-2.64-29.5H130v55.8h70.56c-3.04 16.4-12.14 30.3-25.88 39.6v32.9h41.88c24.52-22.6 39.12-56 39.12-98.8z"/>
+                      <path fill="#34A853" d="M130 261.1c35.28 0 64.92-11.7 86.56-31.7l-41.88-32.9c-11.6 7.8-26.52 12.5-44.68 12.5-34.3 0-63.4-22.9-73.8-53.9H12.3v33.8c21.58 42.7 65.78 72.2 117.7 72.2z"/>
+                      <path fill="#FBBC05" d="M56.2 155.1c-2.7-8.1-4.2-16.7-4.2-25.5s1.5-17.4 4.2-25.5V70.3H12.3C4.4 86.1 0 104.2 0 123.6s4.4 37.6 12.3 53.3l43.9-21.8z"/>
+                      <path fill="#EA4335" d="M130 50.2c19.2 0 36.4 6.6 49.9 19.4l37.4-37.4C194.9 12 165.3 0 130 0 78.08 0 33.88 29.5 12.3 72.3l43.9 33.8C66.6 73.9 95.7 50.2 130 50.2z"/>
+                    </svg>
+                    <span className="text-sm font-medium">G&nbsp;Pay</span>
+                  </button>
+
+                  {/* PayPal */}
+                  <button
+                    type="button"
+                    aria-label="PayPal"
+                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#FFC439] text-[#003087] shadow-sm hover:opacity-95 transition-opacity"
+                    onClick={() => { /* hook express checkout later */ }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path fill="#003087" d="M30.3 8.2c-1-4.1-5.1-6.2-9.7-6.2H11c-.6 0-1.1.4-1.2 1l-3.6 22c-.1.6.3 1.2 1 1.2h5.7l.8-4.6c.1-.6.6-1 1.2-1h2.5c5.9 0 10.8-2.3 12.2-8.9.1-.5.1-1.1.1-1.7s0-1.1-.1-1.8z"/>
+                      <path fill="#001C64" d="M16.3 10.9c.1-.6.6-1 1.2-1h3.7c1.5 0 2.7.3 3.6.9.4.3.8.7 1 .9.2.4.3.9.3 1.5 0 .4 0 .8-.1 1.2-1.2 5.3-5.3 7.1-10.3 7.1h-2.5c-.6 0-1.1.4-1.2 1l-.8 4.6h-4.9c-.6 0-1-.6-.9-1.2l3.6-22c.1-.6.6-1 1.2-1h10.9c3.4 0 6.6.9 8.3 2.9-1.7-1.5-4.3-2-7.2-2h-5.7c-.6 0-1.1.4-1.2 1l-1 5.2z"/>
+                    </svg>
+                    <span className="text-sm font-semibold">PayPal</span>
+                  </button>
+
+                  {/* Klarna */}
+                  <button
+                    type="button"
+                    aria-label="Klarna"
+                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#ffb3c7] text-black shadow-sm hover:opacity-95 transition-opacity"
+                    onClick={() => { /* hook express checkout later */ }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <circle cx="4" cy="12" r="2" fill="currentColor" />
+                      <rect x="7" y="7" width="2" height="10" rx="1" fill="currentColor" />
+                      <path d="M21 9.5v-2h-2v2h-2v2h2v2h2v-2h2v-2h-2z" fill="currentColor" />
+                    </svg>
+                    <span className="text-sm font-semibold">Klarna</span>
+                  </button>
                 </div>
 
                 {bulletPoints.length > 0 && (

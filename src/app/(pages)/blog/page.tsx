@@ -39,7 +39,12 @@ const mockBlogPosts: MockPost[] = [
 
 export default function Blog() {
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen"
+      style={{
+        background: "linear-gradient(180deg, #f8f8f8 0%, #b8a888 100%)",
+      }}
+    >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-medium text-foreground mb-4">Blog</h1>

@@ -44,40 +44,45 @@ export default function CartDrawer() {
         </div>
         <div className="p-4 space-y-3 overflow-auto max-h-[calc(100%-8rem)]">
           {cart?.lines.nodes.length ? (
-            cart.lines.nodes.map((line) => (
-              <div key={line.id} className="flex items-center justify-between gap-2 border p-2">
-                <div className="text-sm">
-                  {line.merchandise?.product?.title || line.merchandise?.title}
+            cart.lines.nodes.map((line) => {
+              const title = (line as any)?.merchandise?.product?.title || (line as any)?.merchandise?.title;
+              const price = Number((line as any)?.merchandise?.price?.amount || 0);
+              const currency = (line as any)?.merchandise?.price?.currencyCode || "EUR";
+              const image = (line as any)?.merchandise?.image?.url || null;
+              const lineTotal = price * (line.quantity || 0);
+              return (
+                <div key={line.id} className="flex items-center gap-3 border p-2">
+                  {image ? (
+                    <img src={image} alt="" className="w-14 h-14 object-cover border" />
+                  ) : (
+                    <div className="w-14 h-14 bg-muted border" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm truncate">{title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Intl.NumberFormat(undefined, { style: "currency", currency }).format(price)} × {line.quantity}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button className="rounded-none border px-2 text-sm" onClick={() => update(line.id, Math.max(1, line.quantity - 1))}>-</button>
+                    <span className="text-sm tabular-nums w-6 text-center">{line.quantity}</span>
+                    <button className="rounded-none border px-2 text-sm" onClick={() => update(line.id, line.quantity + 1)}>+</button>
+                    <button className="rounded-none border px-2 text-sm" onClick={() => remove(line.id)}>Remove</button>
+                  </div>
+                  <div className="text-sm w-20 text-right">
+                    {new Intl.NumberFormat(undefined, { style: "currency", currency }).format(lineTotal)}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="rounded-none border px-2 text-sm"
-                    onClick={() => update(line.id, Math.max(1, line.quantity - 1))}
-                  >
-                    -
-                  </button>
-                  <span className="text-sm tabular-nums">{line.quantity}</span>
-                  <button
-                    className="rounded-none border px-2 text-sm"
-                    onClick={() => update(line.id, line.quantity + 1)}
-                  >
-                    +
-                  </button>
-                  <button
-                    className="rounded-none border px-2 text-sm"
-                    onClick={() => remove(line.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-sm text-muted-foreground">Your cart is empty.</div>
           )}
         </div>
         <div className="p-4 border-t flex items-center justify-between">
-          <div className="text-sm">Items: {cart?.totalQuantity ?? 0}</div>
+          <div className="text-sm">
+            Items: {cart?.totalQuantity ?? 0}
+          </div>
           {cart?.checkoutUrl ? (
             <Link href={cart.checkoutUrl} className="rounded-none border px-4 py-2 text-sm">
               Checkout

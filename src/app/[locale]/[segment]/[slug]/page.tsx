@@ -74,12 +74,14 @@ export default async function DetailBySegment({params}: Props) {
       .map((m: any) => (m.__typename === "MediaImage" ? { sourceUrl: m.image?.url, altText: m.image?.altText } : null))
       .filter((n: any) => !!n && typeof n.sourceUrl === "string" && /^https?:\/\//i.test(n.sourceUrl));
 
+    const variantNodes = (p.variants?.nodes || []).map((v: any) => ({ id: v.id, title: v.title, availableForSale: v.availableForSale }));
     const productLike = {
       id: p.id,
       slug: p.handle,
       name: p.title,
       description: p.descriptionHtml,
       sku: firstVariant?.sku,
+      variants: { nodes: variantNodes },
       stockStatus: firstVariant?.availableForSale ? "IN_STOCK" : "OUT_OF_STOCK",
       image: mainImage && /^https?:\/\//i.test(mainImage.url) ? { sourceUrl: mainImage.url, altText: mainImage.altText } : null,
       price,

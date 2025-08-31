@@ -3,11 +3,13 @@ import { useState } from "react";
 import { useCart } from "@/hooks/use-cart";
 
 type Props = {
-  variantId: string;
+  variantId?: string | null;
+  productId?: string | null;
   className?: string;
+  quantity?: number;
 };
 
-export default function AddToCartButton({ variantId, className }: Props) {
+export default function AddToCartButton({ variantId, productId, quantity = 1, className }: Props) {
   const { add } = useCart();
   const [loading, setLoading] = useState(false);
   return (
@@ -16,7 +18,9 @@ export default function AddToCartButton({ variantId, className }: Props) {
       onClick={async () => {
         setLoading(true);
         try {
-          await add(variantId, 1);
+          const idToUse = variantId || productId || "";
+          if (!idToUse) throw new Error("Missing variant or product id");
+          await add(idToUse, quantity);
         } finally {
           setLoading(false);
         }

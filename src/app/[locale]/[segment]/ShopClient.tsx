@@ -67,8 +67,7 @@ export default function ShopClient({ products, collections, hrefBase = "/shop" }
       const inCategory =
         selectedCategory === "all"
           ? true
-          : p.tags.some((tag) => tag.toLowerCase().includes(selectedCategory.toLowerCase())) ||
-            (p.vendor && p.vendor.toLowerCase().includes(selectedCategory.toLowerCase()));
+          : (p as any).collections?.some((c: any) => c.handle === selectedCategory);
 
       return inPrice && inCategory;
     });

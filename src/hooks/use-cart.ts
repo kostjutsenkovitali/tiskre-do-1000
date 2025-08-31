@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cartCreate, cartGet, cartLinesAdd, cartLinesRemove, cartLinesUpdate, type Cart } from "@/lib/cart";
+import { cartBuyerIdentityUpdate, cartCreate, cartGet, cartLinesAdd, cartLinesRemove, cartLinesUpdate, type Cart } from "@/lib/cart";
 
 const CART_ID_KEY = "sf_cart_id";
 
@@ -37,6 +37,27 @@ export function useCart() {
         loadingRef.current = false;
       }
     })();
+
+    // Listen for cross-component cart updates
+    const onChanged = (e: any) => {
+      const next = e?.detail as Cart | undefined;
+      if (next && next.id) setCart(next);
+    };
+    const onStorage = async (e: StorageEvent) => {
+      if (e.key === CART_ID_KEY && e.newValue && typeof window !== "undefined") {
+        try { const c = await cartGet(e.newValue); setCart(c); } catch {}
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("cart:changed", onChanged as EventListener);
+      window.addEventListener("storage", onStorage);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("cart:changed", onChanged as EventListener);
+        window.removeEventListener("storage", onStorage);
+      }
+    };
   }, []);
 
   const add = useCallback(async (variantId: string, quantity: number) => {
@@ -46,6 +67,7 @@ export function useCart() {
     setCart(next);
     if (typeof window !== "undefined") {
       try {
+        window.dispatchEvent(new CustomEvent("cart:changed", { detail: next }));
         window.dispatchEvent(new CustomEvent("cart:open"));
       } catch {}
     }
@@ -55,12 +77,18 @@ export function useCart() {
     if (!cart) return;
     const next = await cartLinesUpdate(cart.id, [{ id: lineId, quantity }]);
     setCart(next);
+    if (typeof window !== "undefined") {
+      try { window.dispatchEvent(new CustomEvent("cart:changed", { detail: next })); } catch {}
+    }
   }, [cart]);
 
   const remove = useCallback(async (lineId: string) => {
     if (!cart) return;
     const next = await cartLinesRemove(cart.id, [lineId]);
     setCart(next);
+    if (typeof window !== "undefined") {
+      try { window.dispatchEvent(new CustomEvent("cart:changed", { detail: next })); } catch {}
+    }
   }, [cart]);
 
   const count = useMemo(() => cart?.totalQuantity ?? 0, [cart]);
