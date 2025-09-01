@@ -45,5 +45,3 @@ export async function generateStaticParams() {
     return [] as Array<{ slug: string }>;
   }
 }
-
-export const dynamicParams = false;

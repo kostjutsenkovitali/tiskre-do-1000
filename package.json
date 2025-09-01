@@ -4,9 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "prebuild": "node scripts/disable-dynamic-for-export.js",
     "build": "next build",
+    "sitemap": "next-sitemap",
+    "preexport": "npm run sitemap",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "rimraf .next out out.zip",
+    "export": "next export",
+    "postexport": "node scripts/make-htaccess.js && node scripts/restore-dynamic-after-export.js",
+    "zip:out": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Compress-Archive -Path out\\* -DestinationPath out.zip -Force\"",
+    "prepare:out": "npm run clean && npm run build && npm run export && npm run zip:out"
   },
   "dependencies": {
     "@shopify/storefront-api-client": "^1.0.9",
@@ -29,6 +37,7 @@
     "@types/three": "^0.179.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
+    "rimraf": "^6.0.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

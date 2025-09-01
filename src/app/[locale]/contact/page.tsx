@@ -1,8 +1,13 @@
 // Localized contact route wrapper: renders the shared Contact page at /[locale]/contact
 import Contact from "@/app/(pages)/contact/page";
+import { Suspense } from "react";
 
 export default function LocalizedContactPage() {
-  return <Contact />;
+  return (
+    <Suspense fallback={<div />}> 
+      <Contact />
+    </Suspense>
+  );
 }
 
 

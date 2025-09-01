@@ -4,7 +4,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, ReactNode } from "react";
 import Link from "next/link";
 import ThreeModel from "@/components/ThreeModel";
-import { bus } from "@/utils/visibilityBus";
 
 type Dir = "left" | "right";
 
@@ -665,8 +664,8 @@ function MultiLaserOverlayAbsolute({
       // audio mix (global) + per-INC volumes
       const cutVol = anyCutting ? 0.6 : 0;
       const moveVol = anyMoving ? 0.5 : 0;
-      if (cutAudioRef.current) cutAudioRef.current.volume = cutVol;
-      if (moveAudioRef.current) moveAudioRef.current.volume = moveVol;
+      if (cutAudioRef.current) cutAudioRef.current.volume = 0;
+      if (moveAudioRef.current) moveAudioRef.current.volume = 0;
 
       if (incAudioRefs.current[0]) incAudioRefs.current[0]!.volume = anyCutting ? 0.7 : 0;
       if (incAudioRefs.current[1]) incAudioRefs.current[1]!.volume = anyCutting ? 0.7 : 0;
@@ -832,7 +831,6 @@ export default function TestimoniesAbout() {
   const [laserDone, setLaserDone] = useState(false);
   const [scrollLocked, setScrollLocked] = useState(false);
   const lockYRef = useRef(0);
-  const sectionRef = useRef<HTMLElement | null>(null);
 
   const [targets, setTargets] = useState<Array<{ segs: Seg[] | null; bbox: BBox | null }>>([]);
 
@@ -883,52 +881,23 @@ export default function TestimoniesAbout() {
     return () => { cancelled = true; };
   }, []);
 
-  // Start laser when veil fully open; (scroll lock handled separately)
+  // Start laser when veil fully open; lock scroll
   useEffect(() => {
     const fullyOpen = openingWidthVW >= 99.5;
     if (fullyOpen && !laserActive && !laserDone) {
+      lockYRef.current = lockScroll();
+      setScrollLocked(true);
       setLaserActive(true);
     }
   }, [openingWidthVW, laserActive, laserDone]);
 
-  // ===== Scroll lock: lock when ≥98% visible, release when header flight done =====
+  // Unlock scroll after laser finishes (release vertical)
   useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-
-    let doneHandler: ((...a: any[]) => void) | null = null;
-
-    const observer = new IntersectionObserver(([entry]) => {
-      // threshold is 0.99, but we accept ≥0.98 to be tolerant across browsers
-      if (entry.intersectionRatio >= 0.98 && !scrollLocked) {
-        // lock vertical
-        lockYRef.current = lockScroll();
-        setScrollLocked(true);
-
-        // set up one-time release on header flight completion
-        doneHandler = () => {
-          bus.off("header:logo-flyToHex:done", doneHandler as any);
-          doneHandler = null;
-          unlockScroll(lockYRef.current);
-          setScrollLocked(false);
-        };
-        bus.on("header:logo-flyToHex:done", doneHandler as any);
-
-        // trigger header flight
-        bus.emit("header:logo-flyToHex");
-      }
-    }, { threshold: 0.99 });
-
-    observer.observe(section);
-
-    return () => {
-      observer.disconnect();
-      if (doneHandler) {
-        bus.off("header:logo-flyToHex:done", doneHandler as any);
-        doneHandler = null;
-      }
-    };
-  }, [scrollLocked]);
+    if (laserDone && scrollLocked) {
+      unlockScroll(lockYRef.current);
+      setScrollLocked(false);
+    }
+  }, [laserDone, scrollLocked]);
 
   const worldBBox = useMemo(() => SHEET_BBOX, []);
   const ratio = useMemo(() => {
@@ -1042,12 +1011,12 @@ export default function TestimoniesAbout() {
         <MultiLaserOverlayAbsolute
           active={laserActive}
           targets={targets}
-          durationMs={5000}
+          durationMs={20000}
           anchorRef={glbBoxRef}
           onDone={() => {
             setLaserActive(false);
             setLaserDone(true);
-            try { bus.emit("testimonies:done"); } catch {}
+            setShowFrame(true); // << switch to frame.glb after laser finishes
           }}
         />
 
@@ -1111,7 +1080,7 @@ export default function TestimoniesAbout() {
                 >
                   <div style={{ position: "absolute", inset: 0 }}>
                     <ThreeModel
-                      modelPath={"/about/tiskre.glb"}
+                      modelPath={showFrame ? "/about/frame.glb" : "/about/tiskre.glb"}
                       height={"100%"}
                       flat
                       fitBBox={{ xmin: 0, ymin: 0, xmax: 4500, ymax: 1900 }}

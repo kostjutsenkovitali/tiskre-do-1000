@@ -1,6 +1,7 @@
 module.exports = {
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://tiskre-do.eu',
-  generateRobotsTxt: true,
+  siteUrl: 'https://tiskre-do.eu',
+  generateRobotsTxt: false,
+  outDir: 'public',
   exclude: ['/server-sitemap.xml'],
   transform: async (config, url) => {
     return {

@@ -1,7 +1,7 @@
 import {notFound} from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import {isLocale, getSegment, resolveInContext} from "@/i18n/config";
+import {isLocale, getSegment, resolveInContext, LOCALES, segments} from "@/i18n/config";
 import {GET_PRODUCT, GET_COLLECTION_PRODUCTS} from "@/lib/queries/products";
 import {GET_ARTICLE} from "@/lib/queries/blog";
 import type { Metadata } from "next";
@@ -9,6 +9,31 @@ import sanitizeHtml from "sanitize-html";
 import { SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
 import {sf} from "@/lib/shopify";
 import ProductDetailClient from "@/components/shop/ProductDetailClient";
+
+// Enable ISR with 1 hour revalidation for product pages
+export const revalidate = 3600;
+
+// Generate static params for popular products and articles
+export async function generateStaticParams() {
+  const params = [];
+  
+  // For now, return empty array - products will be generated on-demand via ISR
+  // In a real app, you'd fetch popular products/articles here
+  
+  // Example of how to pre-generate popular items:
+  // const popularProducts = await getPopularProducts();
+  // for (const locale of LOCALES) {
+  //   for (const product of popularProducts) {
+  //     params.push({
+  //       locale,
+  //       segment: segments.shop[locale],
+  //       slug: product.handle,
+  //     });
+  //   }
+  // }
+  
+  return params;
+}
 
 type Props = {
   params: any;
@@ -26,115 +51,141 @@ export default async function DetailBySegment({params}: Props) {
 
   if (isShop) {
     const {country, language} = resolveInContext(rawLocale);
-    const data = await sf<{ product: any }>(GET_PRODUCT, { handle: slug, country, language });
-    const p = data.product;
-    if (!p) notFound();
-    // Map Shopify product to the expected ProductLike shape for the client component
-    const firstVariant = p.variants?.nodes?.[0];
-    const price = firstVariant ? `${firstVariant.price.amount} ${firstVariant.price.currencyCode}` : "";
-    const mainImage = (p.media?.nodes || [])
-      .map((m: any) => (m.__typename === "MediaImage" ? m.image : null))
-      .filter((im: any) => !!im && typeof im.url === "string")?.[0] || null;
-    const bulletPoints: string[] = (() => {
-      const mf = p.bulletPoints;
-      if (!mf?.value) return [];
-      try {
-        // Shopify text metafield may be JSON (list) or newline-separated text
-        const parsed = JSON.parse(mf.value);
-        if (Array.isArray(parsed)) return parsed.filter((x: any) => typeof x === "string");
-      } catch {}
-      return String(mf.value)
-        .split(/\r?\n/)
-        .map((s: string) => s.trim())
-        .filter(Boolean);
-    })();
-
-    // Build related products (from first collection), exclude current, limit 4
-    let related: any[] = [];
-    const firstCollectionHandle = p.collections?.nodes?.[0]?.handle;
-    if (firstCollectionHandle) {
-      try {
-        const rel = await sf<{ collection: any }>(GET_COLLECTION_PRODUCTS, { handle: firstCollectionHandle, first: 8, country, language });
-        const nodes = rel.collection?.products?.nodes || [];
-        related = nodes
-          .filter((n: any) => n.handle !== p.handle)
-          .slice(0, 4)
-          .map((n: any) => ({
-            id: n.id,
-            slug: n.handle,
-            name: n.title,
-            image: n.featuredImage ? { sourceUrl: n.featuredImage.url, altText: n.featuredImage.altText } : null,
-            price: n.priceRange?.minVariantPrice ? `${n.priceRange.minVariantPrice.amount} ${n.priceRange.minVariantPrice.currencyCode}` : "",
-          }));
-      } catch {}
+    
+    try {
+      const data = await sf<{ product: any }>(GET_PRODUCT, { handle: slug, country, language });
+      const p = data.product;
+      if (!p) notFound();
+      
+      // Map Shopify product to the expected ProductLike shape for the client component
+      const firstVariant = p.variants?.nodes?.[0];
+      const price = firstVariant ? `${firstVariant.price.amount} ${firstVariant.price.currencyCode}` : "";
+      const mainImage = (p.media?.nodes || [])
+        .map((m: any) => (m.__typename === "MediaImage" ? m.image : null))
+        .filter((im: any) => !!im && typeof im.url === "string")?.[0] || null;
+      
+      const bulletPoints: string[] = (() => {
+        const mf = p.bulletPoints;
+        if (typeof mf === "string") return mf.split("\n").filter(Boolean);
+        if (Array.isArray(mf)) return mf.filter((x: any) => typeof x === "string");
+        return [];
+      })();
+      
+      const productLike = {
+        id: p.handle,
+        slug: p.handle,
+        title: p.title,
+        description: p.description || "",
+        price,
+        image: mainImage ? { url: mainImage.url, altText: mainImage.altText || p.title } : null,
+        bulletPoints,
+        availableForSale: p.availableForSale ?? true,
+        tags: p.tags || [],
+        vendor: p.vendor || "",
+      };
+      
+      return <ProductDetailClient product={productLike} />;
+    } catch (error) {
+      console.error('Failed to fetch product:', error);
+      notFound();
     }
-
-    // Build gallery images array with only absolute URLs
-    const galleryNodes = (p.media?.nodes || [])
-      .map((m: any) => (m.__typename === "MediaImage" ? { sourceUrl: m.image?.url, altText: m.image?.altText } : null))
-      .filter((n: any) => !!n && typeof n.sourceUrl === "string" && /^https?:\/\//i.test(n.sourceUrl));
-
-    const variantNodes = (p.variants?.nodes || []).map((v: any) => ({ id: v.id, title: v.title, availableForSale: v.availableForSale }));
-    const productLike = {
-      id: p.id,
-      slug: p.handle,
-      name: p.title,
-      description: p.descriptionHtml,
-      sku: firstVariant?.sku,
-      variants: { nodes: variantNodes },
-      stockStatus: firstVariant?.availableForSale ? "IN_STOCK" : "OUT_OF_STOCK",
-      image: mainImage && /^https?:\/\//i.test(mainImage.url) ? { sourceUrl: mainImage.url, altText: mainImage.altText } : null,
-      price,
-      galleryImages: { nodes: galleryNodes },
-      bulletPoints,
-      instructionJpg: (() => {
-        const refUrl = p.instructionJpg?.reference?.image?.url || p.instructionJpg?.reference?.url || null;
-        if (refUrl && /^https?:\/\//i.test(refUrl)) return refUrl;
-        const list = p.instructionJpg?.references?.nodes || [];
-        const first = list.find((n: any) => n?.image?.url || n?.url);
-        const u = first?.image?.url || first?.url || p.instructionJpg?.value || null;
-        return typeof u === "string" && /^https?:\/\//i.test(u) ? u : null;
-      })(),
-      instructionPdf: (() => {
-        const refUrl = p.instructionPdf?.reference?.url || null;
-        if (refUrl && /^https?:\/\//i.test(refUrl)) return refUrl;
-        const list = p.instructionPdf?.references?.nodes || [];
-        const first = list.find((n: any) => n?.url);
-        const u = first?.url || p.instructionPdf?.value || null;
-        return typeof u === "string" && /^https?:\/\//i.test(u) ? u : null;
-      })(),
-    } as any;
-
-    // Reuse the existing client product detail component for visuals
-    return (
-      <ProductDetailClient locale={rawLocale} product={productLike} related={related} />
-    );
   }
 
-  // blog detail
+  // Blog article
   const { language } = resolveInContext(rawLocale);
-  const data = await sf<{ blog: { articleByHandle: any } }>(GET_ARTICLE, {
-    blogHandle: SHOPIFY_BLOG_HANDLE,
-    articleHandle: slug,
-    language,
-  });
-  const a = data.blog?.articleByHandle;
-  if (!a) notFound();
-  return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <div className="text-sm text-muted-foreground">{new Date(a.publishedAt).toLocaleDateString(rawLocale)}</div>
-      <h1 className="mb-4 text-3xl font-semibold">{a.title}</h1>
-      {a.image ? (
-        <div className="relative mb-6 aspect-[16/9] overflow-hidden rounded border border-gray-200">
-          <Image src={a.image.url} alt={a.image.altText || a.title} fill className="object-cover" />
-        </div>
-      ) : null}
-      <div
-        className="prose dark:prose-invert"
-        dangerouslySetInnerHTML={{__html: sanitizeHtml(a.contentHtml, {allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img","iframe"])})}}
-      />
-    </div>
-  );
+  
+  try {
+    const data = await sf<{ article: any }>(GET_ARTICLE, { blogHandle: SHOPIFY_BLOG_HANDLE, articleHandle: slug, language });
+    const article = data.article;
+    if (!article) notFound();
+    
+    return (
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+        <Link
+          href={`/${rawLocale}/${segment}/`}
+          className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors mb-8"
+        >
+          ← Back to Blog
+        </Link>
+
+        <article>
+          {article.image && (
+            <div className="aspect-video rounded-lg overflow-hidden mb-8">
+              <Image src={article.image.url} alt={article.image.altText || article.title} fill className="object-cover" />
+            </div>
+          )}
+
+          <header className="mb-8">
+            <h1 className="text-3xl font-medium text-foreground mb-4">{article.title}</h1>
+            <div className="flex items-center text-muted-foreground text-sm">
+              <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
+              {article.author && (
+                <>
+                  <span className="mx-2">•</span>
+                  <span>By {article.author.firstName} {article.author.lastName}</span>
+                </>
+              )}
+            </div>
+          </header>
+
+          <div 
+            className="prose prose-neutral max-w-none dark:prose-invert"
+            dangerouslySetInnerHTML={{ 
+              __html: sanitizeHtml(article.contentHtml || article.content || "", {
+                allowedTags: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'img'],
+                allowedAttributes: {
+                  'a': ['href', 'target'],
+                  'img': ['src', 'alt', 'width', 'height']
+                }
+              })
+            }} 
+          />
+        </article>
+      </div>
+    );
+  } catch (error) {
+    console.error('Failed to fetch article:', error);
+    notFound();
+  }
 }
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const {locale: rawLocale, segment, slug} = (await params) as { locale: string; segment: string; slug: string };
+  
+  if (!isLocale(rawLocale)) {
+    return { title: "Not Found" };
+  }
 
+  const shopSeg = getSegment("shop", rawLocale);
+  const isShop = segment === shopSeg;
+  
+  try {
+    if (isShop) {
+      const {country, language} = resolveInContext(rawLocale);
+      const data = await sf<{ product: any }>(GET_PRODUCT, { handle: slug, country, language });
+      const p = data.product;
+      
+      if (p) {
+        return {
+          title: p.title,
+          description: p.description || p.title,
+        };
+      }
+    } else {
+      const { language } = resolveInContext(rawLocale);
+      const data = await sf<{ article: any }>(GET_ARTICLE, { blogHandle: SHOPIFY_BLOG_HANDLE, articleHandle: slug, language });
+      const article = data.article;
+      
+      if (article) {
+        return {
+          title: article.title,
+          description: article.excerpt || article.title,
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Failed to generate metadata:', error);
+  }
+  
+  return { title: "Page Not Found" };
+}

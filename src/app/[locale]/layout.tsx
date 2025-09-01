@@ -11,7 +11,6 @@ type Props = {
   params: { locale: string };
 };
 
-export const dynamic = "force-dynamic";
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale: raw } = await params;

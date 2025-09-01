@@ -5,11 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, AlertCircle, CheckCircle, Package } from "lucide-react";
 
-type PageProps = { params: { id: string } };
+type Props = { id: string };
 
-export default function ProductInstructions({ params }: PageProps) {
-  const { id } = params;
-
+export default function InstructionsDynamicClient({ id }: Props) {
   const instructionsData: Record<string, any> = {
     "tee-instructions": {
       name: "Minimalist Cotton T-Shirt",

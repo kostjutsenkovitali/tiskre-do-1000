@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useMemo } from "react";
+import { useMemo, Suspense } from "react";
 
 type MockPost = {
   id: string;
@@ -36,7 +36,7 @@ const mockBlogPosts: MockPost[] = [
   },
 ];
 
-export default function BlogPost() {
+function BlogPostContent() {
   const search = useSearchParams();
   const id = search.get("id") || "";
 
@@ -114,6 +114,14 @@ export default function BlogPost() {
         </article>
       </div>
     </div>
+  );
+}
+
+export default function BlogPost() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div>Loading...</div></div>}>
+      <BlogPostContent />
+    </Suspense>
   );
 }
 
