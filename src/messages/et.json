@@ -64,6 +64,16 @@
     "contactSupportLink": "Võtke ühendust meie tugimeeskonnaga",
     "viewProduct": "Vaata toodet"
   },
+  "Portfolio": {
+    "coldSmoke": "Külmsuits",
+    "shopNow": "Osta kohe",
+    "masterpieces": "Meie kõige otsitumad meistriteosed."
+  },
+  "Testimonials": {
+    "title": "Rahulolevad kliendid",
+    "subtitle": "Iseloomustused",
+    "customerTestimonials": "Kliendi iseloomustused"
+  },
   "Common": {
     "viewMore": "Vaata rohkem",
     "latestFromOurPosts": "Värsked postitused",

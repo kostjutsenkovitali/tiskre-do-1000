@@ -64,6 +64,16 @@
     "contactSupportLink": "Contactez notre équipe de support",
     "viewProduct": "Voir le produit"
   },
+  "Portfolio": {
+    "coldSmoke": "Fumée froide",
+    "shopNow": "Acheter maintenant",
+    "masterpieces": "Nos chefs-d'œuvre les plus recherchés."
+  },
+  "Testimonials": {
+    "title": "Campeurs satisfaits",
+    "subtitle": "Témoignages",
+    "customerTestimonials": "Témoignages de clients"
+  },
   "Common": {
     "viewMore": "Voir plus",
     "latestFromOurPosts": "Derniers articles",

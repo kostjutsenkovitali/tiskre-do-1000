@@ -62,6 +62,8 @@ export default function Header() {
   const locale = detectLocaleFromPath(pathname);
   const shopHref = shopPath(locale);
   const blogHref = blogPath(locale);
+  const aboutHref = `/${locale}/about`;
+  const instructionsHref = `/${locale}/instructions`;
   const navLabels: Record<string, { home: string; shop: string; about: string; instructions: string; contact: string; blog: string }> = {
     en: { home: "Home", shop: "Shop", about: "About", instructions: "Instructions", contact: "Contact", blog: "Blog" },
     et: { home: "Avaleht", shop: "Pood", about: "Meist", instructions: "Juhendid", contact: "Kontakt", blog: "Blogi" },
@@ -74,8 +76,8 @@ export default function Header() {
   const nav = [
     { href: `/${locale}`, label: L.home, isActive: isHomePath },
     { href: shopHref, label: L.shop, isActive: pathname?.startsWith(shopHref) },
-    { href: "/about", label: L.about, isActive: pathname?.startsWith("/about") },
-    { href: "/instructions", label: L.instructions, isActive: pathname?.startsWith("/instructions") },
+    { href: aboutHref, label: L.about, isActive: pathname?.startsWith("/about") },
+    { href: instructionsHref, label: L.instructions, isActive: pathname?.startsWith("/instructions") },
     { href: `/${locale}/contact`, label: L.contact, isActive: pathname?.startsWith(`/${locale}/contact`) },
     { href: blogHref, label: L.blog, isActive: pathname?.startsWith(blogHref) },
   ];
@@ -347,8 +349,8 @@ export default function Header() {
             {[
               { href: `/${locale}`, label: L.home, isActive: pathname === `/${locale}` },
               { href: shopHref, label: L.shop, isActive: pathname?.startsWith(shopHref) },
-              { href: "/about", label: L.about, isActive: pathname?.startsWith("/about") },
-              { href: "/instructions", label: L.instructions, isActive: pathname?.startsWith("/instructions") },
+              { href: aboutHref, label: L.about, isActive: pathname?.startsWith("/about") },
+              { href: instructionsHref, label: L.instructions, isActive: pathname?.startsWith("/instructions") },
               { href: `/${locale}/contact`, label: L.contact, isActive: pathname?.startsWith(`/${locale}/contact`) },
               { href: blogHref, label: L.blog, isActive: pathname?.startsWith(blogHref) },
             ].map((item) => (

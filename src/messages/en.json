@@ -2,14 +2,14 @@
   "Account": {
     "title": "My Account",
     "accountAccess": "Account Access",
-    "login": "Login",
+    "login": "Sign in",
     "createAccount": "Create Account",
     "orCreate": "— or create an account —",
     "email": "Email",
     "password": "Password",
     "firstName": "First Name",
     "lastName": "Last Name",
-    "logout": "Logout",
+    "logout": "Sign out",
     "profileInfo": "Profile Information",
     "updateProfile": "Update Profile",
     "orderHistory": "Order History",
@@ -21,9 +21,9 @@
     "fullName": "Full Name"
   },
   "Contact": {
-    "title": "Get in Touch",
+    "title": "Contact Us",
     "intro": "We'd love to hear from you. Send us a message and we'll respond as soon as possible.",
-    "sendMessageTitle": "Send us a Message",
+    "sendMessageTitle": "Send us a message",
     "firstName": "First Name",
     "lastName": "Last Name",
     "email": "Email",
@@ -37,7 +37,7 @@
     "sendMessage": "Send Message",
     "infoTitle": "Contact Information",
     "phone": "Phone",
-    "phoneHours": "Mon-Fri 9am-6pm EST",
+    "phoneHours": "Mon–Fri 9–18",
     "address": "Address",
     "businessHours": "Business Hours",
     "weekdays": "Monday - Friday",
@@ -47,11 +47,11 @@
   },
   "About": {
     "title": "About Tiskre-DO",
-    "intro": "We are a small family company from Tallinn, Estonia. Our mission is to bring our vision of the dream outdoor lifestyle to life—crafted in metal. If our ideas resonate with yours, we’ll be truly happy to connect.",
+    "intro": "We are a small family business from Tallinn, Estonia. Our mission is to bring our vision of the dream outdoor lifestyle to life — crafted in metal. If our ideas resonate with yours, we'd be truly happy to connect.",
     "philosophyTitle": "Our Philosophy",
-    "philosophyText": "We believe that good design should feel natural. Every piece we create is shaped by hands, not hype. Durable, practical, and quietly beautiful—That’s how we imagine the perfect outdoor space.",
+    "philosophyText": "We believe good design should feel natural. Every piece we create is shaped by hand, not hype. Durable, practical and quietly beautiful — that's how we imagine the perfect outdoor space.",
     "craftedTitle": "Crafted in Metal",
-    "craftedText": "We design and build durable products that live outdoors. Thoughtful details, honest materials, and long service are at the center of what we do.",
+    "craftedText": "We design and build durable products that live outdoors. Thoughtful details, honest materials and long service are at the heart of what we do.",
     "peopleTitle": "People & Places",
     "peopleText": "What inspires us most is the outdoors—simple forms and robust workmanship that blend into the landscape.",
     "rootsTitle": "Roots",
@@ -63,6 +63,16 @@
     "contactSupport": "Can't find instructions for your product?",
     "contactSupportLink": "Contact our support team",
     "viewProduct": "View Product"
+  },
+  "Portfolio": {
+    "coldSmoke": "Cold smoke",
+    "shopNow": "Shop now",
+    "masterpieces": "Our most sought-after masterpieces."
+  },
+  "Testimonials": {
+    "title": "Happy campers",
+    "subtitle": "Testimonies",
+    "customerTestimonials": "Customer testimonials"
   },
   "Common": {
     "viewMore": "View more",

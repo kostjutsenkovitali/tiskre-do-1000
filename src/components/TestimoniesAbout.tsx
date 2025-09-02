@@ -3,6 +3,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, ReactNode } from "react";
 import Link from "next/link";
+import { useI18n } from "@/contexts/I18nProvider";
 import ThreeModel from "@/components/ThreeModel";
 
 type Dir = "left" | "right";
@@ -1251,6 +1252,7 @@ function Card22x15({
     | { type: "iframe"; src: string; title: string; overlayHref?: string; overlayLabel?: string }
     | { type: "image"; src: string; alt?: string };
 }) {
+  const { t } = useI18n();
   const colLeftPct = (6 / 22) * 100;
   const colRightPct = (16 / 22) * 100;
   const rowTopPct = (9 / 15) * 100;

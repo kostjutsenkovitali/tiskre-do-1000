@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "@/contexts/I18nProvider";
 import type { CSSProperties } from "react";
 
 /* =========================
@@ -55,9 +56,7 @@ const RIGHT_PANELS = [
 ];
 const NUM_RIGHT_PANELS = RIGHT_PANELS.length;
 
-// Flying letters
-const FLY_TEXT = "\nOur most sought-after masterpieces.";
-const FLY_FONT_VW = (16 / 3) / 2; // ≈ 2.67vw
+// Flying letters - we'll replace this with a translation
 const LETTER_SCALE_START = 10;
 const LETTER_SCALE_END = 1;
 const LETTER_DELAY = 0.08;
@@ -160,6 +159,7 @@ function TileLayer({
   setHoveredId: (id: string | null) => void;
   openOverlay: (t: FocusedTile) => void;
 }) {
+  const { t } = useI18n();
   const { cleanToken, shopUrl } = parseShopSuffix(rawToken);
   const size: "Big" | "Small" = cleanToken.includes("Big") ? "Big" : "Small";
   const col = colIndex + 1;
@@ -218,7 +218,7 @@ function TileLayer({
           pointerEvents: "auto",
         }}
       >
-        View more
+        {t("Common.viewMore")}
       </button>
     </div>
   );
@@ -228,6 +228,7 @@ function TileLayer({
    Component
    ========================= */
 export default function PortfolioSection() {
+  const { t } = useI18n();
   const [parallaxOffset, setParallaxOffset] = useState(0);
   const [scrollRangePx, setScrollRangePx] = useState(1);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -409,6 +410,7 @@ export default function PortfolioSection() {
   const outdoorFullyVisible = vwProgress >= 175;
 
   // ===== Flying letters setup =====
+  const FLY_TEXT = t("Portfolio.masterpieces"); // Use translation instead of hardcoded text
   const letters = Array.from(FLY_TEXT);
   const startOffsets = letters.map((_ch, i) => {
     switch (i) {
@@ -435,6 +437,7 @@ export default function PortfolioSection() {
   const oakOpacity = 1 - afterCortenCenter;
 
   // Common font size for right-panel overlays (match "Our most sought...")
+  const FLY_FONT_VW = 2.1; // Fixed value for font size
   const OVERLAY_FONT = `${FLY_FONT_VW}vw`;
 
   // Button style (black background, white text)
@@ -610,7 +613,7 @@ export default function PortfolioSection() {
                         color: "#111",
                       }}
                     >
-                      Cold<br />smoke<br />generator<br />SG-2
+                      {t("Portfolio.coldSmoke")}<br />generator<br />SG-2
                     </h2>
                     <a
                       href="/product/sg-2"
@@ -628,7 +631,7 @@ export default function PortfolioSection() {
                         border: "1px solid rgba(0,0,0,0.12)",
                       }}
                     >
-                      Shop now
+                      {t("Portfolio.shopNow")}
                     </a>
                   </div>
                 </div>
@@ -726,7 +729,7 @@ export default function PortfolioSection() {
                       <div style={{ height: "2em" }} />
                       {/* two-line button, black/white */}
                       <a href="/shop" style={BTN_STYLE}>
-                        <span style={{ display: "block" }}>Shop</span>now
+                        <span style={{ display: "block" }}>{t("Portfolio.shopNow")}</span>{t("Portfolio.shopNow")}
                       </a>
                     </div>
                   )}
@@ -748,7 +751,7 @@ export default function PortfolioSection() {
                       <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
                         Kamado OFF-road
                       </div>
-                      <a href="/shop" style={BTN_STYLE}>Shop now</a>
+                      <a href="/shop" style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
                     </div>
                   )}
 
@@ -769,7 +772,7 @@ export default function PortfolioSection() {
                       <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
                         Dream Outdoor<br />kitchen
                       </div>
-                      <a href="/shop" style={BTN_STYLE}>Shop now</a>
+                      <a href="/shop" style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
                     </div>
                   )}
                 </div>
@@ -879,7 +882,7 @@ export default function PortfolioSection() {
                     className="px-5 py-2 font-semibold uppercase text-sm shadow-md rounded-md border"
                     style={{ background: "rgba(255,255,255,0.92)", color: "#111", letterSpacing: "0.05em" }}
                   >
-                    Shop now
+                    {t("Portfolio.shopNow")}
                   </a>
                 ) : null}
 

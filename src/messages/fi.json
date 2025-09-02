@@ -64,6 +64,16 @@
     "contactSupportLink": "Ota yhteyttä tukitiimiimme",
     "viewProduct": "Katso tuotetta"
   },
+  "Portfolio": {
+    "coldSmoke": "Kylmäsavu",
+    "shopNow": "Osta nyt",
+    "masterpieces": "Suosituimmat mestariteoksemme."
+  },
+  "Testimonials": {
+    "title": "Tyytyväiset asiakkaat",
+    "subtitle": "Suositukset",
+    "customerTestimonials": "Asiakassuositukset"
+  },
   "Common": {
     "viewMore": "Näytä lisää",
     "latestFromOurPosts": "Uusimmat julkaisut",

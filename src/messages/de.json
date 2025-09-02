@@ -64,6 +64,16 @@
     "contactSupportLink": "Kontaktieren Sie unser Support-Team",
     "viewProduct": "Produkt ansehen"
   },
+  "Portfolio": {
+    "coldSmoke": "Kalt rauchen",
+    "shopNow": "Jetzt einkaufen",
+    "masterpieces": "Unsere meistgesuchten Meisterwerke."
+  },
+  "Testimonials": {
+    "title": "Zufriedene Camper",
+    "subtitle": "Referenzen",
+    "customerTestimonials": "Kundenreferenzen"
+  },
   "Common": {
     "viewMore": "Mehr anzeigen",
     "latestFromOurPosts": "Neueste Beiträge",

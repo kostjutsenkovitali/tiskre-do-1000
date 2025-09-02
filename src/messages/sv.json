@@ -64,6 +64,16 @@
     "contactSupportLink": "Kontakta vårt supportteam",
     "viewProduct": "Visa produkt"
   },
+  "Portfolio": {
+    "coldSmoke": "Kallrök",
+    "shopNow": "Handla nu",
+    "masterpieces": "Våra mest eftertraktade mästerverk."
+  },
+  "Testimonials": {
+    "title": "Nöjda campare",
+    "subtitle": "Vitsord",
+    "customerTestimonials": "Kundvitsord"
+  },
   "Common": {
     "viewMore": "Visa mer",
     "latestFromOurPosts": "Senaste inläggen",
