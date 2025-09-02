@@ -8,7 +8,11 @@ import { sf } from "@/lib/shopify";
 import { detectLocaleFromPath } from "@/lib/paths";
 import { resolveInContext } from "@/i18n/config";
 
-export default function SpaRouter() {
+type SpaRouterProps = {
+  collections?: Array<{ id: string; slug: string; name: string }>;
+};
+
+export default function SpaRouter({ collections: initialCollections }: SpaRouterProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const locale = detectLocaleFromPath(pathname || "/");
@@ -24,7 +28,7 @@ export default function SpaRouter() {
     return parts[2] || ""; // /[locale]/[segment]/[slug]
   }, [pathname]);
 
-  const [collections, setCollections] = useState<Array<{ id: string; slug: string; name: string }>>([]);
+  const [collections, setCollections] = useState(initialCollections || []);
   const [products, setProducts] = useState<any[]>([]);
   const [product, setProduct] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,7 +46,7 @@ export default function SpaRouter() {
           const data = await sf<{ product: any }>(GET_PRODUCT, { handle: slug, country, language });
           setProduct(data.product || null);
           setProducts([]);
-          setCollections([]);
+          setCollections(initialCollections || []);
         } else {
           // index view
           const pro = await sf<any>(GET_PRODUCTS, { first: 12, country, language });
@@ -62,20 +66,26 @@ export default function SpaRouter() {
               collections: n.collections?.nodes || [],
             }))
           );
-          const cols = await sf<any>(GET_COLLECTIONS, { first: 50, language });
-          setCollections((cols?.collections?.nodes || []).map((c: any) => ({ id: c.id || c.handle, slug: c.handle, name: c.title })));
+          
+          // Only fetch collections if not provided
+          if (!initialCollections || initialCollections.length === 0) {
+            const cols = await sf<any>(GET_COLLECTIONS, { first: 50, language });
+            setCollections((cols?.collections?.nodes || []).map((c: any) => ({ id: c.id || c.handle, slug: c.handle, name: c.title })));
+          } else {
+            setCollections(initialCollections);
+          }
           setProduct(null);
         }
       } catch {
         setProducts([]);
-        setCollections([]);
+        setCollections(initialCollections || []);
         setProduct(null);
       } finally {
         setLoading(false);
       }
     };
     run();
-  }, [seg, slug, country, language]);
+  }, [seg, slug, country, language, initialCollections]);
 
   if (!seg || seg === "home") return null;
   if (loading) return <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>;
@@ -107,5 +117,3 @@ export default function SpaRouter() {
 
   return <ShopClient products={products as any} collections={collections as any} hrefBase={`/${locale}/${seg}`} />;
 }
-
-

@@ -2,7 +2,7 @@ import {notFound} from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {isLocale, getSegment, resolveInContext, LOCALES, segments} from "@/i18n/config";
-import {GET_PRODUCTS} from "@/lib/queries/products";
+import {GET_PRODUCTS, GET_COLLECTIONS} from "@/lib/queries/products";
 import {LIST_ARTICLES, GET_BLOG_WITH_ARTICLES} from "@/lib/queries/blog";
 import {sf} from "@/lib/shopify";
 import type {GetProductsResponse} from "@/lib/types/shopify";
@@ -10,6 +10,22 @@ import ShopClient from "./ShopClient";
 
 // Enable ISR with 1 hour revalidation
 export const revalidate = 3600;
+
+// Fetch Shopify collections at build time
+async function getShopifyCollections(locale: string) {
+  try {
+    const { country, language } = resolveInContext(locale as any);
+    const data = await sf<{ collections: any }>(GET_COLLECTIONS, { first: 50, language });
+    return (data?.collections?.nodes || []).map((c: any) => ({ 
+      id: c.id || c.handle, 
+      slug: c.handle, 
+      name: c.title 
+    }));
+  } catch (error) {
+    console.error("Failed to fetch Shopify collections:", error);
+    return [];
+  }
+}
 
 // Generate static params for all locale/segment combinations
 export async function generateStaticParams() {
@@ -53,6 +69,9 @@ export default async function IndexBySegment({params, searchParams}: Props) {
     const q = (await searchParams)?.q?.trim() || undefined;
     const after = (await searchParams)?.after || undefined;
     
+    // Fetch collections at build time
+    const collections = await getShopifyCollections(rawLocale);
+    
     // For ISR, we'll fetch initial data but allow client-side updates
     try {
       const data = await sf<GetProductsResponse>(GET_PRODUCTS, {
@@ -74,6 +93,7 @@ export default async function IndexBySegment({params, searchParams}: Props) {
         availableForSale: true,
         tags: (n as any).tags || [],
         vendor: (n as any).vendor,
+        collections: n.collections?.nodes || [],
       }));
       
       const pageInfo = data.products.pageInfo;
@@ -85,12 +105,10 @@ export default async function IndexBySegment({params, searchParams}: Props) {
         ? `${basePath}${q ? `?${new URLSearchParams({ q }).toString()}` : ""}`
         : null;
 
-      const collections: Array<{ id: string; slug: string; name: string }> = [];
       return <ShopClient products={products as any} collections={collections} hrefBase={`/${rawLocale}/${segment}`} />;
     } catch (error) {
       console.error('Failed to fetch products:', error);
       // Fallback to client-side rendering
-      const collections: Array<{ id: string; slug: string; name: string }> = [];
       return <ShopClient products={[]} collections={collections} hrefBase={`/${rawLocale}/${segment}`} />;
     }
   }

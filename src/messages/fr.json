@@ -80,5 +80,11 @@
     "readMore": "Lire la suite",
     "customer": "Client",
     "testimonials": "Témoignages"
+  },
+  "Home": {
+    "testimonies": {
+      "topText": "Client",
+      "bottomText": "Histoires"
+    }
   }
 }

@@ -3,7 +3,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, ReactNode } from "react";
 import Link from "next/link";
-import { useI18n } from "@/contexts/I18nProvider";
+// useI18n imported once at top (line 6). Remove duplicate import here.
 import ThreeModel from "@/components/ThreeModel";
 
 type Dir = "left" | "right";
@@ -22,8 +22,9 @@ const SPACING_VW = CARD_W_VW + GAP_VW;
 const CARD_H_VW = CARD_W_VW * (15 / 22);
 
 /* Titles */
-const TOP_TEXT = "Happy campers";
-const BOT_TEXT = "Testimonies";
+import { useI18n } from "@/contexts/I18nProvider";
+const TOP_TEXT_KEY = "Home.testimonies.topText";
+const BOT_TEXT_KEY = "Home.testimonies.bottomText";
 const TITLE_FONT = "2.1vw";
 
 /* Pinning / animation */
@@ -1148,7 +1149,7 @@ export default function TestimoniesAbout() {
                 zIndex: 2,
               }}
             />
-            <RowText centerLeftVW={row1TextCenter} text={TOP_TEXT} />
+            <RowText centerLeftVW={row1TextCenter} text={useI18n().t(TOP_TEXT_KEY)} />
             {topCards.map((id, i) => {
               const b2 = block2For(id);
               return (
@@ -1183,7 +1184,7 @@ export default function TestimoniesAbout() {
                 zIndex: 2,
               }}
             />
-            <RowText centerLeftVW={row2TextCenter} text={BOT_TEXT} />
+            <RowText centerLeftVW={row2TextCenter} text={useI18n().t(BOT_TEXT_KEY)} />
             {botCards.map((id, i) => {
               const b2 = block2For(id);
               return (

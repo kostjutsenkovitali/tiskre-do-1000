@@ -26,7 +26,7 @@ const TARGETS = [
   { slug: "outdoor-kitchens", image: "/hero-image4.webp",  fallbackName: "Outdoor Kitchens" },
 ];
 
-// Try hard to get a description even if the fetch didn’t include `description`.
+// Try hard to get a description even if the fetch didn't include `description`.
 function normalizeDescription(cat?: Category | null): string {
   if (!cat) return "";
   const d =
@@ -54,7 +54,7 @@ export function HeroSection({ categories = [] }: Props) {
   const cards = TARGETS.map((t) => {
     const cat = findCategory(categories, t.slug, t.fallbackName);
     const name = cat?.name ?? t.fallbackName;
-    const descHtml = normalizeDescription(cat); // may be empty if your API truly doesn’t send any description
+    const descHtml = normalizeDescription(cat); // may be empty if your API truly doesn't send any description
     const href = cat ? `/shop/category/${cat.slug}` : "/shop";
     return { name, descHtml, href, image: t.image };
   });

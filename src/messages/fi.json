@@ -80,5 +80,11 @@
     "readMore": "Lue lisää",
     "customer": "Asiakas",
     "testimonials": "Suositukset"
+  },
+  "Home": {
+    "testimonies": {
+      "topText": "Asiakas",
+      "bottomText": "Tarinoita"
+    }
   }
 }

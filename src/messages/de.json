@@ -80,5 +80,11 @@
     "readMore": "Weiterlesen",
     "customer": "Kunde",
     "testimonials": "Referenzen"
+  },
+  "Home": {
+    "testimonies": {
+      "topText": "Kunde",
+      "bottomText": "Geschichten"
+    }
   }
 }

@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { I18nProvider, type Messages } from "@/contexts/I18nProvider";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import { isLocale, resolveInContext, LOCALES, type Locale } from "@/i18n/config";
 
@@ -32,7 +34,9 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <LanguageProvider value={ctx}>
       <I18nProvider locale={locale} messages={messages}>
+        <Header />
         {children}
+        <Footer />
         <CartDrawer />
       </I18nProvider>
     </LanguageProvider>

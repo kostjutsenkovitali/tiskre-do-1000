@@ -80,5 +80,11 @@
     "readMore": "Läs mer",
     "customer": "Kund",
     "testimonials": "Vitsord"
+  },
+  "Home": {
+    "testimonies": {
+      "topText": "Kund",
+      "bottomText": "Berättelser"
+    }
   }
 }

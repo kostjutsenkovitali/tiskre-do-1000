@@ -53,7 +53,7 @@
     "craftedTitle": "Valmistatud metallist",
     "craftedText": "Me kujundame ja valmistame vastupidavaid tooteid, mis elavad õues. Mõtlejad detailid, ausad materjalid ja pikk teenindus on meie tegevuse keskmes.",
     "peopleTitle": "Inimesed ja kohad",
-    "peopleText": "Mis meid enim inspireerib, on õues olemine - lihtsad vormid ja tugev käsitöö, mis sulanduvad maastikku.",
+    "peopleText": "Mis meid enam inspireerib, on õues olemine - lihtsad vormid ja tugev käsitöö, mis sulanduvad maastikku.",
     "rootsTitle": "Juured",
     "rootsText": "Püüame hoida tugevalt oma juurtega."
   },
@@ -80,5 +80,11 @@
     "readMore": "Loe edasi",
     "customer": "Klient",
     "testimonials": "Iseloomustused"
+  },
+  "Home": {
+    "testimonies": {
+      "topText": "Klient",
+      "bottomText": "Lood"
+    }
   }
 }
