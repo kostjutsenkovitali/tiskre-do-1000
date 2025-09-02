@@ -64,27 +64,59 @@ export default async function DetailBySegment({params}: Props) {
         .map((m: any) => (m.__typename === "MediaImage" ? m.image : null))
         .filter((im: any) => !!im && typeof im.url === "string")?.[0] || null;
       
+      // Extract all media images for the thumbnail carousel
+      const mediaImages = (p.media?.nodes || [])
+        .map((m: any) => (m.__typename === "MediaImage" ? m.image : null))
+        .filter((im: any) => !!im && typeof im.url === "string") || [];
+      
       const bulletPoints: string[] = (() => {
         const mf = p.bulletPoints;
-        if (typeof mf === "string") return mf.split("\n").filter(Boolean);
-        if (Array.isArray(mf)) return mf.filter((x: any) => typeof x === "string");
+        console.log("Raw bulletPoints metafield:", mf);
+        // Check if mf has a value property (which is typical for metafields)
+        if (mf && typeof mf === "object" && "value" in mf) {
+          console.log("Metafield has value property:", mf.value);
+          if (typeof mf.value === "string") {
+            const points = mf.value.split("\n").filter(Boolean);
+            console.log("Parsed bullet points from metafield value:", points);
+            return points;
+          }
+        }
+        if (typeof mf === "string") {
+          const points = mf.split("\n").filter(Boolean);
+          console.log("Parsed bullet points from string:", points);
+          return points;
+        }
+        if (Array.isArray(mf)) {
+          const points = mf.filter((x: any) => typeof x === "string");
+          console.log("Parsed bullet points from array:", points);
+          return points;
+        }
+        console.log("No valid bullet points found");
         return [];
       })();
       
+      console.log("Final bulletPoints array:", bulletPoints);
+
       const productLike = {
-        id: p.handle,
+        id: p.id || p.handle,
         slug: p.handle,
         title: p.title,
-        description: p.description || "",
+        description: p.descriptionHtml || p.description || "",
         price,
         image: mainImage ? { url: mainImage.url, altText: mainImage.altText || p.title } : null,
+        media: { nodes: mediaImages.map(img => ({ image: img })) }, // Add media images for thumbnails
         bulletPoints,
+        bulletPointsMetafield: p.bulletPoints, // Pass the original metafield data
+        instructionJpgMetafield: p.instructionJpg, // Pass the original metafield data
+        instructionPdfMetafield: p.instructionPdf, // Pass the original metafield data
         availableForSale: p.availableForSale ?? true,
         tags: p.tags || [],
         vendor: p.vendor || "",
+        variants: p.variants || null,
       };
       
-      return <ProductDetailClient product={productLike} />;
+      // Pass both product and locale props to ProductDetailClient
+      return <ProductDetailClient locale={rawLocale} product={productLike} related={[]} />;
     } catch (error) {
       console.error('Failed to fetch product:', error);
       notFound();

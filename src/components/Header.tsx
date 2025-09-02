@@ -317,7 +317,7 @@ export default function Header() {
 
             {/* Cart (unchanged size) */}
             <Link
-              href="/cart"
+              href={`/${locale}/cart`}
               aria-label="Open cart"
               className={[
                 "inline-flex items-center gap-2 px-3 h-9 rounded-md border-2",

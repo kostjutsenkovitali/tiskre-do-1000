@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { ChevronDown } from "lucide-react";
 
 type AccordionContextValue = {
   value: string | null;
@@ -38,14 +39,15 @@ export function AccordionTrigger({ className = "", children }: { className?: str
   return (
     <button
       type="button"
-      className={`w-full text-left ${className}`}
+      className={`w-full text-left flex justify-between items-center ${className}`}
       onClick={() => {
         if (isOpen) ctx.setValue(ctx.collapsible ? null : itemValue);
         else ctx.setValue(itemValue);
       }}
       aria-expanded={isOpen}
     >
-      {children}
+      <span>{children}</span>
+      <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
     </button>
   );
 }
@@ -60,5 +62,3 @@ export function AccordionContent({ className = "", children }: { className?: str
     </div>
   );
 }
-
-

@@ -60,7 +60,24 @@ export const GET_PRODUCT = gql`
           price { amount currencyCode }
         }
       }
-      bulletPoints: metafield(namespace: "custom", key: "bullet_points") { type value }
+      bulletPoints: metafield(namespace: "custom", key: "bullet_points") { 
+        type 
+        value
+        reference {
+          __typename
+          ... on MediaImage { image { url altText } }
+          ... on GenericFile { url }
+          ... on Video { sources { url mimeType } }
+        }
+        references(first: 10) {
+          nodes {
+            __typename
+            ... on MediaImage { image { url altText } }
+            ... on GenericFile { url }
+            ... on Video { sources { url mimeType } }
+          }
+        }
+      }
       instructionJpg: metafield(namespace: "custom", key: "instruction_jpg") {
         value
         reference {

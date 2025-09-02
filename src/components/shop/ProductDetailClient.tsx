@@ -19,34 +19,62 @@ import {
   Play,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
-type Product = any;
 import RelatedProducts from "@/components/shop/RelatedProducts";
 import { shopPath } from "@/lib/paths";
+import sanitizeHtml from "sanitize-html";
+
+type Product = any;
 
 type Props = {
   locale: string;
   product: Product;
-  related: Product[];
+  related?: Product[]; // Make related optional
 };
 
 function sanitizePrice(htmlish: string): string {
   return htmlish.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
 }
 
-export default function ProductDetailClient({ locale, product, related }: Props) {
+export default function ProductDetailClient({ locale, product, related = [] }: Props) { // Default to empty array
   const { addAndCheckout } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
 
+  // Fix image handling to work with Shopify data structure
   const images = useMemo(() => {
-    const list = [
-      product.image?.sourceUrl,
-      ...((product.galleryImages?.nodes?.map((n: { sourceUrl?: string }) => n.sourceUrl).filter(Boolean) ||
-        []) as string[]),
-    ].filter(Boolean) as string[];
-    return Array.from(new Set(list));
+    const list: string[] = [];
+    
+    // Add main image if available
+    if (product.image?.url) {
+      list.push(product.image.url);
+    }
+    
+    // Add gallery images if available (Shopify structure)
+    if (product.images?.edges) {
+      product.images.edges.forEach((edge: any) => {
+        if (edge?.node?.url) {
+          list.push(edge.node.url);
+        }
+      });
+    }
+    
+    // Add media images if available (Shopify structure)
+    if (product.media?.nodes) {
+      product.media.nodes.forEach((node: any) => {
+        if (node?.image?.url) {
+          list.push(node.image.url);
+        }
+      });
+    }
+    
+    // Remove duplicates
+    const uniqueImages = Array.from(new Set(list));
+    
+    console.log("Product images found:", uniqueImages.length, uniqueImages);
+    return uniqueImages;
   }, [product]);
 
   const visibleCount = 6;
@@ -70,9 +98,17 @@ export default function ProductDetailClient({ locale, product, related }: Props)
   const canScrollThumbsRight =
     images.length > visibleCount && thumbStart + visibleCount < images.length;
 
-  const displayPrice = sanitizePrice(
-    product.price ?? product.salePrice ?? product.regularPrice ?? ""
-  );
+  // Fix price handling for Shopify data structure
+  let displayPrice = "";
+  if (product.price) {
+    displayPrice = sanitizePrice(product.price);
+  } else if (product.variants?.nodes?.[0]?.price?.amount) {
+    // Handle Shopify price structure
+    const price = product.variants.nodes[0].price;
+    displayPrice = `${price.amount} ${price.currencyCode}`;
+  } else {
+    displayPrice = "Price not available";
+  }
 
   const mockReviews = [
     { id: 1, author: "Sarah M.", rating: 5, comment: "Excellent quality and fast shipping!" },
@@ -105,11 +141,63 @@ export default function ProductDetailClient({ locale, product, related }: Props)
 
   const L = labels[locale] || labels.en;
   const backHref = shopPath(locale as any);
-  const bulletPoints: string[] = Array.isArray(product?.bulletPoints)
+  
+  // Fix bullet points handling for Shopify data structure
+  let bulletPoints: string[] = Array.isArray(product?.bulletPoints)
     ? (product.bulletPoints as string[]).filter((x) => typeof x === "string")
     : [];
-  const instructionJpg: string | null = product?.instructionJpg || null;
-  const instructionPdf: string | null = product?.instructionPdf || null;
+    
+  console.log("Bullet points from product.bulletPoints:", product?.bulletPoints);
+  console.log("Processed bulletPoints array:", bulletPoints);
+    
+  // Handle bullet points from metafield if not in product object directly
+  if (bulletPoints.length === 0 && product?.bulletPointsMetafield) {
+    const mf = product.bulletPointsMetafield;
+    console.log("Using bulletPointsMetafield:", mf);
+    // Check if mf has a value property (which is typical for metafields)
+    if (mf && typeof mf === "object" && "value" in mf) {
+      console.log("Metafield has value property:", mf.value);
+      if (typeof mf.value === "string") {
+        bulletPoints.push(...mf.value.split("\n").filter(Boolean));
+      }
+    } else if (typeof mf === "string") {
+      bulletPoints.push(...mf.split("\n").filter(Boolean));
+    } else if (Array.isArray(mf)) {
+      bulletPoints.push(...mf.filter((x: any) => typeof x === "string"));
+    }
+    console.log("Bullet points after metafield processing:", bulletPoints);
+  }
+    
+  // Fix instruction handling for Shopify data structure
+  let instructionJpg: string | null = product?.instructionJpg || null;
+  let instructionPdf: string | null = product?.instructionPdf || null;
+  
+  // Handle instruction files from metafields if not in product object directly
+  if (!instructionJpg && product?.instructionJpgMetafield) {
+    const metafield = product.instructionJpgMetafield;
+    if (typeof metafield === "string") {
+      instructionJpg = metafield;
+    } else if (metafield?.value) {
+      instructionJpg = metafield.value;
+    } else if (metafield?.reference?.url) {
+      instructionJpg = metafield.reference.url;
+    } else if (metafield?.references?.nodes?.[0]?.url) {
+      instructionJpg = metafield.references.nodes[0].url;
+    }
+  }
+  
+  if (!instructionPdf && product?.instructionPdfMetafield) {
+    const metafield = product.instructionPdfMetafield;
+    if (typeof metafield === "string") {
+      instructionPdf = metafield;
+    } else if (metafield?.value) {
+      instructionPdf = metafield.value;
+    } else if (metafield?.reference?.url) {
+      instructionPdf = metafield.reference.url;
+    } else if (metafield?.references?.nodes?.[0]?.url) {
+      instructionPdf = metafield.references.nodes[0].url;
+    }
+  }
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #e8d8c8 100%)" }}>
@@ -127,28 +215,33 @@ export default function ProductDetailClient({ locale, product, related }: Props)
           <div className="space-y-4">
             {/* Main image with thin grey frame, square corners */}
             <div className="relative aspect-square bg-muted border border-gray-300 overflow-hidden group rounded-none">
-              {images[0] ? (
+              {images.length > 0 ? (
                 <Image
                   src={images[selectedImage] ?? images[0]}
-                  alt={product.name}
+                  alt={product.title || "Product image"}
                   fill
                   className="object-cover"
+                  sizes="(min-width: 1024px) 50vw, 100vw"
                 />
-              ) : null}
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <span className="text-muted-foreground">No image available</span>
+                </div>
+              )}
 
               {images.length > 1 ? (
                 <>
                   <button
                     aria-label="Previous image"
                     onClick={goPrev}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-opacity"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button
                     aria-label="Next image"
                     onClick={goNext}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-opacity"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
@@ -160,6 +253,7 @@ export default function ProductDetailClient({ locale, product, related }: Props)
             {images.length > 0 ? (
               <div className="w-full">
                 <div className="relative flex items-center gap-2">
+                  {/* Left scroll button - only show if we have more images than visible slots AND we're not at the start */}
                   {images.length > visibleCount && (
                     <button
                       aria-label="Scroll thumbnails left"
@@ -172,34 +266,50 @@ export default function ProductDetailClient({ locale, product, related }: Props)
                   )}
 
                   <div className="grid grid-cols-6 gap-2 flex-1">
-                    {images
-                      .slice(thumbStart, thumbStart + visibleCount)
-                      .map((image, index) => {
-                        const absoluteIndex = thumbStart + index;
-                        const isActive = absoluteIndex === selectedImage;
+                    {Array(6).fill(null).map((_, index) => {
+                      if (index < images.length) {
+                        // This is an actual image
+                        const isActive = index === selectedImage;
                         return (
                           <button
-                            key={image + absoluteIndex}
-                            onClick={() => goTo(absoluteIndex)}
+                            key={`image-${index}`}
+                            onClick={() => goTo(index)}
                             className={`aspect-square w-full border ${
                               isActive
                                 ? "border-black"
                                 : "border-border hover:border-black/40"
                             } rounded-none overflow-hidden`}
-                            aria-label={`Select image ${absoluteIndex + 1}`}
+                            aria-label={`Select image ${index + 1}`}
                           >
                             <Image
-                              src={image}
-                              alt={`${product.name} ${absoluteIndex + 1}`}
+                              src={images[index]}
+                              alt={`${product.title || "Product"} ${index + 1}`}
                               width={200}
                               height={200}
                               className="object-cover w-full h-full"
+                              sizes="100px"
                             />
                           </button>
                         );
-                      })}
+                      } else {
+                        // Empty placeholder thumbnails to maintain 6-column grid
+                        return (
+                          <div 
+                            key={`placeholder-${index}`}
+                            className="aspect-square w-full border border-gray-100 rounded-none overflow-hidden bg-gray-50 flex items-center justify-center"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
+                              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                              <circle cx="9" cy="9" r="2" />
+                              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                            </svg>
+                          </div>
+                        );
+                      }
+                    })}
                   </div>
 
+                  {/* Right scroll button - only show if we have more images than visible slots AND we're not at the end */}
                   {images.length > visibleCount && (
                     <button
                       aria-label="Scroll thumbnails right"
@@ -226,13 +336,13 @@ export default function ProductDetailClient({ locale, product, related }: Props)
                 {L.product}
               </Badge>
               <h1 className="text-3xl font-medium text-foreground mb-2">
-                {product.name}
+                {product.title || "Product Title"}
               </h1>
               <p className="text-sm text-muted-foreground mb-1">
-                {L.sku}: {product.sku || "—"}
+                {L.sku}: {product.sku ? product.sku.replace('gid://shopify/Product/', '') : product.id || "—"}
               </p>
               <p className="text-sm mb-4">
-                {product.stockStatus === "IN_STOCK" ? (
+                {product.availableForSale !== false ? (
                   <span className="text-green-700">{L.inStock}</span>
                 ) : (
                   <span className="text-red-600">{L.outOfStock}</span>
@@ -291,7 +401,7 @@ export default function ProductDetailClient({ locale, product, related }: Props)
                     <svg width="18" height="18" viewBox="0 0 256 262" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                       <path fill="#4285F4" d="M255.68 133.5c0-10.2-.92-20-2.64-29.5H130v55.8h70.56c-3.04 16.4-12.14 30.3-25.88 39.6v32.9h41.88c24.52-22.6 39.12-56 39.12-98.8z"/>
                       <path fill="#34A853" d="M130 261.1c35.28 0 64.92-11.7 86.56-31.7l-41.88-32.9c-11.6 7.8-26.52 12.5-44.68 12.5-34.3 0-63.4-22.9-73.8-53.9H12.3v33.8c21.58 42.7 65.78 72.2 117.7 72.2z"/>
-                      <path fill="#FBBC05" d="M56.2 155.1c-2.7-8.1-4.2-16.7-4.2-25.5s1.5-17.4 4.2-25.5V70.3H12.3C4.4 86.1 0 104.2 0 123.6s4.4 37.6 12.3 53.3l43.9-21.8z"/>
+                      <path fill="#FBBC05" d="M56.2 155.1c-2.7-8.1-4.2-16.7-4.2-25.5s1.5-17.4 4.2-25.5V70.3H12.3C4.4 86.1 0 104.2 0 123.6s4.4 37.6 12.3 53.3l43.9-33.8C66.6 73.9 95.7 50.2 130 50.2z"/>
                       <path fill="#EA4335" d="M130 50.2c19.2 0 36.4 6.6 49.9 19.4l37.4-37.4C194.9 12 165.3 0 130 0 78.08 0 33.88 29.5 12.3 72.3l43.9 33.8C66.6 73.9 95.7 50.2 130 50.2z"/>
                     </svg>
                     <span className="text-sm font-medium">G&nbsp;Pay</span>
@@ -314,33 +424,49 @@ export default function ProductDetailClient({ locale, product, related }: Props)
                     <span className="text-sm font-semibold">PayPal</span>
                   </button>
 
-                  {/* Klarna */}
+                  {/* Shopify */}
                   <button
                     type="button"
-                    aria-label="Klarna"
-                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#ffb3c7] text-black shadow-sm hover:opacity-95 transition-opacity"
+                    aria-label="Shopify"
+                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#95BF47] text-black shadow-sm hover:opacity-95 transition-opacity"
                     onClick={() => {
                       const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
                       if (merchId) addAndCheckout(merchId, quantity);
                     }}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <circle cx="4" cy="12" r="2" fill="currentColor" />
-                      <rect x="7" y="7" width="2" height="10" rx="1" fill="currentColor" />
-                      <path d="M21 9.5v-2h-2v2h-2v2h2v2h2v-2h2v-2h-2z" fill="currentColor" />
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.568 8.16c-.144-.008-.328-.008-.472-.008-1.137 0-2.473.24-3.449.872-.384.248-.704.56-.96.928-.728-.52-1.688-.848-2.728-.848-2.688 0-4.872 2.184-4.872 4.872 0 2.688 2.184 4.872 4.872 4.872 2.688 0 4.872-2.184 4.872-4.872 0-.2-.008-.392-.024-.584.704-.512 1.248-1.24 1.56-2.088.688.64 1.6 1.032 2.616 1.032 2.048 0 3.704-1.656 3.704-3.704 0-2.048-1.656-3.704-3.704-3.704z" fill="currentColor"/>
                     </svg>
-                    <span className="text-sm font-semibold">Klarna</span>
+                    <span className="text-sm font-semibold">Shop</span>
                   </button>
                 </div>
 
-                {bulletPoints.length > 0 && (
+                {/* Bullet points moved here */}
+                {bulletPoints.length > 0 ? (
                   <div className="mt-4 border border-gray-200 rounded-none bg-white p-4">
-                    <ul className="list-disc pl-5 space-y-1 text-sm text-foreground">
-                      {bulletPoints.map((b, i) => (
-                        <li key={i}>{b}</li>
+                    <ul className="list-disc pl-5 space-y-2 text-sm text-foreground">
+                      {bulletPoints.slice(0, 5).map((b, i) => (
+                        <li key={i} className="block">{b}</li>
                       ))}
                     </ul>
                   </div>
+                ) : (
+                  <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-none">
+                    <p className="text-yellow-800">No bullet points available for this product</p>
+                    <p className="text-yellow-700 text-sm mt-2">Bullet points array: {JSON.stringify(bulletPoints)}</p>
+                  </div>
+                )}
+
+                {/* Watch Video button moved here */}
+                {instructionJpg && (
+                  <a 
+                    href={instructionJpg} 
+                    target="_blank" 
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors mt-4"
+                  >
+                    <Play className="h-4 w-4" />
+                    Watch Product Video
+                  </a>
                 )}
               </div>
             </div>
@@ -348,130 +474,98 @@ export default function ProductDetailClient({ locale, product, related }: Props)
         </div>
 
         {/* Accordions with solid light-grey frames, full width */}
-        <div className="mt-16 w-full">
-          <Accordion type="single" collapsible className="w-full space-y-3">
-            <AccordionItem
-              value="description"
-              className="w-full border border-gray-200 rounded-none"
-            >
-              <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
-                {L.description}
+        <div className="mt-16 space-y-4">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="description" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <h3 className="text-lg font-medium">{L.description}</h3>
               </AccordionTrigger>
-              <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
-                <p className="text-muted-foreground leading-relaxed">
-                  {product.description}
-                </p>
+              <AccordionContent className="px-6 pb-6 pt-0">
+                <div 
+                  className="prose prose-neutral max-w-none dark:prose-invert"
+                  dangerouslySetInnerHTML={{ 
+                    __html: sanitizeHtml(product.description || "", {
+                      allowedTags: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a'],
+                      allowedAttributes: {
+                        'a': ['href', 'target'],
+                      }
+                    })
+                  }} 
+                />
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem
-              value="video"
-              className="w-full border border-gray-200 rounded-none"
-            >
-              <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
-                <div className="flex items-center">
-                  <Play className="h-4 w-4 mr-2" /> {L.watchVideo}
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
-                {images.length > 0 ? (
-                  <div className="grid gap-3">
-                    {images.find((u: string) => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) ? (
-                      <video
-                        className="w-full aspect-video border border-gray-200 rounded-none"
-                        src={images.find((u: string) => /\.(mp4|webm|ogg)(\?|$)/i.test(u)) as string}
-                        controls
-                      />
-                    ) : (
-                      <div className="text-sm text-muted-foreground">No video found.</div>
+            {instructionJpg || instructionPdf ? (
+              <AccordionItem value="instructions" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <h3 className="text-lg font-medium">{L.instructions}</h3>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-6 pt-0">
+                  <div className="flex flex-wrap gap-4">
+                    {instructionJpg && (
+                      <a href={instructionJpg} target="_blank" className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors">
+                        <Play className="h-4 w-4" />
+                        Watch Product Video
+                      </a>
+                    )}
+                    {instructionPdf && (
+                      <a href={instructionPdf} target="_blank" className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M16 13H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M16 17H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M10 9H9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        PDF Instructions
+                      </a>
                     )}
                   </div>
-                ) : null}
+                </AccordionContent>
+              </AccordionItem>
+            ) : null}
+
+            <AccordionItem value="technical" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <h3 className="text-lg font-medium">{L.technical}</h3>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6 pt-0">
+                {bulletPoints.length > 0 ? (
+                  <ul className="list-disc pl-5 space-y-1">
+                    {bulletPoints.map((point, i) => (
+                      <li key={i} className="text-foreground">{point}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground">{L.noTechData}</p>
+                )}
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem
-              value="technical"
-              className="w-full border border-gray-200 rounded-none"
-            >
-              <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
-                {L.technical}
+            <AccordionItem value="reviews" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <h3 className="text-lg font-medium">{L.reviews}</h3>
               </AccordionTrigger>
-              <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
-                <div className="space-y-3">
-                  <div className="text-sm text-muted-foreground">
-                    {L.noTechData}
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem
-              value="instructions"
-              className="w-full border border-gray-200 rounded-none"
-            >
-              <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
-                {L.instructions}
-              </AccordionTrigger>
-              <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
-                <div className="space-y-4 text-sm text-muted-foreground">
-                  {instructionJpg ? (
-                    <div className="border border-gray-200 rounded-none bg-white p-2">
-                      <Image src={instructionJpg} alt="Instruction" width={1200} height={1600} className="w-full h-auto object-contain" />
-                    </div>
-                  ) : (
-                    <p>No instructions available.</p>
-                  )}
-
-                  {instructionPdf ? (
-                    <div>
-                      <a
-                        href={instructionPdf}
-                        download
-                        className="inline-block px-4 py-2 border border-gray-300 rounded-none text-foreground hover:bg-gray-50"
-                      >
-                        Download PDF
-                      </a>
-                    </div>
-                  ) : null}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem
-              value="reviews"
-              className="w-full border border-gray-200 rounded-none"
-            >
-              <AccordionTrigger className="px-4 py-3 w-full rounded-none bg-white hover:bg-gray-50 text-left">
-                {L.reviews} ({mockReviews.length})
-              </AccordionTrigger>
-              <AccordionContent className="px-4 py-4 border-t border-gray-200 rounded-none bg-white">
-                <div className="space-y-4">
+              <AccordionContent className="px-6 pb-6 pt-0">
+                <div className="space-y-6">
                   {mockReviews.map((review) => (
-                    <div
-                      key={review.id}
-                      className="border-b border-gray-200 pb-4"
-                    >
-                      <div className="flex items-center justify-between mb-2">
+                    <div key={review.id} className="border-b border-border pb-6 last:border-0 last:pb-0">
+                      <div className="flex items-center gap-2 mb-2">
                         <span className="font-medium">{review.author}</span>
                         <div className="flex">
                           {[...Array(5)].map((_, i) => (
-                            <span
+                            <svg
                               key={i}
-                              className={`text-sm ${
-                                i < review.rating
-                                  ? "text-black"
-                                  : "text-muted-foreground"
-                              }`}
+                              className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
                             >
-                              ★
-                            </span>
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
                           ))}
                         </div>
                       </div>
-                      <p className="text-muted-foreground text-sm">
-                        {review.comment}
-                      </p>
+                      <p className="text-foreground">{review.comment}</p>
                     </div>
                   ))}
                 </div>
@@ -480,8 +574,37 @@ export default function ProductDetailClient({ locale, product, related }: Props)
           </Accordion>
         </div>
 
-        {/* Related products (max 4) */}
-        <RelatedProducts products={related.slice(0, 4)} hrefBase={backHref} />
+        {/* Related Products */}
+        {related && related.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-medium text-foreground mb-8">Related Products</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {related.slice(0, 4).map((p) => (
+                <div key={p.id} className="group block rounded-none border border-black/10 dark:border-white/10 overflow-hidden hover:shadow-sm transition-[box-shadow,transform,border-color] duration-300">
+                  <div className="aspect-square bg-black/[.03] dark:bg-white/[.06] relative overflow-hidden">
+                    {p.image?.url ? (
+                      <Image
+                        src={p.image.url}
+                        alt={p.image.altText || p.title || ""}
+                        fill
+                        sizes="(min-width: 1024px) 25vw, 50vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      />
+                    ) : null}
+                  </div>
+                  <div className="p-4 flex flex-col gap-1">
+                    <div className="text-sm font-medium group-hover:underline underline-offset-4">{p.title || ""}</div>
+                    {p.price ? (
+                      <div className="text-sm opacity-80">{p.price}</div>
+                    ) : (
+                      <div className="text-sm opacity-80">Price not available</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -25,8 +25,7 @@ export default function Cart() {
             <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h1 className="text-2xl font-medium text-foreground mb-2">Your cart is empty</h1>
             <p className="text-muted-foreground mb-8">Add some items to get started.</p>
-            <Link href={shopHref}
-            >
+            <Link href={shopHref}>
               <Button>Continue Shopping</Button>
             </Link>
           </div>
@@ -100,5 +99,3 @@ export default function Cart() {
     </div>
   );
 }
-
-
