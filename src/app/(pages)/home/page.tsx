@@ -3,7 +3,7 @@
 import { HeroSection } from "@/components/HeroSection";
 import PortfolioSection from "@/components/PortfolioSection"; // COMBINED (Portfolio + Popular)
 import TestimoniesAbout from "@/components/TestimoniesAbout";
-import Hexagon from "@/components/Hexagon";
+import HexagonWithPosts from "@/components/HexagonWithPosts";
 import { getProductCategories } from "@/lib/wpData";
 import { GET_COLLECTIONS } from "@/lib/queries/products";
 import { sf } from "@/lib/shopify";
@@ -50,8 +50,8 @@ export default async function HomeCmsPage() {
       {/* 3) Next stages */}
       <TestimoniesAbout />
 
-      {/* 4) Hexagon section */}
-      <Hexagon />
+      {/* 4) Hexagon section with localized posts */}
+      <HexagonWithPosts locale={DEFAULT_LOCALE} />
     </div>
   );
 }

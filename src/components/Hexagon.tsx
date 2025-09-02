@@ -18,6 +18,7 @@ import { SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
 import { usePathname } from "next/navigation";
 import { articlePath, detectLocaleFromPath } from "@/lib/paths";
 import { useI18n } from "@/contexts/I18nProvider";
+import { languageToShopify } from "@/i18n/config";
 
 /* =========================================================
    Types
@@ -146,6 +147,11 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
   const [slides, setSlides] = useState<Slide[] | null>(initialSlides || null);
   const [index, setIndex] = useState(0);
 
+  // Debugging: log when slides change
+  useEffect(() => {
+    console.log("Hexagon: slides updated", slides);
+  }, [slides]);
+
   // Active ONLY when this section or footer visible (kept)
   const [hexVisible, setHexVisible] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
@@ -162,38 +168,48 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
   /* ===== fetch posts (Shopify) - only if no initial slides provided ===== */
   useEffect(() => {
     // If we already have slides from props, don't fetch again
-    if (initialSlides && initialSlides.length > 0) {
+    if (initialSlides) {
+      // If initialSlides is an empty array, we still want to set it to show the fallback
+      setSlides(initialSlides);
       return;
     }
     
     let cancelled = false;
     (async () => {
       try {
+        const locale = detectLocaleFromPath(pathname || "/");
+        // Convert locale to Shopify language code using proper mapping
+        const shopifyLanguage = languageToShopify[locale as keyof typeof languageToShopify] || "EN";
+        console.log("Fetching blog posts for locale:", locale, "language:", shopifyLanguage);
         const preferred = await sf<{ blog?: { articles?: { nodes?: any[] } } }>(
           GET_BLOG_WITH_ARTICLES,
-          { blogHandle: SHOPIFY_BLOG_HANDLE, first: 4 }
+          { blogHandle: SHOPIFY_BLOG_HANDLE, first: 4, language: shopifyLanguage }
         );
+        console.log("Preferred blog response:", preferred);
         let nodes = preferred?.blog?.articles?.nodes || [];
         if (!nodes.length) {
-          const all = await sf<{ articles?: { nodes?: any[] } }>(LIST_ARTICLES, { first: 4 });
+          console.log("No articles in preferred blog, trying list articles");
+          const all = await sf<{ articles?: { nodes?: any[] } }>(LIST_ARTICLES, { first: 4, language: shopifyLanguage });
+          console.log("List articles response:", all);
           nodes = all?.articles?.nodes || [];
         }
-        const locale = detectLocaleFromPath(pathname || "/");
+        console.log("Final nodes:", nodes);
         const items: Slide[] = nodes.slice(0, 4).map((n: any) => ({
           id: n.id || n.handle,
           title: n.title || "Untitled",
           quote: truncateForQuote(stripHtml(n.excerpt || "")),
           imageUrl: n.image?.url || "/placeholder.jpg",
-          url: articlePath(locale as any, n.handle),
+          url: articlePath(locale, n.handle),
         }));
+        console.log("Mapped items:", items);
         if (!cancelled) setSlides(items);
       } catch (e) {
-        console.warn("Hexagon: failed to load Shopify articles", e);
+        console.error("Hexagon: failed to load Shopify articles", e);
         if (!cancelled) setSlides([]);
       }
     })();
     return () => { cancelled = true; };
-  }, [initialSlides]);
+  }, [initialSlides, pathname]);
 
   useEffect(() => {
     if (!slides || slides.length < 2) return;
@@ -202,7 +218,19 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
   }, [slides]);
 
   const current = useMemo(
-    () => (!slides || !slides.length) ? null : slides[index % slides.length],
+    () => {
+      if (!slides || slides.length === 0) {
+        // Return a fallback slide when no data is available
+        return {
+          id: "fallback",
+          title: "No posts available",
+          quote: "Please check back later for updates.",
+          imageUrl: "/placeholder.jpg",
+          url: "#"
+        };
+      }
+      return slides[index % slides.length];
+    },
     [slides, index]
   );
 
@@ -511,7 +539,7 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
             </div>
             <div
               style={{ ...TITLE_STYLE, fontSize: "clamp(24px, 3.2vw, 40px)", marginTop: 10, marginBottom: 12 }}
-              dangerouslySetInnerHTML={{ __html: escapeHtml(current?.title || "Loading…") }}
+              dangerouslySetInnerHTML={{ __html: escapeHtml(current?.title || "No posts available") }}
             />
             <blockquote
               style={{
@@ -521,7 +549,7 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
                 opacity: 0.95,
               }}
             >
-              {current?.quote || "…"}
+              {current?.quote || "Please check back later for updates."}
             </blockquote>
           </figure>
 
@@ -537,7 +565,7 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
               boxShadow: `0 0 0 ${FRAME_THICKNESS_PX}px ${FRAME_COLOR}`,
             } as CSSProperties}
           >
-            {current?.imageUrl ? (
+            {current?.imageUrl && current.imageUrl !== "/placeholder.jpg" ? (
               <img
                 src={current.imageUrl}
                 alt={current.title}
@@ -546,7 +574,16 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
                 style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center" }}
               />
             ) : (
-              <div style={{ color: "white", fontSize: "clamp(13px, 1.333vw, 19px)" }}>No image</div>
+              <div style={{ 
+                color: "white", 
+                fontSize: "clamp(13px, 1.333vw, 19px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%"
+              }}>
+                No image available
+              </div>
             )}
 
             {/* Fixed CTA button bottom-right — straight corners */}

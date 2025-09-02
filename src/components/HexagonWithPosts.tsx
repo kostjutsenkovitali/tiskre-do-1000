@@ -4,6 +4,7 @@ import { sf } from "@/lib/shopify";
 import { GET_BLOG_WITH_ARTICLES, LIST_ARTICLES } from "@/lib/queries/blog";
 import { SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
 import { articlePath, detectLocaleFromPath } from "@/lib/paths";
+import { languageToShopify } from "@/i18n/config";
 
 // Types
 type Article = {
@@ -57,15 +58,22 @@ function truncateForQuote(s: string, max = 220): string {
 // Fetch blog posts function
 export async function fetchBlogPosts(locale: string, first = 4): Promise<Slide[]> {
   try {
+    // Convert locale to Shopify language code using proper mapping
+    const shopifyLanguage = languageToShopify[locale as keyof typeof languageToShopify] || "EN";
+    console.log("HexagonWithPosts: Fetching blog posts for locale:", locale, "language:", shopifyLanguage);
     const preferred = await sf<{ blog?: { articles?: { nodes?: any[] } } }>(
       GET_BLOG_WITH_ARTICLES,
-      { blogHandle: SHOPIFY_BLOG_HANDLE, first }
+      { blogHandle: SHOPIFY_BLOG_HANDLE, first, language: shopifyLanguage }
     );
+    console.log("HexagonWithPosts: Preferred blog response:", preferred);
     let nodes = preferred?.blog?.articles?.nodes || [];
     if (!nodes.length) {
-      const all = await sf<{ articles?: { nodes?: any[] } }>(LIST_ARTICLES, { first });
+      console.log("HexagonWithPosts: No articles in preferred blog, trying list articles");
+      const all = await sf<{ articles?: { nodes?: any[] } }>(LIST_ARTICLES, { first, language: shopifyLanguage });
+      console.log("HexagonWithPosts: List articles response:", all);
       nodes = all?.articles?.nodes || [];
     }
+    console.log("HexagonWithPosts: Final nodes:", nodes);
     
     const items: Slide[] = nodes.slice(0, first).map((n: any) => ({
       id: n.id || n.handle,
@@ -75,9 +83,10 @@ export async function fetchBlogPosts(locale: string, first = 4): Promise<Slide[]
       url: articlePath(locale as any, n.handle),
     }));
     
+    console.log("HexagonWithPosts: Mapped items:", items);
     return items;
   } catch (e) {
-    console.warn("HexagonWithPosts: failed to load Shopify articles", e);
+    console.error("HexagonWithPosts: failed to load Shopify articles", e);
     return [];
   }
 }
@@ -85,6 +94,7 @@ export async function fetchBlogPosts(locale: string, first = 4): Promise<Slide[]
 // Component that fetches blog posts and passes them to Hexagon
 export default async function HexagonWithPosts({ locale }: { locale: string }) {
   const slides = await fetchBlogPosts(locale, 4);
+  console.log("HexagonWithPosts: final slides", slides);
   
   // Pass the fetched slides as initialSlides prop to Hexagon component
   return <Hexagon initialSlides={slides} />;
