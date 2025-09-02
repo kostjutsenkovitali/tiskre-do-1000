@@ -44,7 +44,31 @@
     "saturday": "Saturday",
     "sunday": "Sunday",
     "closed": "Closed"
+  },
+  "About": {
+    "title": "About Tiskre-DO",
+    "intro": "We are a small family company from Tallinn, Estonia. Our mission is to bring our vision of the dream outdoor lifestyle to life—crafted in metal. If our ideas resonate with yours, we’ll be truly happy to connect.",
+    "philosophyTitle": "Our Philosophy",
+    "philosophyText": "We believe that good design should feel natural. Every piece we create is shaped by hands, not hype. Durable, practical, and quietly beautiful—That’s how we imagine the perfect outdoor space.",
+    "craftedTitle": "Crafted in Metal",
+    "craftedText": "We design and build durable products that live outdoors. Thoughtful details, honest materials, and long service are at the center of what we do.",
+    "peopleTitle": "People & Places",
+    "peopleText": "What inspires us most is the outdoors—simple forms and robust workmanship that blend into the landscape.",
+    "rootsTitle": "Roots",
+    "rootsText": "We try to hold strong to our roots."
+  },
+  "Instructions": {
+    "title": "Product Instructions",
+    "intro": "Find detailed setup, care, and usage instructions for all our products organized by category.",
+    "contactSupport": "Can't find instructions for your product?",
+    "contactSupportLink": "Contact our support team",
+    "viewProduct": "View Product"
+  },
+  "Common": {
+    "viewMore": "View more",
+    "latestFromOurPosts": "Latest from our posts",
+    "readMore": "Read more",
+    "customer": "Customer",
+    "testimonials": "Testimonials"
   }
 }
-
-

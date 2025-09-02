@@ -12,10 +12,12 @@ import * as THREE from "three";
 import { bus } from "@/utils/visibilityBus";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
-import { sf, SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
+import { sf } from "@/lib/shopify";
 import { GET_BLOG_WITH_ARTICLES, LIST_ARTICLES } from "@/lib/queries/blog";
+import { SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
 import { usePathname } from "next/navigation";
 import { articlePath, detectLocaleFromPath } from "@/lib/paths";
+import { useI18n } from "@/contexts/I18nProvider";
 
 /* =========================================================
    Types
@@ -34,6 +36,11 @@ type Slide = {
   quote: string;
   imageUrl: string;
   url: string;
+};
+
+// Props for the component
+type HexagonProps = {
+  initialSlides?: Slide[];
 };
 
 /* =========================================================
@@ -128,14 +135,15 @@ function unlockScroll(prevY: number) {
 /* =========================================================
    Component
    ========================================================= */
-export default function Hexagon() {
+export default function Hexagon({ initialSlides }: HexagonProps) {
   const sizingVars = { "--s": "clamp(240px, 40vmin, 600px)", "--scale": 1.2 } as CSSProperties;
 
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pathname = usePathname();
+  const { t } = useI18n();
 
-  const [slides, setSlides] = useState<Slide[] | null>(null);
+  const [slides, setSlides] = useState<Slide[] | null>(initialSlides || null);
   const [index, setIndex] = useState(0);
 
   // Active ONLY when this section or footer visible (kept)
@@ -151,8 +159,13 @@ export default function Hexagon() {
     bus.emit("footer:reveal", hexVisible === true);
   }, [hexVisible, footerVisible]);
 
-  /* ===== fetch posts (Shopify) ===== */
+  /* ===== fetch posts (Shopify) - only if no initial slides provided ===== */
   useEffect(() => {
+    // If we already have slides from props, don't fetch again
+    if (initialSlides && initialSlides.length > 0) {
+      return;
+    }
+    
     let cancelled = false;
     (async () => {
       try {
@@ -180,7 +193,7 @@ export default function Hexagon() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [initialSlides]);
 
   useEffect(() => {
     if (!slides || slides.length < 2) return;
@@ -494,7 +507,7 @@ export default function Hexagon() {
             } as CSSProperties}
           >
             <div style={{ ...LABEL_STYLE, fontSize: "clamp(13px, 1.333vw, 19px)", opacity: 0.95 }}>
-              Latest from our posts
+              {t("Common.latestFromOurPosts")}
             </div>
             <div
               style={{ ...TITLE_STYLE, fontSize: "clamp(24px, 3.2vw, 40px)", marginTop: 10, marginBottom: 12 }}
@@ -563,7 +576,7 @@ export default function Hexagon() {
                   display: "inline-block",
                 }}
               >
-                Read more
+                {t("Common.readMore")}
               </span>
             </a>
           </figure>

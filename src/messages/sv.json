@@ -44,7 +44,31 @@
     "saturday": "Lördag",
     "sunday": "Söndag",
     "closed": "Stängt"
+  },
+  "About": {
+    "title": "Om Tiskre-DO",
+    "intro": "Vi är ett litet familjeföretag från Tallinn, Estland. Vårt uppdrag är att ge liv åt vår vision om den drömda utomhuslivsstilen - tillverkad i metall. Om våra idéer resonera med dina, blir vi verkligen glada att koppla ihop.",
+    "philosophyTitle": "Vår filosofi",
+    "philosophyText": "Vi tror att god design ska kännas naturlig. Varje föremål vi skapar formas av händer, inte hype. Hållbar, praktisk och tyst vacker - så föreställer vi oss det perfekta utomhusutrymmet.",
+    "craftedTitle": "Tillverkad i metall",
+    "craftedText": "Vi designar och bygger hållbara produkter som lever utomhus. Genomtänkta detaljer, ärliga material och lång service står i centrum för det vi gör.",
+    "peopleTitle": "Människor och platser",
+    "peopleText": "Vad som inspirerar oss mest är utomhusmiljöer - enkla former och robust hantverk som smälter in i landskapet.",
+    "rootsTitle": "Rötter",
+    "rootsText": "Vi försöker hålla starkt i våra rötter."
+  },
+  "Instructions": {
+    "title": "Produktinstruktioner",
+    "intro": "Hitta detaljerade installations-, skötsel- och användningsanvisningar för alla våra produkter organiserade efter kategori.",
+    "contactSupport": "Hittar du inte instruktionerna för din produkt?",
+    "contactSupportLink": "Kontakta vårt supportteam",
+    "viewProduct": "Visa produkt"
+  },
+  "Common": {
+    "viewMore": "Visa mer",
+    "latestFromOurPosts": "Senaste inläggen",
+    "readMore": "Läs mer",
+    "customer": "Kund",
+    "testimonials": "Vitsord"
   }
 }
-
-

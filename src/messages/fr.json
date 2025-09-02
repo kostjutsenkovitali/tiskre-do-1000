@@ -44,7 +44,31 @@
     "saturday": "Samedi",
     "sunday": "Dimanche",
     "closed": "Fermé"
+  },
+  "About": {
+    "title": "À propos de Tiskre-DO",
+    "intro": "Nous sommes une petite entreprise familiale de Tallinn, en Estonie. Notre mission est de donner vie à notre vision du style de vie de rêve en plein air — conçue en métal. Si nos idées résonnent avec les vôtres, nous serons vraiment heureux de nous connecter.",
+    "philosophyTitle": "Notre philosophie",
+    "philosophyText": "Nous croyons que le bon design devrait se sentir naturel. Chaque pièce que nous créons est façonnée à la main, pas par le buzz. Durable, pratique et discrètement belle — c'est ainsi que nous imaginons l'espace extérieur parfait.",
+    "craftedTitle": "Fabriqué en métal",
+    "craftedText": "Nous concevons et fabriquons des produits durables qui vivent en extérieur. Des détails réfléchis, des matériaux honnêtes et un service de longue durée sont au cœur de ce que nous faisons.",
+    "peopleTitle": "Personnes et lieux",
+    "peopleText": "Ce qui nous inspire le plus, ce sont les espaces extérieurs — des formes simples et un savoir-faire robuste qui se fondent dans le paysage.",
+    "rootsTitle": "Racines",
+    "rootsText": "Nous essayons de rester fidèles à nos racines."
+  },
+  "Instructions": {
+    "title": "Instructions des produits",
+    "intro": "Trouvez des instructions détaillées de configuration, d'entretien et d'utilisation pour tous nos produits organisés par catégorie.",
+    "contactSupport": "Vous ne trouvez pas les instructions de votre produit ?",
+    "contactSupportLink": "Contactez notre équipe de support",
+    "viewProduct": "Voir le produit"
+  },
+  "Common": {
+    "viewMore": "Voir plus",
+    "latestFromOurPosts": "Derniers articles",
+    "readMore": "Lire la suite",
+    "customer": "Client",
+    "testimonials": "Témoignages"
   }
 }
-
-

@@ -44,7 +44,31 @@
     "saturday": "Laupäev",
     "sunday": "Pühapäev",
     "closed": "Suletud"
+  },
+  "About": {
+    "title": "Tiskre-DO tutvustus",
+    "intro": "Oleme väike perekonnafirma Tallinnast, Eestist. Meie missiooniks on viia ellu meie unistus unikaalsest õueelust - valmistatud metallist. Kui meie ideed kõlavad tuttavalt, siis oleme tõesti õnnelikud ühenduse loomisega.",
+    "philosophyTitle": "Meie filosoofia",
+    "philosophyText": "Usume, et hea disain peaks tunduma loomulik. Iga meie loodud ese on kujundatud kätega, mitte hüpiga. Vastupidav, praktiline ja vaikselt ilus - nii et me kujutame ette ideaalse õueala.",
+    "craftedTitle": "Valmistatud metallist",
+    "craftedText": "Me kujundame ja valmistame vastupidavaid tooteid, mis elavad õues. Mõtlejad detailid, ausad materjalid ja pikk teenindus on meie tegevuse keskmes.",
+    "peopleTitle": "Inimesed ja kohad",
+    "peopleText": "Mis meid enim inspireerib, on õues olemine - lihtsad vormid ja tugev käsitöö, mis sulanduvad maastikku.",
+    "rootsTitle": "Juured",
+    "rootsText": "Püüame hoida tugevalt oma juurtega."
+  },
+  "Instructions": {
+    "title": "Tootejuhendid",
+    "intro": "Leidke üksikasjalikud seadistus-, hooldus- ja kasutusjuhendid kõigi meie toodete kohta, kategooriate kaupa korraldatud.",
+    "contactSupport": "Kas te ei leia oma toote juhiseid?",
+    "contactSupportLink": "Võtke ühendust meie tugimeeskonnaga",
+    "viewProduct": "Vaata toodet"
+  },
+  "Common": {
+    "viewMore": "Vaata rohkem",
+    "latestFromOurPosts": "Värsked postitused",
+    "readMore": "Loe edasi",
+    "customer": "Klient",
+    "testimonials": "Iseloomustused"
   }
 }
-
-

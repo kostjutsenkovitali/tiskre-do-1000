@@ -6,6 +6,9 @@ import { sf } from "@/lib/shopify";
 import { GET_COLLECTIONS, GET_COLLECTION_PRODUCTS } from "@/lib/queries/products";
 import { DEFAULT_LOCALE } from "@/i18n/config";
 import { productPath } from "@/lib/paths";
+import InstructionsContent from "@/components/InstructionsContent";
+import ViewProductText from "@/components/ViewProductText";
+import { Suspense } from "react";
 
 export default async function InstructionsPage() {
   // Fetch Shopify collections and a few products per collection
@@ -26,12 +29,9 @@ export default async function InstructionsPage() {
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #98a8b8 0%, #f8f8f8 100%)" }}>
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-medium text-foreground mb-6">Product Instructions</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Find detailed setup, care, and usage instructions for all our products organized by category.
-          </p>
-        </div>
+        <Suspense fallback={<div />}>
+          <InstructionsContent />
+        </Suspense>
 
         <div className="mb-8">
           <Accordion type="single" collapsible className="w-full space-y-4">
@@ -58,7 +58,9 @@ export default async function InstructionsPage() {
                               href={productPath(DEFAULT_LOCALE as any, product.handle)}
                               className="inline-flex items-center text-foreground hover:underline"
                             >
-                              View Product
+                              <Suspense fallback={<span>View Product</span>}>
+                                <ViewProductText />
+                              </Suspense>
                             </Link>
                           </div>
                         </CardContent>
@@ -70,19 +72,7 @@ export default async function InstructionsPage() {
             ))}
           </Accordion>
         </div>
-
-        <div className="text-center">
-          <p className="text-muted-foreground">
-            Can't find instructions for your product? {" "}
-            <Link href="/contact" className="underline">
-              Contact our support team
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );
 }
-
-
-

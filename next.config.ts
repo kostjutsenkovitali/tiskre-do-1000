@@ -35,6 +35,25 @@ const nextConfig: NextConfig = {
       permanent: true,
     });
     
+    // Redirect non-localized pages to their English versions
+    redirects.push({
+      source: '/about',
+      destination: '/en/about/',
+      permanent: true,
+    });
+    
+    redirects.push({
+      source: '/contact',
+      destination: '/en/contact/',
+      permanent: true,
+    });
+    
+    redirects.push({
+      source: '/instructions',
+      destination: '/en/instructions/',
+      permanent: true,
+    });
+    
     // Add locale-specific segment redirects
     for (const locale of LOCALES) {
       if (locale !== 'en') {

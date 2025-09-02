@@ -1,16 +1,18 @@
 "use client";
 
 import Image from "next/image";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function AboutPage() {
+  const { t } = useI18n();
+  
   return (
     <main className="min-h-screen" style={{ background: "linear-gradient(180deg, #a8b8b8 0%, #f8f8f8 100%)" }}>
       {/* Intro */}
       <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16">
-        <h1 className="text-3xl md:text-4xl font-medium text-foreground mb-6">About Tiskre-DO</h1>
+        <h1 className="text-3xl md:text-4xl font-medium text-foreground mb-6">{t("About.title")}</h1>
         <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-3xl">
-          We are a small family company from Tallinn, Estonia. Our mission is to bring our vision of the dream
-          outdoor lifestyle to life—crafted in metal. If our ideas resonate with yours, we’ll be truly happy to connect.
+          {t("About.intro")}
         </p>
       </section>
 
@@ -18,10 +20,9 @@ export default function AboutPage() {
       <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
         <div className="max-w-4xl">
           <div className="rounded-md border border-gray-200 bg-gray-100/80 p-6">
-            <h2 className="text-2xl font-medium mb-3">Our Philosophy</h2>
+            <h2 className="text-2xl font-medium mb-3">{t("About.philosophyTitle")}</h2>
             <p className="text-muted-foreground leading-relaxed">
-              We believe that good design should feel natural. Every piece we create is shaped by hands, not hype.
-              Durable, practical, and quietly beautiful—That’s how we imagine the perfect outdoor space.
+              {t("About.philosophyText")}
             </p>
           </div>
         </div>
@@ -34,10 +35,9 @@ export default function AboutPage() {
       <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
         <div className="max-w-4xl ml-auto">
           <div className="rounded-md border border-gray-200 bg-gray-100/80 p-6">
-            <h2 className="text-2xl font-medium mb-3">Crafted in Metal</h2>
+            <h2 className="text-2xl font-medium mb-3">{t("About.craftedTitle")}</h2>
             <p className="text-muted-foreground leading-relaxed">
-              We design and build durable products that live outdoors. Thoughtful details, honest materials,
-              and long service are at the center of what we do.
+              {t("About.craftedText")}
             </p>
           </div>
         </div>
@@ -50,9 +50,9 @@ export default function AboutPage() {
       <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
         <div className="max-w-4xl">
           <div className="rounded-md border border-gray-200 bg-gray-100/80 p-6">
-            <h2 className="text-2xl font-medium mb-3">People & Places</h2>
+            <h2 className="text-2xl font-medium mb-3">{t("About.peopleTitle")}</h2>
             <p className="text-muted-foreground leading-relaxed">
-              What inspires us most is the outdoors—simple forms and robust workmanship that blend into the landscape.
+              {t("About.peopleText")}
             </p>
           </div>
         </div>
@@ -67,8 +67,8 @@ export default function AboutPage() {
           <div className="relative w-full" style={{ aspectRatio: "22/15" }}>
             <div className="absolute inset-0 border border-gray-300 bg-white flex items-center justify-center">
               <div className="px-8">
-                <h3 className="text-xl font-medium mb-2">Roots</h3>
-                <p className="text-muted-foreground leading-relaxed">We try to hold strong to our roots.</p>
+                <h3 className="text-xl font-medium mb-2">{t("About.rootsTitle")}</h3>
+                <p className="text-muted-foreground leading-relaxed">{t("About.rootsText")}</p>
               </div>
             </div>
           </div>
