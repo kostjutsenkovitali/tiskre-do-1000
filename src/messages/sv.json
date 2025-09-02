@@ -67,12 +67,24 @@
   "Portfolio": {
     "coldSmoke": "Kallrök",
     "shopNow": "Handla nu",
-    "masterpieces": "Våra mest eftertraktade mästerverk."
+    "masterpieces": "Våra mest eftertraktade mästerverk.",
+    "dreamOutdoorKitchen": "Dröm utekök",
+    "outdoorGrillTable": "Utegrill bord",
+    "kamadoOffRoad": "Kamado OFF-road",
+    "close": "Stäng"
   },
   "Testimonials": {
     "title": "Nöjda campare",
     "subtitle": "Vitsord",
-    "customerTestimonials": "Kundvitsord"
+    "customerTestimonials": "Kundvitsord",
+    "quotes": {
+      "test1": "Enkel installation, kraftfull luftflöde med den nya kompressorn och ingen aska som faller ut. Man märker att detta är designat av någon som faktiskt röker mat. Rekommenderas varmt!",
+      "test2": "Det fungerar vackert – röken är ren, byggkvaliteten är solid och den passar perfekt till min Kamado-grill.",
+      "test3": "Satte upp den i mitt lilla rökeri. Inga problem – den fungerar bara. Röken är jämn och stadig.",
+      "test5": "Bästa saken sedan skivat bröd.",
+      "test6": "SG2 är verkligen en jättefin sak.",
+      "test7": "Låt oss se hur SG2 fungerar."
+    }
   },
   "Common": {
     "viewMore": "Visa mer",
@@ -85,6 +97,12 @@
     "testimonies": {
       "topText": "Kund",
       "bottomText": "Berättelser"
+    },
+    "categories": {
+      "cortenProducts": "Corten-produkter",
+      "kamadoCarts": "Kamado-vagnar",
+      "smokers": "Rökugnar",
+      "outdoorKitchens": "Utekök"
     }
   }
 }

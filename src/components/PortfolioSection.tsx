@@ -378,7 +378,7 @@ export default function PortfolioSection() {
   const zoomP = clamp01((afterPauseVh - GATHER_VH) / Math.max(0.0001, ZOOM_VH_SLOW));
   const flyP = clamp01((afterPauseVh - GATHER_VH - ZOOM_VH_SLOW) / Math.max(0.0001, FLY_VH));
 
-  // ----- New staged horizontal mapping (rigid track, constant speed) -----
+  // ----- New staged horizontal mapping (rigid track, constant speed) ----- 
   const afterFlyVh = Math.max(0, afterPauseVh - GATHER_VH - ZOOM_VH_SLOW - FLY_VH);
   const progress01 = clamp01(afterFlyVh / Math.max(0.0001, TOTAL_HSHIFT_VH_SLOW));
   const vwProgress = progress01 * TOTAL_SHIFT_VW;    // 0 → 225vw (for 3 panels)
@@ -723,13 +723,13 @@ export default function PortfolioSection() {
                       }}
                     >
                       <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
-                        Outdoor<br />grill table
+                        {t("Portfolio.outdoorGrillTable")}
                       </div>
                       {/* two blank lines */}
                       <div style={{ height: "2em" }} />
-                      {/* two-line button, black/white */}
+                      {/* single button, black/white */}
                       <a href="/shop" style={BTN_STYLE}>
-                        <span style={{ display: "block" }}>{t("Portfolio.shopNow")}</span>{t("Portfolio.shopNow")}
+                        {t("Portfolio.shopNow")}
                       </a>
                     </div>
                   )}
@@ -749,7 +749,7 @@ export default function PortfolioSection() {
                       }}
                     >
                       <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
-                        Kamado OFF-road
+                        {t("Portfolio.kamadoOffRoad")}
                       </div>
                       <a href="/shop" style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
                     </div>
@@ -770,7 +770,7 @@ export default function PortfolioSection() {
                       }}
                     >
                       <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
-                        Dream Outdoor<br />kitchen
+                        {t("Portfolio.dreamOutdoorKitchen")}
                       </div>
                       <a href="/shop" style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
                     </div>
@@ -892,7 +892,7 @@ export default function PortfolioSection() {
                   className="px-5 py-2 font-semibold uppercase text-sm shadow-md rounded-md border"
                   style={{ background: "rgba(17,17,17,0.9)", color: "#fff", letterSpacing: "0.05em" }}
                 >
-                  Close
+                  {t("Portfolio.close")}
                 </button>
               </div>
             </div>

@@ -67,12 +67,24 @@
   "Portfolio": {
     "coldSmoke": "Cold smoke",
     "shopNow": "Shop now",
-    "masterpieces": "Our most sought-after masterpieces."
+    "masterpieces": "Our most sought-after masterpieces.",
+    "dreamOutdoorKitchen": "Dream Outdoor Kitchen",
+    "outdoorGrillTable": "Outdoor grill table",
+    "kamadoOffRoad": "Kamado OFF-road",
+    "close": "Close"
   },
   "Testimonials": {
     "title": "Happy campers",
     "subtitle": "Testimonies",
-    "customerTestimonials": "Customer testimonials"
+    "customerTestimonials": "Customer testimonials",
+    "quotes": {
+      "test1": "Easy setup, powerful airflow with the new compressor, and no ash falling out. You can tell this was designed by someone who actually smokes food. Highly recommended!",
+      "test2": "It works beautifully — the smoke is clean, the build quality is solid, and it fits my Kamado grill perfectly.",
+      "test3": "Set it up in my small smokehouse. No hassle — it just works. The smoke is smooth and steady.",
+      "test5": "The best thing since sliced bread.",
+      "test6": "SG2 is really a great thing.",
+      "test7": "Let’s see how SG2 works."
+    }
   },
   "Common": {
     "viewMore": "View more",
@@ -85,6 +97,12 @@
     "testimonies": {
       "topText": "Customer",
       "bottomText": "Stories"
+    },
+    "categories": {
+      "cortenProducts": "Corten Products",
+      "kamadoCarts": "Kamado Carts",
+      "smokers": "Smokers",
+      "outdoorKitchens": "Outdoor Kitchens"
     }
   }
 }

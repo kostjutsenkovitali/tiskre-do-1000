@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import ProductCard from "@/components/ProductCard";
 import { usePathname } from "next/navigation";
 import { detectLocaleFromPath } from "@/lib/paths";
+import { useI18n } from "@/contexts/I18nProvider"; // Import the useI18n hook
 
 interface FormattedProduct {
   id: string;
@@ -31,13 +32,23 @@ interface FormattedCollection {
 
 interface ShopClientProps {
   products: FormattedProduct[];
-  collections: FormattedCollection[];
+  categories: FormattedCollection[]; // Changed from collections to categories
   hrefBase?: string;
 }
 
-export default function ShopClient({ products, collections, hrefBase = "/shop" }: ShopClientProps) {
+// Mapping from category slugs to translation keys
+const CATEGORY_TRANSLATION_KEYS: Record<string, string> = {
+  "corten-products": "Home.categories.cortenProducts",
+  "kamado-carts": "Home.categories.kamadoCarts",
+  "smokers": "Home.categories.smokers",
+  "outdoor-kitchens": "Home.categories.outdoorKitchens",
+};
+
+export default function ShopClient({ products, categories, hrefBase = "/shop" }: ShopClientProps) {
   const pathname = usePathname();
   const locale = detectLocaleFromPath(pathname);
+  const { t } = useI18n(); // Use the translation hook
+
   const L: Record<string, { shop: string; categories: string; priceRange: string; all: string; productsFound: (n: number) => string; noResults: string; clearFilters: string }> = {
     en: { shop: "Shop", categories: "Categories", priceRange: "Price Range", all: "All", productsFound: (n) => `${n} products found`, noResults: "No products found matching your criteria.", clearFilters: "Clear Filters" },
     et: { shop: "Pood", categories: "Kategooriad", priceRange: "Hinnavahemik", all: "Kõik", productsFound: (n) => `Leitud ${n} toodet`, noResults: "Sobivaid tooteid ei leitud.", clearFilters: "Puhasta filtrid" },
@@ -104,16 +115,18 @@ export default function ShopClient({ products, collections, hrefBase = "/shop" }
                     {T.all}
                   </Button>
 
-                  {collections.map((collection) => {
-                    const active = selectedCategory === collection.slug;
+                  {categories.map((category) => {
+                    const active = selectedCategory === category.slug;
+                    // Use translated name if available, otherwise fall back to original name
+                    const displayName = CATEGORY_TRANSLATION_KEYS[category.slug] ? t(CATEGORY_TRANSLATION_KEYS[category.slug]) : category.name;
                     return (
                       <Button
-                        key={collection.id}
+                        key={category.id}
                         variant={active ? "solid" : "ghost"}
                         className={`w-full justify-start rounded-none ${active ? "bg-primary text-primary-foreground" : ""}`}
-                        onClick={() => selectCategory(collection.slug)}
+                        onClick={() => selectCategory(category.slug)}
                       >
-                        {collection.name}
+                        {displayName}
                       </Button>
                     );
                   })}
@@ -167,5 +180,3 @@ export default function ShopClient({ products, collections, hrefBase = "/shop" }
     </div>
   );
 }
-
-

@@ -63,7 +63,9 @@ export default async function LocaleHome({ params }: Props) {
       <Suspense fallback={<div />}>
         <SpaRouter collections={collections} />
       </Suspense>
-      <HeroSection collections={collections} />
+      <Suspense fallback={<div />}>
+        <HeroSection categories={collections} />
+      </Suspense>
       <PortfolioSection />
       <TestimoniesAbout />
       <HexagonWithPosts locale={locale} />

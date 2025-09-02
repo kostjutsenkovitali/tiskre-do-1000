@@ -1,6 +1,8 @@
 // src/components/HeroSection.tsx
 import Link from "next/link";
 import Image from "next/image";
+import { HeroCategoryName } from "@/components/HeroCategoryName"; // Import the client component for category names
+import { HeroViewMoreText } from "@/components/HeroViewMoreText"; // Import the client component for "View more" text
 
 type Category = {
   name: string;
@@ -56,7 +58,7 @@ export function HeroSection({ categories = [] }: Props) {
     const name = cat?.name ?? t.fallbackName;
     const descHtml = normalizeDescription(cat); // may be empty if your API truly doesn't send any description
     const href = cat ? `/shop/category/${cat.slug}` : "/shop";
-    return { name, descHtml, href, image: t.image };
+    return { name, descHtml, href, image: t.image, slug: cat?.slug ?? t.slug };
   });
 
   return (
@@ -111,7 +113,8 @@ export function HeroSection({ categories = [] }: Props) {
               <div className="px-3 pt-2 flex items-center justify-center">
                 <span className="inline-block bg-neutral-100 text-center px-3 py-1">
                   <h3 className="text-neutral-900 text-[1.05rem] font-semibold leading-tight whitespace-nowrap">
-                    {card.name}
+                    {/* Use client component for translated category name */}
+                    <HeroCategoryName slug={card.slug} defaultName={card.name} />
                   </h3>
                 </span>
               </div>
@@ -137,7 +140,8 @@ export function HeroSection({ categories = [] }: Props) {
                     "hover:tracking-[0.18em]",
                   ].join(" ")}
                 >
-                  View more
+                  {/* Use client component for translated "View more" text */}
+                  <HeroViewMoreText />
                   <span className="inline-flex items-center justify-center w-8 h-8 border border-neutral-300">
                     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                       <path

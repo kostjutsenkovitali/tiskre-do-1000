@@ -67,12 +67,24 @@
   "Portfolio": {
     "coldSmoke": "Kylmäsavu",
     "shopNow": "Osta nyt",
-    "masterpieces": "Suosituimmat mestariteoksemme."
+    "masterpieces": "Suosituimmat mestariteoksemme.",
+    "dreamOutdoorKitchen": "Unelmien ulkok Keittiö",
+    "outdoorGrillTable": "Ulkogrilli pöytä",
+    "kamadoOffRoad": "Kamado OFF-road",
+    "close": "Sulje"
   },
   "Testimonials": {
     "title": "Tyytyväiset asiakkaat",
     "subtitle": "Suositukset",
-    "customerTestimonials": "Asiakassuositukset"
+    "customerTestimonials": "Asiakassuositukset",
+    "quotes": {
+      "test1": "Helppo asennus, tehokas ilmavirta uudella kompressorilla eikä tuhkaa valu ulos. Huomaat, että tämän on suunnitellut joku, joka todella savustaa ruokaa. Suosittelen lämpimästi!",
+      "test2": "Toimii kauniisti – savu on puhdasta, rakennuslaatu on vankka ja se sopii täydellisesti Kamado-grilliini.",
+      "test3": "Asensin sen pienen savustuslaatikkoni. Ei vaivaa – se toimii yksinkertaisesti. Savu on pehmeää ja tasalaatuista.",
+      "test5": "Paras asia siivutetun leivän jälkeen.",
+      "test6": "SG2 on todella loistava juttu.",
+      "test7": "Katsotaanpa, miten SG2 toimii."
+    }
   },
   "Common": {
     "viewMore": "Näytä lisää",
@@ -85,6 +97,12 @@
     "testimonies": {
       "topText": "Asiakas",
       "bottomText": "Tarinoita"
+    },
+    "categories": {
+      "cortenProducts": "Corten-tuotteet",
+      "kamadoCarts": "Kamado-kärryt",
+      "smokers": "Savustinlaitteet",
+      "outdoorKitchens": "Ulkokeittiöt"
     }
   }
 }

@@ -298,7 +298,7 @@ function markCrossingSegs(segs: Seg[], minAngleDeg = 20) {
 function MultiLaserOverlayAbsolute({
   active,
   targets,
-  durationMs = 20000,
+  durationMs = 4000,
   anchorRef,
   onDone,
 }: {
@@ -970,13 +970,14 @@ export default function TestimoniesAbout() {
     }
   };
   const block4TextFor = (id: string): ReactNode | undefined => {
+    const { t } = useI18n();
     switch (id) {
-      case "test1": return <>“Easy setup, powerful airflow with the new compressor, and no ash falling out. You can tell this was designed by someone who actually smokes food. Highly recommended!“</>;
-      case "test2": return <>“It works beautifully — the smoke is clean, the build quality is solid, and it fits my Kamado grill perfectly.”</>;
-      case "test3": return <>“Set it up in my small smokehouse. No hassle — it just works. The smoke is smooth and steady.“</>;
-      case "test5": return <>“The best thing since sliced bread.”</>;
-      case "test6": return <>“SG2 is really a great thing.”</>;
-      case "test7": return <>“Let’s see how SG2 works.”</>;
+      case "test1": return t("Testimonials.quotes.test1");
+      case "test2": return t("Testimonials.quotes.test2");
+      case "test3": return t("Testimonials.quotes.test3");
+      case "test5": return t("Testimonials.quotes.test5");
+      case "test6": return t("Testimonials.quotes.test6");
+      case "test7": return t("Testimonials.quotes.test7");
       default: return undefined;
     }
   };
@@ -1013,7 +1014,7 @@ export default function TestimoniesAbout() {
         <MultiLaserOverlayAbsolute
           active={laserActive}
           targets={targets}
-          durationMs={20000}
+          durationMs={4000}
           anchorRef={glbBoxRef}
           onDone={() => {
             setLaserActive(false);

@@ -67,12 +67,24 @@
   "Portfolio": {
     "coldSmoke": "Kalt rauchen",
     "shopNow": "Jetzt einkaufen",
-    "masterpieces": "Unsere meistgesuchten Meisterwerke."
+    "masterpieces": "Unsere meistgesuchten Meisterwerke.",
+    "dreamOutdoorKitchen": "Traum-Außenküche",
+    "outdoorGrillTable": "Außengrilltisch",
+    "kamadoOffRoad": "Kamado OFF-road",
+    "close": "Schließen"
   },
   "Testimonials": {
     "title": "Zufriedene Camper",
     "subtitle": "Referenzen",
-    "customerTestimonials": "Kundenreferenzen"
+    "customerTestimonials": "Kundenreferenzen",
+    "quotes": {
+      "test1": "Einfache Einrichtung, starke Luftzufuhr mit dem neuen Kompressor und keine Asche, die herausfällt. Man merkt, dass dies von jemandem entworfen wurde, der tatsächlich Lebensmittel räuchert. Sehr zu empfehlen!",
+      "test2": "Es funktioniert wunderbar – der Rauch ist sauber, die Bauqualität ist solide und es passt perfekt zu meinem Kamado-Grill.",
+      "test3": "Ich habe es in meiner kleinen Räucherhütte aufgestellt. Kein Aufwand – es funktioniert einfach. Der Rauch ist sanft und gleichmäßig.",
+      "test5": "Das Beste seit geschnittenem Brot.",
+      "test6": "SG2 ist wirklich eine großartige Sache.",
+      "test7": "Mal sehen, wie SG2 funktioniert."
+    }
   },
   "Common": {
     "viewMore": "Mehr anzeigen",
@@ -85,6 +97,12 @@
     "testimonies": {
       "topText": "Kunde",
       "bottomText": "Geschichten"
+    },
+    "categories": {
+      "cortenProducts": "Corten-Produkte",
+      "kamadoCarts": "Kamado Carts",
+      "smokers": "Räucheröfen",
+      "outdoorKitchens": "Außenküchen"
     }
   }
 }

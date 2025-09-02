@@ -47,7 +47,7 @@
   },
   "About": {
     "title": "Tiskre-DO tutvustus",
-    "intro": "Oleme väike perekonnafirma Tallinnast, Eestist. Meie missiooniks on viia ellu meie unistus unikaalsest õueelust - valmistatud metallist. Kui meie ideed kõlavad tuttavalt, siis oleme tõesti õnnelikud ühenduse loomisega.",
+    "intro": "Oleme väike perekonnafirma Tallinnast, Eestist. Meie missiooniks on viia ellu meie unistus unikaarsest õueelust - valmistatud metallist. Kui meie ideed kõlavad tuttavalt, siis oleme tõesti õnnelikud ühenduse loomisega.",
     "philosophyTitle": "Meie filosoofia",
     "philosophyText": "Usume, et hea disain peaks tunduma loomulik. Iga meie loodud ese on kujundatud kätega, mitte hüpiga. Vastupidav, praktiline ja vaikselt ilus - nii et me kujutame ette ideaalse õueala.",
     "craftedTitle": "Valmistatud metallist",
@@ -67,12 +67,24 @@
   "Portfolio": {
     "coldSmoke": "Külmsuits",
     "shopNow": "Osta kohe",
-    "masterpieces": "Meie kõige otsitumad meistriteosed."
+    "masterpieces": "Meie kõige otsitumad meistriteosed.",
+    "dreamOutdoorKitchen": "Unistuste õueköök",
+    "outdoorGrillTable": "Õuegrill laud",
+    "kamadoOffRoad": "Kamado OFF-road",
+    "close": "Sulge"
   },
   "Testimonials": {
     "title": "Rahulolevad kliendid",
     "subtitle": "Iseloomustused",
-    "customerTestimonials": "Kliendi iseloomustused"
+    "customerTestimonials": "Kliendi iseloomustused",
+    "quotes": {
+      "test1": "Lihtne seadistada, võimas õhuvool uue kompressoriga ja tuhk ei lange välja. Saad mõista, et see on loodud inimese poolt, kes tegelikult toitu suitsutab. Soojalt soovitan!",
+      "test2": "See töötab ilusasti – suits on puhas, ehituskvaliteet on tahke ja see sobib minu Kamado grilli täiuslikult.",
+      "test3": "Seadistasin selle oma väikeses suitsukojas. Probleemideta – see lihtsalt töötab. Suits on sujuv ja stabiilne.",
+      "test5": "Parim asi alates viilutatud leivast.",
+      "test6": "SG2 on tõesti suurepärane asi.",
+      "test7": "Vaata, kuidas SG2 töötab."
+    }
   },
   "Common": {
     "viewMore": "Vaata rohkem",
@@ -85,6 +97,12 @@
     "testimonies": {
       "topText": "Klient",
       "bottomText": "Lood"
+    },
+    "categories": {
+      "cortenProducts": "Corten tooted",
+      "kamadoCarts": "Kamado kärud",
+      "smokers": "Suitsetajad",
+      "outdoorKitchens": "Õue köögid"
     }
   }
 }

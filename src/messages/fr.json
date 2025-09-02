@@ -67,12 +67,24 @@
   "Portfolio": {
     "coldSmoke": "Fumée froide",
     "shopNow": "Acheter maintenant",
-    "masterpieces": "Nos chefs-d'œuvre les plus recherchés."
+    "masterpieces": "Nos chefs-d'œuvre les plus recherchés.",
+    "dreamOutdoorKitchen": "Cuisine extérieure de rêve",
+    "outdoorGrillTable": "Table de gril extérieur",
+    "kamadoOffRoad": "Kamado OFF-road",
+    "close": "Fermer"
   },
   "Testimonials": {
     "title": "Campeurs satisfaits",
     "subtitle": "Témoignages",
-    "customerTestimonials": "Témoignages de clients"
+    "customerTestimonials": "Témoignages de clients",
+    "quotes": {
+      "test1": "Configuration facile, flux d'air puissant avec le nouveau compresseur, et pas de cendres qui tombent. On sent que c'est conçu par quelqu'un qui fume vraiment de la nourriture. Hautement recommandé !",
+      "test2": "Ça fonctionne magnifiquement – la fumée est propre, la qualité de construction est solide, et ça s'adapte parfaitement à mon gril Kamado.",
+      "test3": "Je l'ai installé dans mon petit fumoir. Aucun tracas – ça marche tout seul. La fumée est douce et régulière.",
+      "test5": "La meilleure invention depuis le pain découpé.",
+      "test6": "Le SG2 est vraiment une excellente chose.",
+      "test7": "Voyons comment le SG2 fonctionne."
+    }
   },
   "Common": {
     "viewMore": "Voir plus",
@@ -85,6 +97,12 @@
     "testimonies": {
       "topText": "Client",
       "bottomText": "Histoires"
+    },
+    "categories": {
+      "cortenProducts": "Produits en Corten",
+      "kamadoCarts": "Chariots Kamado",
+      "smokers": "Fumoirs",
+      "outdoorKitchens": "Cuisines d'extérieur"
     }
   }
 }

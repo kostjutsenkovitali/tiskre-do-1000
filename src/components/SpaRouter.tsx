@@ -115,5 +115,5 @@ export default function SpaRouter({ collections: initialCollections }: SpaRouter
     return <ProductDetailClient locale={locale} product={productLike} related={[]} />;
   }
 
-  return <ShopClient products={products as any} collections={collections as any} hrefBase={`/${locale}/${seg}`} />;
+  return <ShopClient products={products as any} categories={collections as any} hrefBase={`/${locale}/${seg}`} />;
 }
