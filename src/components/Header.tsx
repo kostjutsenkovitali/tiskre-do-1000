@@ -35,6 +35,7 @@ export default function Header() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const modelRef = useRef<ThreeModelHandle | null>(null);
+  const logoBoxRef = useRef<HTMLDivElement | null>(null);
   const flightRef = useRef<{ running: boolean }>({ running: false });
   const logoObjRef = useRef<THREE.Object3D | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -104,84 +105,25 @@ export default function Header() {
     };
   }, []);
 
-  // Drive header GLB animation from Hexagon visibility
+  // Header responds with logo rect and hides/shows tiny logo during flight.
+  // It no longer animates on header:logo-flyToHex; that signal is consumed by Hexagon.
   useEffect(() => {
-    const onEnter = () => { modelRef.current?.setSpeed(1.0); modelRef.current?.play(); };
-    const onLeave = () => { modelRef.current?.stop(); };
-    const onResetFlight = () => {
-      if (rafIdRef.current != null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-      const obj = logoObjRef.current;
-      if (obj) {
-        obj.position.set(-1.2, 0.15, 0); // resting pose near logo
-        obj.rotation.set(0, 0, 0);
-        obj.scale.set(1, 1, 1);
-      }
-      flightRef.current.running = false;
+    const onQueryRect = () => {
+      const el = logoBoxRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      bus.emit("header:logoRect", rect as unknown as DOMRect);
     };
-    function resolveLogoObject(): THREE.Object3D | null {
-      const scene = modelRef.current?.getScene?.();
-      const byName = scene?.getObjectByName("hexblack-1") as THREE.Object3D | undefined;
-      if (byName) return byName;
-      if (scene) {
-        let g = scene.getObjectByName("logoFlightProxy") as THREE.Group | null;
-        if (!g) {
-          g = new THREE.Group();
-          g.name = "logoFlightProxy";
-          g.position.set(-1.2, 0.15, 0);
-          scene.add(g);
-        }
-        return g;
-      }
-      return null;
-    }
-
-    const onFly = () => {
-      if (flightRef.current.running) return;
-      const obj = (logoObjRef.current ||= resolveLogoObject());
-      if (!obj) { requestAnimationFrame(onFly); return; }
-      flightRef.current.running = true;
-      // Attach to DOM via CSS-driven overlay; since header GLB is rendered by ThreeModel, we simulate flight in CSS-free space by animating transforms on the model container if needed.
-      // Here we animate an internal object; consumers can render it as part of the GLB if exposed.
-      const start = { x: obj.position.x, y: obj.position.y, z: obj.position.z, sx: 1, sy: 1, sz: 1 };
-      const target = { x: 0.0, y: 0.1, z: -0.6, sx: 1.15, sy: 1.15, sz: 1.15 };
-      const ease = (t: number) => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2; // cubic in/out
-      const startAt = performance.now();
-      const step = (ts: number) => {
-        const t = Math.min(1, (ts - startAt) / 3000);
-        const k = ease(t);
-        obj.position.set(
-          start.x + (target.x - start.x) * k,
-          start.y + (target.y - start.y) * k,
-          start.z + (target.z - start.z) * k
-        );
-        obj.scale.set(
-          start.sx + (target.sx - start.sx) * k,
-          start.sy + (target.sy - start.sy) * k,
-          start.sz + (target.sz - start.sz) * k
-        );
-        if (t < 1 && flightRef.current.running) {
-          rafIdRef.current = requestAnimationFrame(step);
-        } else {
-          flightRef.current.running = false;
-          rafIdRef.current = null;
-          bus.emit("header:logo-flyToHex:done");
-        }
-      };
-      rafIdRef.current = requestAnimationFrame(step);
+    const onHide = () => {
+      if (logoBoxRef.current) logoBoxRef.current.style.visibility = "hidden";
     };
-    const offEnter = bus.on("hexagon:enter", onEnter);
-    const offLeave = bus.on("hexagon:leave", onLeave);
-    const offFly = bus.on("header:logo-flyToHex", onFly);
-    const offReset = bus.on("header:resetLogoFlight", onResetFlight);
-    return () => {
-      offEnter();
-      offLeave();
-      offFly();
-      offReset();
+    const onShow = () => {
+      if (logoBoxRef.current) logoBoxRef.current.style.visibility = "";
     };
+    const offQ = bus.on("header:queryLogoRect", onQueryRect);
+    const offH = bus.on("header:hideTinyLogo", onHide);
+    const offS = bus.on("header:showTinyLogo", onShow);
+    return () => { offQ(); offH(); offS(); };
   }, []);
 
   const closeLangMenu = () => langRef.current?.removeAttribute("open");
@@ -234,7 +176,7 @@ export default function Header() {
         <div className="w-full px-3 py-1 flex items-center justify-between">
           {/* Logo (unchanged size) */}
           <Link href="/" aria-label="Home" className="inline-flex items-center">
-            <div className="h-16 sm:h-18 w-[360px] relative">
+            <div ref={logoBoxRef} className="h-16 sm:h-18 w-[360px] relative">
               <ThreeModel ref={modelRef} src="/hexagon/hextext.glb" height="100%" flat scale={0.96} />
             </div>
           </Link>

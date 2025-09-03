@@ -108,30 +108,7 @@ function OrbitDebug({
   );
 }
 
-/* =========================================================
-   Scroll lock helpers (simple fixed-body pattern)
-   ========================================================= */
-function lockScroll(): number {
-  const scrollY = window.scrollY || window.pageYOffset || 0;
-  const body = document.body;
-  body.style.position = "fixed";
-  body.style.top = `-${scrollY}px`;
-  body.style.left = "0";
-  body.style.right = "0";
-  body.style.width = "100%";
-  body.style.overflow = "hidden";
-  return scrollY;
-}
-function unlockScroll(prevY: number) {
-  const body = document.body;
-  body.style.position = "";
-  body.style.top = "";
-  body.style.left = "";
-  body.style.right = "";
-  body.style.width = "";
-  body.style.overflow = "";
-  window.scrollTo(0, prevY || 0);
-}
+// No scroll lock used for this flight
 
 /* =========================================================
    Component
@@ -156,10 +133,16 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
   const [hexVisible, setHexVisible] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
   const activeRef = useRef(false);
+  const flightRunningRef = useRef(false);
+  const armedRef = useRef(true);
   useEffect(() => {
     activeRef.current = hexVisible || footerVisible;
     if (canvasRef.current) {
-      canvasRef.current.style.opacity = activeRef.current ? "1" : "0";
+      // During flight we force opacity to 1 regardless of visibility watchers
+      const forced = (canvasRef.current as any).__forceVisible as boolean | undefined;
+      if (!forced) {
+        canvasRef.current.style.opacity = activeRef.current ? "1" : "0";
+      }
     }
     // Notify footer reveal only when Hexagon itself becomes visible
     bus.emit("footer:reveal", hexVisible === true);
@@ -234,50 +217,52 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
     [slides, index]
   );
 
-  /* ===== Scroll lock: lock when ≥98% visible, release when header flight done ===== */
-  const [scrollLocked, setScrollLocked] = useState(false);
+  // Debug chip for flight start signal
+  const [flyDbg, setFlyDbg] = useState<{ ts: number; count: number } | null>(null);
+  const [logoRectDbg, setLogoRectDbg] = useState<DOMRect | null>(null);
+  const [targetRectDbg, setTargetRectDbg] = useState<DOMRect | null>(null);
+  const [flightState, setFlightState] = useState<"idle" | "starting" | "flying" | "done">("idle");
+  useEffect(() => {
+    const offStart = bus.on("hex:logo-flyToHex:start", () => {
+      setFlyDbg((p) => ({ ts: Date.now(), count: (p?.count || 0) + 1 }));
+      // auto hide after 2.5s
+      setTimeout(() => setFlyDbg((q) => (q && Date.now() - q.ts > 2000 ? null : q)), 2500);
+      setFlightState("starting");
+      setTimeout(() => setFlightState((s) => (s === "starting" ? "flying" : s)), 200);
+    });
+    const offDone = bus.on("header:logo-flyToHex:done", () => {
+      setFlightState("done");
+    });
+    const offLogoRect = bus.on("header:logoRect", (r: any) => {
+      try { setLogoRectDbg(r as DOMRect); } catch {}
+    });
+    const offTargetRect = bus.on("hex:targetRect", (r: any) => {
+      try { setTargetRectDbg(r as DOMRect); } catch {}
+    });
+    return () => { offStart(); offDone(); offLogoRect(); offTargetRect(); };
+  }, []);
+
+  /* ===== Flight control: trigger when ≥97% visible, no scroll lock ===== */
   const lockYRef = useRef(0);
   useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-
-    let doneHandler: ((...a: any[]) => void) | null = null;
-    let testimoniesDone = false;
-
-    const offTestDone = bus.on("testimonies:done", () => { testimoniesDone = true; });
-
+    const section = sectionRef.current; if (!section) return;
     const observer = new IntersectionObserver(([entry]) => {
-      // threshold is 0.99, but we accept ≥0.98 to be tolerant across browsers
-      if (entry.intersectionRatio >= 0.98 && !scrollLocked && testimoniesDone) {
-        // lock vertical
-        lockYRef.current = lockScroll();
-        setScrollLocked(true);
-
-        // set up one-time release on header flight completion
-        doneHandler = () => {
-          bus.off("header:logo-flyToHex:done", doneHandler as any);
-          doneHandler = null;
-          unlockScroll(lockYRef.current);
-          setScrollLocked(false);
-        };
-        bus.on("header:logo-flyToHex:done", doneHandler as any);
-
-        // trigger header flight
-        bus.emit("header:logo-flyToHex");
+      if (entry.intersectionRatio >= 0.97 && armedRef.current && !flightRunningRef.current) {
+        // Debounce + request header rect
+        setTimeout(() => {
+          if (!armedRef.current || flightRunningRef.current) return;
+          bus.emit("header:queryLogoRect");
+          bus.emit("header:hideTinyLogo");
+          bus.emit("hex:logo-flyToHex:start");
+          armedRef.current = false;
+        }, 300);
       }
-    }, { threshold: 0.99 });
-
+    }, { threshold: 0.97 });
     observer.observe(section);
-
-    return () => {
-      observer.disconnect();
-      offTestDone();
-      if (doneHandler) {
-        bus.off("header:logo-flyToHex:done", doneHandler as any);
-        doneHandler = null;
-      }
-    };
-  }, [scrollLocked]);
+    // Re-arm when flight completes
+    const offDone = bus.on("header:logo-flyToHex:done", () => { armedRef.current = true; });
+    return () => { observer.disconnect(); offDone(); };
+  }, []);
 
   // Visibility watchers: section + footer (kept)
   useEffect(() => {
@@ -339,7 +324,7 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
     const tail = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.3, 16), darkMat); tail.position.x = -0.6; tail.rotation.z = Math.PI / 2; shuttle.add(tail);
     payload.add(shuttle);
 
-    // GLB load
+    // GLB load (big hex in orbit)
     try {
       const draco = new DRACOLoader(); draco.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
       const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
@@ -363,6 +348,141 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
         (err) => { console.warn("GLB load failed:", err); }
       );
     } catch (e) { console.error(e); }
+
+    // Header logo prototype (loaded on first need): hextext.glb → child "hexblack-1"
+    const logoPrototypeRef: { obj?: THREE.Object3D | null } = { obj: null };
+    async function ensureLogoPrototype(): Promise<THREE.Object3D> {
+      if (logoPrototypeRef.obj) return logoPrototypeRef.obj;
+      return new Promise((resolve) => {
+        try {
+          const draco = new DRACOLoader(); draco.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
+          const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
+          loader.load(
+            "/hexagon/hextext.glb",
+            (gltf) => {
+              const scene = gltf.scene;
+              const found = scene.getObjectByName("hexblack-1") || scene.children[0];
+              logoPrototypeRef.obj = found || scene;
+              resolve(logoPrototypeRef.obj!);
+            },
+            undefined as unknown as (e: ProgressEvent) => void,
+            () => {
+              // fallback: simple capsule
+              const hull = new THREE.Mesh(
+                new THREE.CapsuleGeometry(0.6, 1.0, 8, 16),
+                new THREE.MeshStandardMaterial({ color: 0x888888 })
+              );
+              logoPrototypeRef.obj = hull;
+              resolve(hull);
+            }
+          );
+        } catch {
+          const g = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x999999 }));
+          logoPrototypeRef.obj = g;
+          resolve(g);
+        }
+      });
+    }
+
+    // Flight state
+    const flight = {
+      running: false,
+      clone: null as THREE.Object3D | null,
+      t0: 0,
+      dur: 3000,
+      start: { pos: new THREE.Vector3(), scale: new THREE.Vector3(1,1,1) },
+      end: { pos: new THREE.Vector3(0, 0.1, -0.6), scale: new THREE.Vector3(1.15,1.15,1.15) },
+      cancelRequested: false,
+    };
+
+    // Helpers: map DOMRect center to world pos at given z using a ray
+    function ndcFromClient(cx: number, cy: number) {
+      const x = (cx / (getW() || 1)) * 2 - 1;
+      const y = -(cy / (getH() || 1)) * 2 + 1;
+      return new THREE.Vector2(x, y);
+    }
+    function worldAtZFromNdc(ndc: THREE.Vector2, zWorld: number): THREE.Vector3 {
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(ndc, camera);
+      const t = (zWorld - ray.ray.origin.z) / ray.ray.direction.z;
+      return ray.ray.at(t, new THREE.Vector3());
+    }
+
+    // Listen for rect events and store for debug and mapping
+    let headerRect: DOMRect | null = null;
+    let targetRect: DOMRect | null = null;
+    const offLogoRect = bus.on("header:logoRect", (r: any) => { headerRect = r as DOMRect; });
+
+    // Start flight (spawn clone and animate)
+    async function startFlight() {
+      if (flight.running) return;
+      flight.cancelRequested = false;
+      bus.emit("header:hideTinyLogo");
+
+      // Pause orbit visuals
+      orbitPlane.visible = false;
+
+      // Ensure prototype and clone
+      const proto = await ensureLogoPrototype();
+      const clone = proto.clone(true);
+      clone.visible = true;
+      scene.add(clone);
+      flight.clone = clone;
+
+      // Wait briefly for headerRect if not present
+      let rect = headerRect;
+      if (!rect) {
+        const giveUpAt = performance.now() + 200;
+        while (!rect && performance.now() < giveUpAt) {
+          await new Promise((r) => setTimeout(r, 40));
+          rect = headerRect;
+        }
+      }
+      rect = rect || new DOMRect(getW()/2 - 60, getH()/2 - 60, 120, 120);
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const ndc = ndcFromClient(cx, cy);
+      const startPos = worldAtZFromNdc(ndc, 2.5); // slightly in front of scene
+      clone.position.copy(startPos);
+      clone.rotation.set(0, 0, 0);
+      // Approximate start scale based on rect height vs viewport height
+      const startScale = Math.max(0.4, Math.min(2.0, rect.height / (getH() || 1) * 4));
+      clone.scale.setScalar(startScale);
+
+      flight.start.pos.copy(clone.position);
+      flight.start.scale.copy(clone.scale);
+      flight.t0 = performance.now();
+      flight.running = true;
+      flightRunningRef.current = true;
+      // Force canvas on top and visible
+      canvas.style.zIndex = "9999";
+      canvas.style.opacity = "1";
+      (canvas as any).__forceVisible = true;
+    }
+
+    // Reset/cleanup flight
+    function cancelFlight() {
+      flight.cancelRequested = true;
+      if (flight.clone) {
+        scene.remove(flight.clone);
+        (flight.clone as any) = null;
+        flight.clone = null;
+      }
+      orbitPlane.visible = true;
+      flight.running = false;
+      flightRunningRef.current = false;
+      // Restore canvas opacity management
+      canvas.style.zIndex = "";
+      (canvas as any).__forceVisible = false;
+      canvas.style.opacity = activeRef.current ? "1" : "0";
+      bus.emit("header:showTinyLogo");
+    }
+
+    const offStartSignal = bus.on("hex:logo-flyToHex:start", () => {
+      // Interpret this as Hexagon’s own start signal
+      startFlight();
+    });
+    const offReset = bus.on("header:resetLogoFlight", () => cancelFlight());
 
     // Resize (use layout viewport width)
     const onResize = () => {
@@ -390,8 +510,8 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
     const animate = () => {
       const dt = clock.getDelta();
 
-      // Only advance when section or footer visible
-      const active = activeRef.current;
+      // Only advance orbit when not flying
+      const active = activeRef.current && !flight.running;
 
       // Orbit math
       const { a, b, yOffset } = { a: 20, b: 14.6, yOffset: -3.1 }; // use state if you want live controls
@@ -427,6 +547,45 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
         canvasRef.current.style.zIndex = z >= 0 ? "9999" : "0";
       }
 
+      // Flight animation
+      if (flight.running && flight.clone) {
+        const now = performance.now();
+        const t01 = Math.min(1, (now - flight.t0) / flight.dur);
+        const ease = (t: number) => (t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2);
+        const k = ease(t01);
+
+        // Quadratic Bezier control point for a slight upward arc
+        const p0 = flight.start.pos;
+        const p2 = flight.end.pos;
+        const ctrl = new THREE.Vector3((p0.x + p2.x) / 2, Math.max(p0.y, p2.y) + 1.2, (p0.z + p2.z) / 2);
+        const p = new THREE.Vector3().set(
+          (1 - k) * (1 - k) * p0.x + 2 * (1 - k) * k * ctrl.x + k * k * p2.x,
+          (1 - k) * (1 - k) * p0.y + 2 * (1 - k) * k * ctrl.y + k * k * p2.y,
+          (1 - k) * (1 - k) * p0.z + 2 * (1 - k) * k * ctrl.z + k * k * p2.z
+        );
+        flight.clone.position.copy(p);
+        const s = new THREE.Vector3().set(
+          flight.start.scale.x + (flight.end.scale.x - flight.start.scale.x) * k,
+          flight.start.scale.y + (flight.end.scale.y - flight.start.scale.y) * k,
+          flight.start.scale.z + (flight.end.scale.z - flight.start.scale.z) * k
+        );
+        flight.clone.scale.copy(s);
+
+        if (t01 >= 1) {
+          // Snap to exact end, keep parked
+          flight.clone.position.copy(flight.end.pos);
+          flight.clone.scale.copy(flight.end.scale);
+          flight.running = false;
+          flightRunningRef.current = false;
+          orbitPlane.visible = true; // resume other content
+          // Restore canvas opacity/z-index
+          canvas.style.zIndex = "";
+          (canvas as any).__forceVisible = false;
+          canvas.style.opacity = activeRef.current ? "1" : "0";
+          bus.emit("header:logo-flyToHex:done");
+        }
+      }
+
       // render
       renderer.render(scene, camera);
 
@@ -438,6 +597,10 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener("resize", onResize);
+      offStartSignal();
+      offReset();
+      offLogoRect();
+      
       renderer.dispose();
       scene.clear();
     };
@@ -463,6 +626,58 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
       }}
       className="w-full min-h-screen"
     >
+      {flyDbg && (
+        <div
+          style={{
+            position: "fixed",
+            left: 10,
+            top: 210,
+            zIndex: 5000,
+            background: "rgba(0,0,0,0.7)",
+            color: "#fff",
+            padding: "6px 10px",
+            borderRadius: 6,
+            fontFamily: "monospace",
+            fontSize: 12,
+          }}
+        >
+          hex:logo-flyToHex:start × {flyDbg.count} [{flightState}]
+        </div>
+      )}
+
+      {/* Outlined boxes to visualize rects */}
+      {logoRectDbg && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            left: `${Math.round(logoRectDbg.left)}px`,
+            top: `${Math.round(logoRectDbg.top)}px`,
+            width: `${Math.round(logoRectDbg.width)}px`,
+            height: `${Math.round(logoRectDbg.height)}px`,
+            outline: "2px solid rgba(0,200,255,0.9)",
+            zIndex: 5000,
+            pointerEvents: "none",
+          }}
+          title="Header tiny logo rect"
+        />
+      )}
+      {targetRectDbg && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            left: `${Math.round(targetRectDbg.left)}px`,
+            top: `${Math.round(targetRectDbg.top)}px`,
+            width: `${Math.round(targetRectDbg.width)}px`,
+            height: `${Math.round(targetRectDbg.height)}px`,
+            outline: "2px dashed rgba(255,180,0,0.9)",
+            zIndex: 5000,
+            pointerEvents: "none",
+          }}
+          title="Hexagon target rect"
+        />
+      )}
       {/* Gradient layer (always at the very back) */}
       <div
         aria-hidden

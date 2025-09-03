@@ -10,6 +10,16 @@ type EventMap = {
   "header:logo-flyToHex": void;
   "header:logo-flyToHex:done": void;
   "header:resetLogoFlight": void;
+  // Header <-> Hexagon coordination for DOM rects and visibility
+  "header:queryLogoRect": void;
+  "header:logoRect": DOMRect;
+  "header:hideTinyLogo": void;
+  "header:showTinyLogo": void;
+  // Header asks Hexagon for a target rect; Hexagon responds with a DOMRect
+  "header:queryHexTarget": void;
+  "hex:targetRect": DOMRect;
+  // Hexagon-local start signal
+  "hex:logo-flyToHex:start": void;
   // Coordination with Testimonies section
   "testimonies:done": void;
 };
