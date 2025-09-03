@@ -136,6 +136,7 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
   const orbitEnabledRef = useRef(false); // orbit paused until handoff
   const cloneOrbitRef = useRef(false); // when true, clone rides the ellipse
   const cloneRollRef = useRef(0); // gentle roll accumulator
+  const ranOnceRef = useRef(false); // one-time flight on home
   const bigHexVisibleRef = useRef(false); // big hex hidden during/after flight
   const flightRunningRef = useRef(false);
   const armedRef = useRef(true);
@@ -247,11 +248,21 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
   const lockYRef = useRef(0);
   useEffect(() => {
     const section = sectionRef.current; if (!section) return;
+    // Seed one-time flag from sessionStorage (SSR-safe)
+    try {
+      if (typeof window !== "undefined") {
+        if (sessionStorage.getItem("hexHeaderFlightDone") === "1") {
+          ranOnceRef.current = true;
+          armedRef.current = false;
+        }
+      }
+    } catch {}
+
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.intersectionRatio >= 0.97 && armedRef.current && !flightRunningRef.current) {
         // Debounce + request header rect
         setTimeout(() => {
-          if (!armedRef.current || flightRunningRef.current) return;
+          if (!armedRef.current || flightRunningRef.current || ranOnceRef.current) return;
           bus.emit("header:queryLogoRect");
           bus.emit("header:hideTinyLogo");
           bus.emit("hex:logo-flyToHex:start");
@@ -260,8 +271,12 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
       }
     }, { threshold: 0.97 });
     observer.observe(section);
-    // Re-arm when flight completes
-    const offDone = bus.on("header:logo-flyToHex:done", () => { armedRef.current = true; });
+    // After completion: mark done and persist; do not re-arm
+    const offDone = bus.on("header:logo-flyToHex:done", () => {
+      ranOnceRef.current = true;
+      armedRef.current = false;
+      try { if (typeof window !== "undefined") sessionStorage.setItem("hexHeaderFlightDone", "1"); } catch {}
+    });
     return () => { observer.disconnect(); offDone(); };
   }, []);
 
