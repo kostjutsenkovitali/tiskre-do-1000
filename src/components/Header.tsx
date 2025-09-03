@@ -127,7 +127,25 @@ export default function Header() {
     const offQ = bus.on("header:queryLogoRect", onQueryRect);
     const offH = bus.on("header:hideTinyLogo", onHide);
     const offS = bus.on("header:showTinyLogo", onShow);
-    return () => { offQ(); offH(); offS(); };
+    const offSup = bus.on("header:suppressHexBlack", onHide);
+    return () => { offQ(); offH(); offS(); offSup(); };
+  }, []);
+
+  // Permanently suppress hexblue-1 inside hextext.glb in the header scene
+  useEffect(() => {
+    let cancelled = false;
+    const hideBlue = () => {
+      if (cancelled) return;
+      const scene = modelRef.current?.getScene?.();
+      const blue = scene?.getObjectByName("hexblue-1") as THREE.Object3D | undefined;
+      if (blue) {
+        blue.visible = false;
+        return; // done
+      }
+      requestAnimationFrame(hideBlue);
+    };
+    hideBlue();
+    return () => { cancelled = true; };
   }, []);
 
   const closeLangMenu = () => langRef.current?.removeAttribute("open");
@@ -181,7 +199,7 @@ export default function Header() {
           {/* Logo (unchanged size) */}
           <Link href="/" aria-label="Home" className="inline-flex items-center">
             <div ref={logoBoxRef} className="h-16 sm:h-18 w-[360px] relative">
-              <ThreeModel ref={modelRef} src="/hexagon/hextext.glb" height="100%" flat scale={0.96} />
+              <ThreeModel ref={modelRef} src="/hexagon/hextext.glb" height="100%" flat scale={1.1} />
             </div>
           </Link>
 

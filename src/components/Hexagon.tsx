@@ -355,9 +355,9 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
     } catch (e) { console.error(e); }
 
     // Header logo prototype (loaded on first need): hextext.glb → child "hexblack-1"
-    const logoPrototypeRef: { obj?: THREE.Object3D | null } = { obj: null };
-    async function ensureLogoPrototype(): Promise<THREE.Object3D> {
-      if (logoPrototypeRef.obj) return logoPrototypeRef.obj;
+    const logoPrototypeRef: { black?: THREE.Object3D | null; blue?: THREE.Object3D | null } = { black: null, blue: null };
+    async function ensureLogoPrototype(): Promise<{ black?: THREE.Object3D; blue?: THREE.Object3D }> {
+      if (logoPrototypeRef.black || logoPrototypeRef.blue) return logoPrototypeRef as any;
       return new Promise((resolve) => {
         try {
           const draco = new DRACOLoader(); draco.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
@@ -366,9 +366,9 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
             "/hexagon/hextext.glb",
             (gltf) => {
               const scene = gltf.scene;
-              const found = scene.getObjectByName("hexblack-1") || scene.children[0];
-              logoPrototypeRef.obj = found || scene;
-              resolve(logoPrototypeRef.obj!);
+              logoPrototypeRef.black = (scene.getObjectByName("hexblack-1") as THREE.Object3D) || undefined;
+              logoPrototypeRef.blue  = (scene.getObjectByName("hexblue-1")  as THREE.Object3D) || undefined;
+              resolve(logoPrototypeRef as any);
             },
             undefined as unknown as (e: ProgressEvent) => void,
             () => {
@@ -377,14 +377,14 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
                 new THREE.CapsuleGeometry(0.6, 1.0, 8, 16),
                 new THREE.MeshStandardMaterial({ color: 0x888888 })
               );
-              logoPrototypeRef.obj = hull;
-              resolve(hull);
+              logoPrototypeRef.black = hull;
+              resolve(logoPrototypeRef as any);
             }
           );
         } catch {
           const g = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x999999 }));
-          logoPrototypeRef.obj = g;
-          resolve(g);
+          logoPrototypeRef.black = g;
+          resolve(logoPrototypeRef as any);
         }
       });
     }
@@ -427,13 +427,22 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
       // Pause orbit visuals
       orbitPlane.visible = false;
 
-      // Set dynamic end target at closest-to-camera point
-      const a = 20, b = 14.6, yOffset = -3.1; // keep in sync with orbit math
-      flight.end.pos.set(0, yOffset, b);
+      // Set dynamic end target at closest-to-camera point, including vertical oscillation
+      {
+        const a = 20, b = 14.6, yOffset = -3.1; // keep in sync with orbit math
+        const dist = camera.position.z;
+        const vFov = THREE.MathUtils.degToRad(camera.fov);
+        const worldH = 2 * Math.tan(vFov / 2) * dist;
+        const ampWorld = (window.innerHeight * 0.15 / (window.innerHeight || 1)) * worldH;
+        flight.end.pos.set(0, yOffset + ampWorld, b);
+      }
 
-      // Ensure prototype and clone
+      // Ensure prototypes (black/blue) and choose blue for flight
       const proto = await ensureLogoPrototype();
-      const clone = proto.clone(true);
+      // Ask header to suppress its own hexblack during flight
+      bus.emit("header:suppressHexBlack");
+      let cloneSrc: THREE.Object3D | undefined = proto.blue || proto.black;
+      const clone = (cloneSrc ? cloneSrc.clone(true) : new THREE.Mesh(new THREE.SphereGeometry(0.6), new THREE.MeshStandardMaterial({ color: 0x3aa0ff }))) as THREE.Object3D;
       clone.visible = true;
       scene.add(clone);
       flight.clone = clone;
@@ -592,6 +601,11 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
           // Enable orbit and hand off the clone to follow the ellipse
           orbitEnabledRef.current = true;
           cloneOrbitRef.current = true;
+          // Force orbit phase to closest-to-camera and sync rotation
+          t = 0.25 + 0.001; // small nudge to ensure motion
+          const a = 20;
+          const yaw = Math.atan2(0, -a);
+          flight.clone.rotation.set(0, yaw, 0);
           // Restore canvas opacity/z-index
           canvas.style.zIndex = "";
           (canvas as any).__forceVisible = false;
@@ -659,26 +673,7 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
       }}
       className="w-full min-h-screen"
     >
-      {flyDbg && (
-        <div
-          style={{
-            position: "fixed",
-            left: 10,
-            top: 210,
-            zIndex: 5000,
-            background: "rgba(0,0,0,0.7)",
-            color: "#fff",
-            padding: "6px 10px",
-            borderRadius: 6,
-            fontFamily: "monospace",
-            fontSize: 12,
-          }}
-        >
-          hex:logo-flyToHex:start × {flyDbg.count} [{flightState}]
-        </div>
-      )}
-
-      {/* Debug outline boxes removed */}
+      {/* Debug HUD removed */}
       {/* Gradient layer (always at the very back) */}
       <div
         aria-hidden

@@ -15,6 +15,7 @@ type EventMap = {
   "header:logoRect": DOMRect;
   "header:hideTinyLogo": void;
   "header:showTinyLogo": void;
+  "header:suppressHexBlack": void;
   // Header asks Hexagon for a target rect; Hexagon responds with a DOMRect
   "header:queryHexTarget": void;
   "hex:targetRect": DOMRect;
