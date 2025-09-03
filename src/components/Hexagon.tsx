@@ -133,16 +133,17 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
   const [hexVisible, setHexVisible] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
   const activeRef = useRef(false);
+  const orbitEnabledRef = useRef(false); // orbit paused until handoff
+  const cloneOrbitRef = useRef(false); // when true, clone rides the ellipse
+  const cloneRollRef = useRef(0); // gentle roll accumulator
+  const bigHexVisibleRef = useRef(false); // big hex hidden during/after flight
   const flightRunningRef = useRef(false);
   const armedRef = useRef(true);
   useEffect(() => {
     activeRef.current = hexVisible || footerVisible;
     if (canvasRef.current) {
-      // During flight we force opacity to 1 regardless of visibility watchers
       const forced = (canvasRef.current as any).__forceVisible as boolean | undefined;
-      if (!forced) {
-        canvasRef.current.style.opacity = activeRef.current ? "1" : "0";
-      }
+      if (!forced) canvasRef.current.style.opacity = activeRef.current ? "1" : "0";
     }
     // Notify footer reveal only when Hexagon itself becomes visible
     bus.emit("footer:reveal", hexVisible === true);
@@ -343,6 +344,10 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
           model.rotation.y = Math.PI / 2;
           payload.add(model);
           shuttle.visible = false;
+          // Keep big hex visibility following our ref flag
+          model.visible = !!bigHexVisibleRef.current;
+          // Save a pointer if we later need to toggle
+          (payload as any).__bigHex = model;
         },
         undefined as unknown as (e: ProgressEvent) => void,
         (err) => { console.warn("GLB load failed:", err); }
@@ -422,6 +427,10 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
       // Pause orbit visuals
       orbitPlane.visible = false;
 
+      // Set dynamic end target at closest-to-camera point
+      const a = 20, b = 14.6, yOffset = -3.1; // keep in sync with orbit math
+      flight.end.pos.set(0, yOffset, b);
+
       // Ensure prototype and clone
       const proto = await ensureLogoPrototype();
       const clone = proto.clone(true);
@@ -448,6 +457,10 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
       // Approximate start scale based on rect height vs viewport height
       const startScale = Math.max(0.4, Math.min(2.0, rect.height / (getH() || 1) * 4));
       clone.scale.setScalar(startScale);
+
+      // Set end scale to 5× the start scale
+      const endScale = startScale * 5;
+      flight.end.scale.set(endScale, endScale, endScale);
 
       flight.start.pos.copy(clone.position);
       flight.start.scale.copy(clone.scale);
@@ -511,7 +524,7 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
       const dt = clock.getDelta();
 
       // Only advance orbit when not flying
-      const active = activeRef.current && !flight.running;
+      const active = activeRef.current && orbitEnabledRef.current && !flight.running;
 
       // Orbit math
       const { a, b, yOffset } = { a: 20, b: 14.6, yOffset: -3.1 }; // use state if you want live controls
@@ -543,9 +556,7 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
       const scale = (0.8 + 0.7 * depth01) * OBJECT_SCALE_MULT;
       payload.scale.setScalar(scale);
 
-      if (canvasRef.current) {
-        canvasRef.current.style.zIndex = z >= 0 ? "9999" : "0";
-      }
+      if (canvasRef.current) canvasRef.current.style.zIndex = z >= 0 ? "9999" : "0";
 
       // Flight animation
       if (flight.running && flight.clone) {
@@ -578,6 +589,9 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
           flight.running = false;
           flightRunningRef.current = false;
           orbitPlane.visible = true; // resume other content
+          // Enable orbit and hand off the clone to follow the ellipse
+          orbitEnabledRef.current = true;
+          cloneOrbitRef.current = true;
           // Restore canvas opacity/z-index
           canvas.style.zIndex = "";
           (canvas as any).__forceVisible = false;
@@ -587,6 +601,25 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
       }
 
       // render
+      // If clone is in orbit-follow mode, mirror the ellipse math to it
+      if (cloneOrbitRef.current && flight.clone) {
+        const a = 20, b = 14.6, yOffset = -3.1; // keep in sync with orbit math
+        const x = a * Math.cos(angle);
+        const z = b * Math.sin(angle);
+        const ampWorld = pxToWorldY(window.innerHeight * 0.15);
+        flight.clone.position.set(x, yOffset + Math.sin(angle) * ampWorld, z);
+        // facing along tangent
+        const tx = -a * Math.sin(angle);
+        const tz =  b * Math.cos(angle);
+        const tiltDeg = -15 * (x / (a || 1));
+        cloneRollRef.current += dt * 0.3; // gentle roll similar to payload
+        flight.clone.rotation.set(
+          0,
+          Math.atan2(tz, tx),
+          THREE.MathUtils.degToRad(tiltDeg) + cloneRollRef.current
+        );
+      }
+
       renderer.render(scene, camera);
 
       rafId = requestAnimationFrame(animate);
@@ -645,39 +678,7 @@ export default function Hexagon({ initialSlides }: HexagonProps) {
         </div>
       )}
 
-      {/* Outlined boxes to visualize rects */}
-      {logoRectDbg && (
-        <div
-          aria-hidden
-          style={{
-            position: "fixed",
-            left: `${Math.round(logoRectDbg.left)}px`,
-            top: `${Math.round(logoRectDbg.top)}px`,
-            width: `${Math.round(logoRectDbg.width)}px`,
-            height: `${Math.round(logoRectDbg.height)}px`,
-            outline: "2px solid rgba(0,200,255,0.9)",
-            zIndex: 5000,
-            pointerEvents: "none",
-          }}
-          title="Header tiny logo rect"
-        />
-      )}
-      {targetRectDbg && (
-        <div
-          aria-hidden
-          style={{
-            position: "fixed",
-            left: `${Math.round(targetRectDbg.left)}px`,
-            top: `${Math.round(targetRectDbg.top)}px`,
-            width: `${Math.round(targetRectDbg.width)}px`,
-            height: `${Math.round(targetRectDbg.height)}px`,
-            outline: "2px dashed rgba(255,180,0,0.9)",
-            zIndex: 5000,
-            pointerEvents: "none",
-          }}
-          title="Hexagon target rect"
-        />
-      )}
+      {/* Debug outline boxes removed */}
       {/* Gradient layer (always at the very back) */}
       <div
         aria-hidden

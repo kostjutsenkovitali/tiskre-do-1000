@@ -105,8 +105,7 @@ export default function Header() {
     };
   }, []);
 
-  // Header responds with logo rect and hides/shows tiny logo during flight.
-  // It no longer animates on header:logo-flyToHex; that signal is consumed by Hexagon.
+  // Header responds only with rect and hides/shows hexblack-1. No animation.
   useEffect(() => {
     const onQueryRect = () => {
       const el = logoBoxRef.current;
@@ -115,10 +114,15 @@ export default function Header() {
       bus.emit("header:logoRect", rect as unknown as DOMRect);
     };
     const onHide = () => {
-      if (logoBoxRef.current) logoBoxRef.current.style.visibility = "hidden";
+      // hide only hexblack-1 child in header ThreeModel
+      const scene = modelRef.current?.getScene?.();
+      const obj = scene?.getObjectByName("hexblack-1") as THREE.Object3D | undefined;
+      if (obj) obj.visible = false;
     };
     const onShow = () => {
-      if (logoBoxRef.current) logoBoxRef.current.style.visibility = "";
+      const scene = modelRef.current?.getScene?.();
+      const obj = scene?.getObjectByName("hexblack-1") as THREE.Object3D | undefined;
+      if (obj) obj.visible = true;
     };
     const offQ = bus.on("header:queryLogoRect", onQueryRect);
     const offH = bus.on("header:hideTinyLogo", onHide);
