@@ -143,8 +143,40 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   const backHref = shopPath(locale as any);
   
   // Fix bullet points handling for Shopify data structure
+  const tryParseJsonArray = (val: unknown): string[] | null => {
+    if (typeof val !== "string") return null;
+    const s = val.trim();
+    if (!(s.startsWith("[") && s.endsWith("]"))) return null;
+    try {
+      const arr = JSON.parse(s);
+      if (Array.isArray(arr)) {
+        return arr.filter((x) => typeof x === "string").map((x) => x.trim()).filter(Boolean);
+      }
+    } catch {}
+    return null;
+  };
+
+  const splitLoose = (s: string): string[] => {
+    const trimmed = s.trim();
+    // Case like ["a";"b";"c"] or ["a","b","c"] with quotes kept
+    if (trimmed.startsWith("[\"") && trimmed.endsWith("\"]")) {
+      const inner = trimmed.slice(2, -2);
+      return inner.split(/\"\s*[;,]\s*\"/).map((x) => x.trim()).filter(Boolean);
+    }
+    // Fallback: split by newlines or semicolons (not commas to avoid breaking sentences)
+    return trimmed.split(/\r?\n+|;+/).map((x) => x.replace(/^\"|\"$/g, "").trim()).filter(Boolean);
+  };
+
   let bulletPoints: string[] = Array.isArray(product?.bulletPoints)
-    ? (product.bulletPoints as string[]).filter((x) => typeof x === "string")
+    ? (() => {
+        const arr = (product.bulletPoints as any[]).map((x) => (typeof x === "string" ? x : "")).filter(Boolean);
+        // If the array contains a single JSON-like string, expand it
+        if (arr.length === 1) {
+          const parsed = tryParseJsonArray(arr[0]) || splitLoose(arr[0]);
+          return Array.isArray(parsed) ? parsed : arr;
+        }
+        return arr;
+      })()
     : [];
     
   console.log("Bullet points from product.bulletPoints:", product?.bulletPoints);
@@ -158,10 +190,12 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
     if (mf && typeof mf === "object" && "value" in mf) {
       console.log("Metafield has value property:", mf.value);
       if (typeof mf.value === "string") {
-        bulletPoints.push(...mf.value.split("\n").filter(Boolean));
+        const parsed = tryParseJsonArray(mf.value) || splitLoose(mf.value);
+        bulletPoints.push(...parsed);
       }
     } else if (typeof mf === "string") {
-      bulletPoints.push(...mf.split("\n").filter(Boolean));
+      const parsed = tryParseJsonArray(mf) || splitLoose(mf);
+      bulletPoints.push(...parsed);
     } else if (Array.isArray(mf)) {
       bulletPoints.push(...mf.filter((x: any) => typeof x === "string"));
     }
@@ -306,7 +340,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                           </div>
                         );
                       }
-                    })}
+                      })}
                   </div>
 
                   {/* Right scroll button - only show if we have more images than visible slots AND we're not at the end */}
@@ -424,36 +458,32 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                     <span className="text-sm font-semibold">PayPal</span>
                   </button>
 
-                  {/* Shopify */}
+                  {/* Stripe */}
                   <button
                     type="button"
-                    aria-label="Shopify"
-                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#95BF47] text-black shadow-sm hover:opacity-95 transition-opacity"
+                    aria-label="Stripe"
+                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-white text-white shadow-sm hover:opacity-95 transition-opacity border border-gray-300"
                     onClick={() => {
                       const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
                       if (merchId) addAndCheckout(merchId, quantity);
                     }}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.568 8.16c-.144-.008-.328-.008-.472-.008-1.137 0-2.473.24-3.449.872-.384.248-.704.56-.96.928-.728-.52-1.688-.848-2.728-.848-2.688 0-4.872 2.184-4.872 4.872 0 2.688 2.184 4.872 4.872 4.872 2.688 0 4.872-2.184 4.872-4.872 0-.2-.008-.392-.024-.584.704-.512 1.248-1.24 1.56-2.088.688.64 1.6 1.032 2.616 1.032 2.048 0 3.704-1.656 3.704-3.704 0-2.048-1.656-3.704-3.704-3.704z" fill="currentColor"/>
+                    <svg width="56" height="24" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M512.6 204.7c-6.6 0-12 5.4-12 12v464.1c0 6.6 5.4 12 12 12h464.1c6.6 0 12-5.4 12-12V216.7c0-6.6-5.4-12-12-12H512.6zm232.1 430.1c-98.8 0-179-80.2-179-179s80.2-179 179-179 179 80.2 179 179-80.2 179-179 179zm0-316c-75.6 0-137 61.4-137 137s61.4 137 137 137 137-61.4 137-137-61.4-137-137-137z" fill="#635BFF"/>
+                      <path d="M800 900c-248.5 0-450-201.5-450-450S551.5 0 800 0s450 201.5 450 450-201.5 450-450 450zm0-840c-215.4 0-390 174.6-390 390s174.6 390 390 390 390-174.6 390-390-174.6-390-390-390z" fill="#635BFF"/>
                     </svg>
-                    <span className="text-sm font-semibold">Shop</span>
+                    <span className="text-[#635BFF] font-medium">Stripe</span>
                   </button>
                 </div>
 
                 {/* Bullet points moved here */}
-                {bulletPoints.length > 0 ? (
+                {bulletPoints.length > 0 && (
                   <div className="mt-4 border border-gray-200 rounded-none bg-white p-4">
-                    <ul className="list-disc pl-5 space-y-2 text-sm text-foreground">
-                      {bulletPoints.slice(0, 5).map((b, i) => (
-                        <li key={i} className="block">{b}</li>
+                    <ul className="list-disc list-outside pl-6 space-y-2 text-sm text-foreground marker:text-black" style={{ listStyleType: "disc" }}>
+                      {bulletPoints.map((b, i) => (
+                        <li key={i} className="leading-relaxed">{b}</li>
                       ))}
                     </ul>
-                  </div>
-                ) : (
-                  <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-none">
-                    <p className="text-yellow-800">No bullet points available for this product</p>
-                    <p className="text-yellow-700 text-sm mt-2">Bullet points array: {JSON.stringify(bulletPoints)}</p>
                   </div>
                 )}
 
@@ -499,7 +529,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
               <AccordionItem value="instructions" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <h3 className="text-lg font-medium">{L.instructions}</h3>
-                </AccordionTrigger>
+              </AccordionTrigger>
                 <AccordionContent className="px-6 pb-6 pt-0">
                   <div className="flex flex-wrap gap-4">
                     {instructionJpg && (
@@ -521,8 +551,8 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                       </a>
                     )}
                   </div>
-                </AccordionContent>
-              </AccordionItem>
+              </AccordionContent>
+            </AccordionItem>
             ) : null}
 
             <AccordionItem value="technical" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
@@ -530,15 +560,26 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                 <h3 className="text-lg font-medium">{L.technical}</h3>
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6 pt-0">
-                {bulletPoints.length > 0 ? (
-                  <ul className="list-disc pl-5 space-y-1">
-                    {bulletPoints.map((point, i) => (
-                      <li key={i} className="text-foreground">{point}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-muted-foreground">{L.noTechData}</p>
-                )}
+                {(() => {
+                  let shippingPackage: string | null = (product as any)?.shippingPackage || null;
+                  const spMf: any = (product as any)?.shippingPackageMetafield;
+                  if (!shippingPackage && spMf) {
+                    if (typeof spMf === "string") shippingPackage = spMf;
+                    else if (typeof spMf?.value === "string") shippingPackage = spMf.value;
+                    else if (typeof spMf?.reference?.title === "string") shippingPackage = spMf.reference.title;
+                  }
+                  const v0: any = (product as any)?.variants?.nodes?.[0];
+                  const weightStr = v0?.weight ? `${v0.weight} ${v0.weightUnit || ""}`.trim() : "";
+                  const hasAny = Boolean(shippingPackage) || Boolean(weightStr);
+                  return hasAny ? (
+                    <dl className="text-sm text-foreground space-y-2">
+                      <div><dt className="font-medium inline">Shipping Package:</dt> <dd className="inline">{shippingPackage || "—"}</dd></div>
+                      <div><dt className="font-medium inline">Product weight:</dt> <dd className="inline">{weightStr || "—"}</dd></div>
+                    </dl>
+                  ) : (
+                    <p className="text-muted-foreground">{L.noTechData}</p>
+                  );
+                })()}
               </AccordionContent>
             </AccordionItem>
 
