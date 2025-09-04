@@ -42,6 +42,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
+  const [showVideo, setShowVideo] = useState(false);
 
   // Fix image handling to work with Shopify data structure
   const images = useMemo(() => {
@@ -86,6 +87,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   };
 
   const goTo = (idx: number) => {
+    if (showVideo) setShowVideo(false);
     const next = (idx + images.length) % images.length;
     setSelectedImage(next);
     ensureThumbVisible(next);
@@ -206,6 +208,15 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   let instructionJpg: string | null = product?.instructionJpg || null;
   let instructionPdf: string | null = product?.instructionPdf || null;
   
+  // Handle language-specific instruction PDF metafields
+  const localeKey = locale.toLowerCase();
+  const instructionPdfMetafieldKey = `instructionPdf${localeKey.charAt(0).toUpperCase() + localeKey.slice(1)}`;
+  
+  // Check for locale-specific PDF metafield (e.g., instructionPdfEn, instructionPdfFr)
+  if (!instructionPdf && product?.[instructionPdfMetafieldKey]) {
+    instructionPdf = product[instructionPdfMetafieldKey];
+  }
+  
   // Handle instruction files from metafields if not in product object directly
   if (!instructionJpg && product?.instructionJpgMetafield) {
     const metafield = product.instructionJpgMetafield;
@@ -249,21 +260,55 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
           <div className="space-y-4">
             {/* Main image with thin grey frame, square corners */}
             <div className="relative aspect-square bg-muted border border-gray-300 overflow-hidden group rounded-none">
-              {images.length > 0 ? (
-                <Image
-                  src={images[selectedImage] ?? images[0]}
-                  alt={product.title || "Product image"}
-                  fill
-                  className="object-cover"
-                  sizes="(min-width: 1024px) 50vw, 100vw"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-muted">
-                  <span className="text-muted-foreground">No image available</span>
-                </div>
-              )}
+              {(() => {
+                const url: string | undefined = (product as any)?.productVideo;
+                const isDirect = typeof url === "string" && /\.(mp4|webm|ogg)(\?.*)?$/i.test(url);
+                const toEmbedUrl = (u: string): string => {
+                  try {
+                    const lower = u.toLowerCase();
+                    if (lower.includes("youtube.com/watch") || lower.includes("youtu.be/")) {
+                      const yt = new URL(u);
+                      let id = yt.searchParams.get("v");
+                      if (!id && yt.hostname.includes("youtu.be")) id = yt.pathname.slice(1);
+                      return id ? `https://www.youtube.com/embed/${id}` : u;
+                    }
+                    if (lower.includes("vimeo.com/")) {
+                      const vm = new URL(u);
+                      const id = vm.pathname.split("/").filter(Boolean).pop();
+                      return id ? `https://player.vimeo.com/video/${id}` : u;
+                    }
+                  } catch {}
+                  return u;
+                };
+                if (showVideo && url) {
+                  return isDirect ? (
+                    <video src={url} controls playsInline className="w-full h-full object-cover" />
+                  ) : (
+                    <iframe
+                      src={toEmbedUrl(url)}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title="Product video"
+                    />
+                  );
+                }
+                return images.length > 0 ? (
+                  <Image
+                    src={images[selectedImage] ?? images[0]}
+                    alt={product.title || "Product image"}
+                    fill
+                    className="object-cover"
+                    sizes="(min-width: 1024px) 50vw, 100vw"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                    <span className="text-muted-foreground">No image available</span>
+                  </div>
+                );
+              })()}
 
-              {images.length > 1 ? (
+              {!showVideo && images.length > 1 ? (
                 <>
                   <button
                     aria-label="Previous image"
@@ -486,11 +531,10 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                     </ul>
                   </div>
                 )}
-
-                {/* Watch Video button moved here */}
-                {instructionJpg && (
+                {/* Watch Product Video Button - moved here from inside bullet points container */}
+                {(product as any)?.productVideo && (
                   <a 
-                    href={instructionJpg} 
+                    href={product.productVideo} 
                     target="_blank" 
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors mt-4"
                   >
@@ -498,6 +542,8 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                     Watch Product Video
                   </a>
                 )}
+
+
               </div>
             </div>
           </div>
@@ -525,35 +571,36 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
               </AccordionContent>
             </AccordionItem>
 
-            {instructionJpg || instructionPdf ? (
-              <AccordionItem value="instructions" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <h3 className="text-lg font-medium">{L.instructions}</h3>
-              </AccordionTrigger>
-                <AccordionContent className="px-6 pb-6 pt-0">
-                  <div className="flex flex-wrap gap-4">
-                    {instructionJpg && (
-                      <a href={instructionJpg} target="_blank" className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors">
-                        <Play className="h-4 w-4" />
-                        Watch Product Video
-                      </a>
-                    )}
-                    {instructionPdf && (
-                      <a href={instructionPdf} target="_blank" className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M16 13H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M16 17H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M10 9H9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        PDF Instructions
-                      </a>
-                    )}
-                  </div>
-              </AccordionContent>
-            </AccordionItem>
-            ) : null}
+            <AccordionItem value="instructions" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <h3 className="text-lg font-medium">{L.instructions}</h3>
+            </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6 pt-0">
+                <div className="flex flex-wrap gap-4">
+                  {instructionJpg && (
+                    <a href={instructionJpg} target="_blank" className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors">
+                      <Play className="h-4 w-4" />
+                      Watch Product Video
+                    </a>
+                  )}
+                  {instructionPdf && (
+                    <a href={instructionPdf} target="_blank" download className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M16 13H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M16 17H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M10 9H9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Download PDF Instructions
+                    </a>
+                  )}
+                  {!instructionJpg && !instructionPdf && (
+                    <p className="text-muted-foreground">No instructions available for this product.</p>
+                  )}
+                </div>
+            </AccordionContent>
+          </AccordionItem>
 
             <AccordionItem value="technical" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">

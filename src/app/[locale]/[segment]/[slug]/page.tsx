@@ -69,6 +69,17 @@ export default async function DetailBySegment({params}: Props) {
         .map((m: any) => (m.__typename === "MediaImage" ? m.image : null))
         .filter((im: any) => !!im && typeof im.url === "string") || [];
       
+      // Extract video URL from media
+      const productVideo = (() => {
+        const videoNode = (p.media?.nodes || []).find((m: any) => m.__typename === "Video");
+        if (videoNode && videoNode.sources && videoNode.sources.length > 0) {
+          // Prefer mp4 videos, otherwise use the first available source
+          const mp4Source = videoNode.sources.find((s: any) => s.mimeType === "video/mp4");
+          return mp4Source ? mp4Source.url : videoNode.sources[0].url;
+        }
+        return null;
+      })();
+      
       const bulletPoints: string[] = (() => {
         const mf = p.bulletPoints;
         console.log("Raw bulletPoints metafield:", mf);
@@ -109,6 +120,7 @@ export default async function DetailBySegment({params}: Props) {
         bulletPointsMetafield: p.bulletPoints, // Pass the original metafield data
         instructionJpgMetafield: p.instructionJpg, // Pass the original metafield data
         instructionPdfMetafield: p.instructionPdf, // Pass the original metafield data
+        productVideo: productVideo, // Add product video field
         availableForSale: p.availableForSale ?? true,
         tags: p.tags || [],
         vendor: p.vendor || "",
