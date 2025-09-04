@@ -205,91 +205,46 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   }
     
   // Fix instruction handling for Shopify data structure
-  let instructionJpg: string | null = product?.instructionJpg?.value || product?.instructionJpg || null;
-  let instructionPdf: string | null = product?.instructionPdf?.value || product?.instructionPdf || null;
+  let instructionJpg: string | null = null;
+  let instructionPdf: string | null = null;
+  
+  // Resolve instructionJpg from metafield objects
+  if (product?.instructionJpgEn?.reference?.image?.url) {
+    instructionJpg = product.instructionJpgEn.reference.image.url;
+  } else if (product?.instructionJpgEn?.reference?.url) {
+    instructionJpg = product.instructionJpgEn.reference.url;
+  } else if (product?.instructionJpg?.reference?.image?.url) {
+    instructionJpg = product.instructionJpg.reference.image.url;
+  } else if (product?.instructionJpg?.reference?.url) {
+    instructionJpg = product.instructionJpg.reference.url;
+  } else if (product?.instructionJpgEn?.value && !product.instructionJpgEn.value.startsWith('shopify://')) {
+    instructionJpg = product.instructionJpgEn.value;
+  } else if (product?.instructionJpg?.value && !product.instructionJpg.value.startsWith('shopify://')) {
+    instructionJpg = product.instructionJpg.value;
+  }
+  
+  // Resolve instructionPdf from metafield objects
+  if (product?.instructionPdfEn?.reference?.url) {
+    instructionPdf = product.instructionPdfEn.reference.url;
+  } else if (product?.instructionPdf?.reference?.url) {
+    instructionPdf = product.instructionPdf.reference.url;
+  } else if (product?.instructionPdfEn?.value && !product.instructionPdfEn.value.startsWith('shopify://')) {
+    instructionPdf = product.instructionPdfEn.value;
+  } else if (product?.instructionPdf?.value && !product.instructionPdf.value.startsWith('shopify://')) {
+    instructionPdf = product.instructionPdf.value;
+  }
   
   // Debug logging
   console.log("Product instruction data:", {
+    instructionJpgEn: product?.instructionJpgEn,
     instructionJpg: product?.instructionJpg,
+    instructionPdfEn: product?.instructionPdfEn,
     instructionPdf: product?.instructionPdf,
+    resolvedInstructionJpg: instructionJpg,
+    resolvedInstructionPdf: instructionPdf,
     locale: locale,
     localeKey: locale.toLowerCase()
   });
-  
-  // Handle language-specific instruction JPG metafields
-  const localeKey = locale.toLowerCase();
-  const instructionJpgMetafieldKey = `instructionJpg${localeKey.charAt(0).toUpperCase() + localeKey.slice(1)}`;
-  const instructionPdfMetafieldKey = `instructionPdf${localeKey.charAt(0).toUpperCase() + localeKey.slice(1)}`;
-  
-  // Debug logging for language-specific metafields
-  console.log("Checking language-specific metafields:", {
-    instructionJpgMetafieldKey,
-    instructionPdfMetafieldKey,
-    jpgMetafield: product?.[instructionJpgMetafieldKey],
-    pdfMetafield: product?.[instructionPdfMetafieldKey]
-  });
-  
-  // Check for locale-specific JPG metafield (e.g., instructionJpgEn, instructionJpgEe, instructionJpgFi)
-  if (!instructionJpg && product?.[instructionJpgMetafieldKey]) {
-    const metafield = product[instructionJpgMetafieldKey];
-    console.log("Processing JPG metafield:", metafield);
-    if (typeof metafield === "string") {
-      instructionJpg = metafield;
-    } else if (metafield?.value) {
-      instructionJpg = metafield.value;
-    } else if (metafield?.reference?.url) {
-      instructionJpg = metafield.reference.url;
-    } else if (metafield?.references?.nodes?.[0]?.url) {
-      instructionJpg = metafield.references.nodes[0].url;
-    }
-  }
-  
-  // Check for locale-specific PDF metafield (e.g., instructionPdfEn, instructionPdfFr)
-  if (!instructionPdf && product?.[instructionPdfMetafieldKey]) {
-    const metafield = product[instructionPdfMetafieldKey];
-    console.log("Processing PDF metafield:", metafield);
-    if (typeof metafield === "string") {
-      instructionPdf = metafield;
-    } else if (metafield?.value) {
-      instructionPdf = metafield.value;
-    } else if (metafield?.reference?.url) {
-      instructionPdf = metafield.reference.url;
-    } else if (metafield?.references?.nodes?.[0]?.url) {
-      instructionPdf = metafield.references.nodes[0].url;
-    }
-  }
-  
-  // Handle instruction files from metafields if not in product object directly
-  if (!instructionJpg && product?.instructionJpgMetafield) {
-    const metafield = product.instructionJpgMetafield;
-    console.log("Processing generic JPG metafield:", metafield);
-    if (typeof metafield === "string") {
-      instructionJpg = metafield;
-    } else if (metafield?.value) {
-      instructionJpg = metafield.value;
-    } else if (metafield?.reference?.url) {
-      instructionJpg = metafield.reference.url;
-    } else if (metafield?.references?.nodes?.[0]?.url) {
-      instructionJpg = metafield.references.nodes[0].url;
-    }
-  }
-  
-  if (!instructionPdf && product?.instructionPdfMetafield) {
-    const metafield = product.instructionPdfMetafield;
-    console.log("Processing generic PDF metafield:", metafield);
-    if (typeof metafield === "string") {
-      instructionPdf = metafield;
-    } else if (metafield?.value) {
-      instructionPdf = metafield.value;
-    } else if (metafield?.reference?.url) {
-      instructionPdf = metafield.reference.url;
-    } else if (metafield?.references?.nodes?.[0]?.url) {
-      instructionPdf = metafield.references.nodes[0].url;
-    }
-  }
-  
-  // Debug logging for final values
-  console.log("Final instruction values:", { instructionJpg, instructionPdf });
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #e8d8c8 100%)" }}>
@@ -629,108 +584,38 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                 <h3 className="text-lg font-medium">{L.instructions}</h3>
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6 pt-0">
-                {/* Display instruction image directly from custom.instruction_jpg_en */}
-                {product?.instructionJpgEn && (
-                  <>
-                    {console.log("instructionJpgEn metafield:", product.instructionJpgEn)}
-                    {(() => {
-                      // Try to extract the image URL from different possible structures
-                      let imageUrl = null;
-                      
-                      // If it's a string, use it directly
-                      if (typeof product.instructionJpgEn === 'string') {
-                        imageUrl = product.instructionJpgEn;
-                      }
-                      // If it's an object with a value property
-                      else if (product.instructionJpgEn?.value) {
-                        imageUrl = product.instructionJpgEn.value;
-                      }
-                      // If it's an object with a reference that has a url
-                      else if (product.instructionJpgEn?.reference?.url) {
-                        imageUrl = product.instructionJpgEn.reference.url;
-                      }
-                      // If it's an object with references array
-                      else if (product.instructionJpgEn?.references?.nodes?.[0]?.url) {
-                        imageUrl = product.instructionJpgEn.references.nodes[0].url;
-                      }
-                      // If it's an object with reference that has an image
-                      else if (product.instructionJpgEn?.reference?.image?.url) {
-                        imageUrl = product.instructionJpgEn.reference.image.url;
-                      }
-                      
-                      console.log("Extracted image URL:", imageUrl);
-                      
-                      // Display the image if we found a URL
-                      if (imageUrl) {
-                        return (
-                          <div className="mt-4">
-                            <img 
-                              src={imageUrl} 
-                              alt="Product Instructions" 
-                              className="max-w-full h-auto rounded border" 
-                            />
-                          </div>
-                        );
-                      }
-                      
-                      // If no image URL found, return null
-                      return null;
-                    })()}
-                  </>
-                )}
-                
-                {/* Fallback to generic instructionJpg if language-specific one is not available */}
-                {!product?.instructionJpgEn && product?.instructionJpg && (
-                  <>
-                    {console.log("Falling back to generic instructionJpg metafield:", product.instructionJpg)}
-                    {(() => {
-                      // Try to extract the image URL from different possible structures
-                      let imageUrl = null;
-                      
-                      // If it's a string, use it directly
-                      if (typeof product.instructionJpg === 'string') {
-                        imageUrl = product.instructionJpg;
-                      }
-                      // If it's an object with a value property
-                      else if (product.instructionJpg?.value) {
-                        imageUrl = product.instructionJpg.value;
-                      }
-                      // If it's an object with a reference that has a url
-                      else if (product.instructionJpg?.reference?.url) {
-                        imageUrl = product.instructionJpg.reference.url;
-                      }
-                      // If it's an object with references array
-                      else if (product.instructionJpg?.references?.nodes?.[0]?.url) {
-                        imageUrl = product.instructionJpg.references.nodes[0].url;
-                      }
-                      // If it's an object with reference that has an image
-                      else if (product.instructionJpg?.reference?.image?.url) {
-                        imageUrl = product.instructionJpg.reference.image.url;
-                      }
-                      
-                      console.log("Extracted fallback image URL:", imageUrl);
-                      
-                      // Display the image if we found a URL
-                      if (imageUrl) {
-                        return (
-                          <div className="mt-4">
-                            <img 
-                              src={imageUrl} 
-                              alt="Product Instructions" 
-                              className="max-w-full h-auto rounded border" 
-                            />
+                {/* Display instruction image directly from resolved URL */}
+                {instructionJpg && (
+                  <div className="mt-4">
+                    <img 
+                      src={instructionJpg} 
+                      alt="Product Instructions" 
+                      className="max-w-full h-auto rounded border" 
+                    />
                   </div>
-                        );
-                      }
-                      
-                      // If no image URL found, return null
-                      return null;
-                    })()}
-                  </>
                 )}
                 
-                {/* If no instruction images are available, show a message */}
-                {(!product?.instructionJpgEn && !product?.instructionJpg) && (
+                {/* Display PDF download link if available */}
+                {instructionPdf && (
+                  <a 
+                    href={instructionPdf} 
+                    target="_blank" 
+                    download 
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors mt-4"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M16 13H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M16 17H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M10 9H9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Download PDF Instructions
+                  </a>
+                )}
+                
+                {/* If no instruction files are available, show a message */}
+                {!instructionJpg && !instructionPdf && (
                   <p className="text-muted-foreground mt-4">No instructions available for this product.</p>
                 )}
               </AccordionContent>

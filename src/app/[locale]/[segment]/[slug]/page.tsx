@@ -134,6 +134,7 @@ export default async function DetailBySegment({params}: Props) {
         instructionJpgEe: p.instructionJpgEe,
         instructionJpgFi: p.instructionJpgFi,
         instructionPdf: p.instructionPdf,
+        instructionPdfEn: p.instructionPdfEn,
         // Map technical parameters metafield
         technicalParameters: p.technicalParameters,
         // Keep original metafield data for reference

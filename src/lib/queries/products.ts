@@ -96,53 +96,57 @@ export const GET_PRODUCT = gql`
         }
       }
       instructionJpgEn: metafield(namespace: "custom", key: "instruction_jpg_en") {
+        type
         value
         reference {
           __typename
-          ... on MediaImage { image { url altText } }
-          ... on GenericFile { url }
-          ... on Video { sources { url mimeType } }
-        }
-        references(first: 10) {
-          nodes {
-            __typename
-            ... on MediaImage { image { url altText } }
-            ... on GenericFile { url }
-            ... on Video { sources { url mimeType } }
+          ... on MediaImage {
+            image {
+              url
+            }
+          }
+          ... on GenericFile {
+            url
           }
         }
       }
       instructionJpgEe: metafield(namespace: "custom", key: "instruction_jpg_ee") {
+        type
         value
         reference {
           __typename
-          ... on MediaImage { image { url altText } }
-          ... on GenericFile { url }
-          ... on Video { sources { url mimeType } }
-        }
-        references(first: 10) {
-          nodes {
-            __typename
-            ... on MediaImage { image { url altText } }
-            ... on GenericFile { url }
-            ... on Video { sources { url mimeType } }
+          ... on MediaImage {
+            image {
+              url
+            }
+          }
+          ... on GenericFile {
+            url
           }
         }
       }
       instructionJpgFi: metafield(namespace: "custom", key: "instruction_jpg_fi") {
+        type
         value
         reference {
           __typename
-          ... on MediaImage { image { url altText } }
-          ... on GenericFile { url }
-          ... on Video { sources { url mimeType } }
+          ... on MediaImage {
+            image {
+              url
+            }
+          }
+          ... on GenericFile {
+            url
+          }
         }
-        references(first: 10) {
-          nodes {
-            __typename
-            ... on MediaImage { image { url altText } }
-            ... on GenericFile { url }
-            ... on Video { sources { url mimeType } }
+      }
+      instructionPdfEn: metafield(namespace: "custom", key: "instruction_pdf_en") {
+        type
+        value
+        reference {
+          __typename
+          ... on GenericFile {
+            url
           }
         }
       }

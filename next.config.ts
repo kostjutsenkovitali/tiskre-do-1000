@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "tiskre-do.eu" },
       { protocol: "https", hostname: "*.wp.com" },
       { protocol: "https", hostname: "cdn.shopify.com" },
+      { protocol: "https", hostname: "*.shopifycdn.net" },
     ],
   },
   eslint: {
