@@ -15,7 +15,7 @@ export const revalidate = 3600;
 
 // Generate static params for popular products and articles
 export async function generateStaticParams() {
-  const params = [];
+  const params: any[] = [];
   
   // For now, return empty array - products will be generated on-demand via ISR
   // In a real app, you'd fetch popular products/articles here
@@ -56,6 +56,16 @@ export default async function DetailBySegment({params}: Props) {
       const data = await sf<{ product: any }>(GET_PRODUCT, { handle: slug, country, language });
       const p = data.product;
       if (!p) notFound();
+      
+      // Debug logging
+      console.log("Raw Shopify product data:", p);
+      console.log("Instruction metafields:", {
+        instructionJpg: p.instructionJpg,
+        instructionJpgEn: p.instructionJpgEn,
+        instructionJpgEe: p.instructionJpgEe,
+        instructionJpgFi: p.instructionJpgFi,
+        instructionPdf: p.instructionPdf
+      });
       
       // Map Shopify product to the expected ProductLike shape for the client component
       const firstVariant = p.variants?.nodes?.[0];
@@ -115,11 +125,24 @@ export default async function DetailBySegment({params}: Props) {
         description: p.descriptionHtml || p.description || "",
         price,
         image: mainImage ? { url: mainImage.url, altText: mainImage.altText || p.title } : null,
-        media: { nodes: mediaImages.map(img => ({ image: img })) }, // Add media images for thumbnails
+        // Add media images for thumbnails
+        media: { nodes: mediaImages.map((img: any) => ({ image: img })) },
         bulletPoints,
-        bulletPointsMetafield: p.bulletPoints, // Pass the original metafield data
-        instructionJpgMetafield: p.instructionJpg, // Pass the original metafield data
-        instructionPdfMetafield: p.instructionPdf, // Pass the original metafield data
+        // Map instruction metafields correctly
+        instructionJpg: p.instructionJpg,
+        instructionJpgEn: p.instructionJpgEn,
+        instructionJpgEe: p.instructionJpgEe,
+        instructionJpgFi: p.instructionJpgFi,
+        instructionPdf: p.instructionPdf,
+        // Map technical parameters metafield
+        technicalParameters: p.technicalParameters,
+        // Keep original metafield data for reference
+        bulletPointsMetafield: p.bulletPoints,
+        instructionJpgMetafield: p.instructionJpg,
+        instructionJpgEnMetafield: p.instructionJpgEn,
+        instructionJpgEeMetafield: p.instructionJpgEe,
+        instructionJpgFiMetafield: p.instructionJpgFi,
+        instructionPdfMetafield: p.instructionPdf,
         productVideo: productVideo, // Add product video field
         availableForSale: p.availableForSale ?? true,
         tags: p.tags || [],

@@ -133,12 +133,12 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
     reviews: string;
     instructions: string;
   }> = {
-    en: { backToShop: "Back to Shop", product: "Product", sku: "SKU", inStock: "In stock", outOfStock: "Out of stock", quantity: "Quantity:", addToCart: "Add to Cart", description: "Description", watchVideo: "Watch Video", technical: "Technical Parameters", noTechData: "No technical data available.", reviews: "Reviews", instructions: "Instructions" },
-    et: { backToShop: "Tagasi poodi", product: "Toode", sku: "SKU", inStock: "Laos", outOfStock: "Läbi müüdud", quantity: "Kogus:", addToCart: "Lisa ostukorvi", description: "Kirjeldus", watchVideo: "Vaata videot", technical: "Tehnilised andmed", noTechData: "Tehnilised andmed puuduvad.", reviews: "Arvustused", instructions: "Juhendid" },
-    de: { backToShop: "Zurück zum Shop", product: "Produkt", sku: "SKU", inStock: "Auf Lager", outOfStock: "Nicht auf Lager", quantity: "Menge:", addToCart: "In den Warenkorb", description: "Beschreibung", watchVideo: "Video ansehen", technical: "Technische Daten", noTechData: "Keine technischen Daten verfügbar.", reviews: "Bewertungen", instructions: "Anleitungen" },
-    fr: { backToShop: "Retour à la boutique", product: "Produit", sku: "SKU", inStock: "En stock", outOfStock: "Rupture de stock", quantity: "Quantité:", addToCart: "Ajouter au panier", description: "Description", watchVideo: "Regarder la vidéo", technical: "Paramètres techniques", noTechData: "Aucune donnée technique disponible.", reviews: "Avis", instructions: "Guides" },
-    fi: { backToShop: "Takaisin kauppaan", product: "Tuote", sku: "SKU", inStock: "Varastossa", outOfStock: "Loppu", quantity: "Määrä:", addToCart: "Lisää koriin", description: "Kuvaus", watchVideo: "Katso video", technical: "Tekniset tiedot", noTechData: "Teknisiä tietoja ei saatavilla.", reviews: "Arvostelut", instructions: "Ohjeet" },
-    sv: { backToShop: "Tillbaka till butik", product: "Produkt", sku: "SKU", inStock: "I lager", outOfStock: "Slut i lager", quantity: "Antal:", addToCart: "Lägg i varukorgen", description: "Beskrivning", watchVideo: "Titta på video", technical: "Tekniska parametrar", noTechData: "Inga tekniska data tillgängliga.", reviews: "Recensioner", instructions: "Instruktioner" },
+    en: { backToShop: "Back to Shop", product: "Product", sku: "SKU", inStock: "In stock", outOfStock: "Out of stock", quantity: "Quantity:", addToCart: "Add to Cart", description: "Description", watchVideo: "Watch Product Video", technical: "Technical Parameters", noTechData: "No technical data available.", reviews: "Reviews", instructions: "Instructions" },
+    et: { backToShop: "Tagasi poodi", product: "Toode", sku: "SKU", inStock: "Laos", outOfStock: "Läbi müüdud", quantity: "Kogus:", addToCart: "Lisa ostukorvi", description: "Kirjeldus", watchVideo: "Vaata toote videot", technical: "Tehnilised andmed", noTechData: "Tehnilised andmed puuduvad.", reviews: "Arvustused", instructions: "Juhendid" },
+    de: { backToShop: "Zurück zum Shop", product: "Produkt", sku: "SKU", inStock: "Auf Lager", outOfStock: "Nicht auf Lager", quantity: "Menge:", addToCart: "In den Warenkorb", description: "Beschreibung", watchVideo: "Produktvideo ansehen", technical: "Technische Daten", noTechData: "Keine technischen Daten verfügbar.", reviews: "Bewertungen", instructions: "Anleitungen" },
+    fr: { backToShop: "Retour à la boutique", product: "Produit", sku: "SKU", inStock: "En stock", outOfStock: "Rupture de stock", quantity: "Quantité:", addToCart: "Ajouter au panier", description: "Description", watchVideo: "Regarder la vidéo du produit", technical: "Paramètres techniques", noTechData: "Aucune donnée technique disponible.", reviews: "Avis", instructions: "Guides" },
+    fi: { backToShop: "Takaisin kauppaan", product: "Tuote", sku: "SKU", inStock: "Varastossa", outOfStock: "Loppu", quantity: "Määrä:", addToCart: "Lisää koriin", description: "Kuvaus", watchVideo: "Katso tuotteen video", technical: "Tekniset tiedot", noTechData: "Teknisiä tietoja ei saatavilla.", reviews: "Arvostelut", instructions: "Ohjeet" },
+    sv: { backToShop: "Tillbaka till butik", product: "Produkt", sku: "SKU", inStock: "I lager", outOfStock: "Slut i lager", quantity: "Antal:", addToCart: "Lägg i varukorgen", description: "Beskrivning", watchVideo: "Titta på produktvideo", technical: "Tekniska parametrar", noTechData: "Inga tekniska data tillgängliga.", reviews: "Recensioner", instructions: "Instruktioner" },
   };
 
   const L = labels[locale] || labels.en;
@@ -205,21 +205,64 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   }
     
   // Fix instruction handling for Shopify data structure
-  let instructionJpg: string | null = product?.instructionJpg || null;
-  let instructionPdf: string | null = product?.instructionPdf || null;
+  let instructionJpg: string | null = product?.instructionJpg?.value || product?.instructionJpg || null;
+  let instructionPdf: string | null = product?.instructionPdf?.value || product?.instructionPdf || null;
   
-  // Handle language-specific instruction PDF metafields
+  // Debug logging
+  console.log("Product instruction data:", {
+    instructionJpg: product?.instructionJpg,
+    instructionPdf: product?.instructionPdf,
+    locale: locale,
+    localeKey: locale.toLowerCase()
+  });
+  
+  // Handle language-specific instruction JPG metafields
   const localeKey = locale.toLowerCase();
+  const instructionJpgMetafieldKey = `instructionJpg${localeKey.charAt(0).toUpperCase() + localeKey.slice(1)}`;
   const instructionPdfMetafieldKey = `instructionPdf${localeKey.charAt(0).toUpperCase() + localeKey.slice(1)}`;
+  
+  // Debug logging for language-specific metafields
+  console.log("Checking language-specific metafields:", {
+    instructionJpgMetafieldKey,
+    instructionPdfMetafieldKey,
+    jpgMetafield: product?.[instructionJpgMetafieldKey],
+    pdfMetafield: product?.[instructionPdfMetafieldKey]
+  });
+  
+  // Check for locale-specific JPG metafield (e.g., instructionJpgEn, instructionJpgEe, instructionJpgFi)
+  if (!instructionJpg && product?.[instructionJpgMetafieldKey]) {
+    const metafield = product[instructionJpgMetafieldKey];
+    console.log("Processing JPG metafield:", metafield);
+    if (typeof metafield === "string") {
+      instructionJpg = metafield;
+    } else if (metafield?.value) {
+      instructionJpg = metafield.value;
+    } else if (metafield?.reference?.url) {
+      instructionJpg = metafield.reference.url;
+    } else if (metafield?.references?.nodes?.[0]?.url) {
+      instructionJpg = metafield.references.nodes[0].url;
+    }
+  }
   
   // Check for locale-specific PDF metafield (e.g., instructionPdfEn, instructionPdfFr)
   if (!instructionPdf && product?.[instructionPdfMetafieldKey]) {
-    instructionPdf = product[instructionPdfMetafieldKey];
+    const metafield = product[instructionPdfMetafieldKey];
+    console.log("Processing PDF metafield:", metafield);
+    if (typeof metafield === "string") {
+      instructionPdf = metafield;
+    } else if (metafield?.value) {
+      instructionPdf = metafield.value;
+    } else if (metafield?.reference?.url) {
+      instructionPdf = metafield.reference.url;
+    } else if (metafield?.references?.nodes?.[0]?.url) {
+      instructionPdf = metafield.references.nodes[0].url;
+    }
   }
   
   // Handle instruction files from metafields if not in product object directly
   if (!instructionJpg && product?.instructionJpgMetafield) {
     const metafield = product.instructionJpgMetafield;
+    console.log("Processing generic JPG metafield:", metafield);
     if (typeof metafield === "string") {
       instructionJpg = metafield;
     } else if (metafield?.value) {
@@ -233,6 +276,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   
   if (!instructionPdf && product?.instructionPdfMetafield) {
     const metafield = product.instructionPdfMetafield;
+    console.log("Processing generic PDF metafield:", metafield);
     if (typeof metafield === "string") {
       instructionPdf = metafield;
     } else if (metafield?.value) {
@@ -243,6 +287,9 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
       instructionPdf = metafield.references.nodes[0].url;
     }
   }
+  
+  // Debug logging for final values
+  console.log("Final instruction values:", { instructionJpg, instructionPdf });
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #e8d8c8 100%)" }}>
@@ -294,11 +341,11 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   );
                 }
                 return images.length > 0 ? (
-                  <Image
-                    src={images[selectedImage] ?? images[0]}
+                <Image
+                  src={images[selectedImage] ?? images[0]}
                     alt={product.title || "Product image"}
-                    fill
-                    className="object-cover"
+                  fill
+                  className="object-cover"
                     sizes="(min-width: 1024px) 50vw, 100vw"
                   />
                 ) : (
@@ -313,14 +360,14 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   <button
                     aria-label="Previous image"
                     onClick={goPrev}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-opacity"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-all duration-150 active:scale-95"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button
                     aria-label="Next image"
                     onClick={goNext}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-opacity"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-all duration-150 active:scale-95"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
@@ -338,7 +385,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                       aria-label="Scroll thumbnails left"
                       onClick={() => setThumbStart(Math.max(0, thumbStart - 1))}
                       disabled={!canScrollThumbsLeft}
-                      className="w-8 h-8 border border-border rounded-none flex items-center justify-center disabled:opacity-40"
+                      className="w-8 h-8 border border-border rounded-none flex items-center justify-center disabled:opacity-40 transition-all duration-150 active:scale-95"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -357,7 +404,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                               isActive
                                 ? "border-black"
                                 : "border-border hover:border-black/40"
-                            } rounded-none overflow-hidden`}
+                            } rounded-none overflow-hidden transition-all duration-150 active:scale-95`}
                             aria-label={`Select image ${index + 1}`}
                           >
                             <Image
@@ -398,7 +445,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                         )
                       }
                       disabled={!canScrollThumbsRight}
-                      className="w-8 h-8 border border-border rounded-none flex items-center justify-center disabled:opacity-40"
+                      className="w-8 h-8 border border-border rounded-none flex items-center justify-center disabled:opacity-40 transition-all duration-150 active:scale-95"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -418,7 +465,15 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                 {product.title || "Product Title"}
               </h1>
               <p className="text-sm text-muted-foreground mb-1">
-                {L.sku}: {product.sku ? product.sku.replace('gid://shopify/Product/', '') : product.id || "—"}
+                {(() => {
+                  const vnodes: any[] = (product as any)?.variants?.nodes || [];
+                  const skuFromVariant = (vnodes.find((v) => typeof v?.sku === "string" && v.sku.trim().length > 0) || {})?.sku;
+                  const skuFromProduct = typeof (product as any)?.sku === "string" ? (product as any).sku : "";
+                  const sku = skuFromVariant || skuFromProduct || "—";
+                  return <>
+                    {L.sku}: {sku}
+                  </>;
+                })()}
               </p>
               <p className="text-sm mb-4">
                 {product.availableForSale !== false ? (
@@ -439,7 +494,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="rounded-none"
+                    className="rounded-none active:scale-95 transition-transform duration-150"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     disabled={quantity <= 1}
                   >
@@ -451,7 +506,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="rounded-none"
+                    className="rounded-none active:scale-95 transition-transform duration-150"
                     onClick={() => setQuantity(quantity + 1)}
                   >
                     <Plus className="h-4 w-4" />
@@ -461,7 +516,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
 
               <div className="space-y-3">
                 <AddToCartButton
-                  className="w-full h-11 rounded-none bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-11 rounded-none bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform duration-150"
                   variantId={product?.variants?.nodes?.[0]?.id}
                   productId={!product?.variants?.nodes?.length ? product?.id : undefined}
                   quantity={quantity}
@@ -471,7 +526,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   <button
                     type="button"
                     aria-label="Google Pay"
-                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-black text-white shadow-sm hover:opacity-90 transition-opacity"
+                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-black text-white shadow-sm hover:opacity-90 transition-all duration-150 active:scale-95"
                     onClick={() => {
                       const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
                       if (merchId) addAndCheckout(merchId, quantity);
@@ -490,7 +545,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   <button
                     type="button"
                     aria-label="PayPal"
-                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#FFC439] text-[#003087] shadow-sm hover:opacity-95 transition-opacity"
+                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#FFC439] text-[#003087] shadow-sm hover:opacity-95 transition-all duration-150 active:scale-95"
                     onClick={() => {
                       const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
                       if (merchId) addAndCheckout(merchId, quantity);
@@ -507,7 +562,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   <button
                     type="button"
                     aria-label="Stripe"
-                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-white text-white shadow-sm hover:opacity-95 transition-opacity border border-gray-300"
+                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-white text-white shadow-sm hover:opacity-95 transition-all duration-150 border border-gray-300"
                     onClick={() => {
                       const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
                       if (merchId) addAndCheckout(merchId, quantity);
@@ -531,19 +586,17 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                     </ul>
                   </div>
                 )}
-                {/* Watch Product Video Button - moved here from inside bullet points container */}
-                {(product as any)?.productVideo && (
-                  <a 
-                    href={product.productVideo} 
-                    target="_blank" 
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors mt-4"
+
+                {/* Watch Product Video button - moved to be under bullet points container */}
+                {product.productVideo && (
+                  <Button 
+                    onClick={() => setShowVideo(!showVideo)}
+                    className="mt-4 w-auto px-6 h-11 rounded-none bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all duration-150"
                   >
-                    <Play className="h-4 w-4" />
-                    Watch Product Video
-                  </a>
+                    <Play className="h-4 w-4 mr-2" />
+                    {L.watchVideo}
+                  </Button>
                 )}
-
-
               </div>
             </div>
           </div>
@@ -574,33 +627,114 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
             <AccordionItem value="instructions" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
                 <h3 className="text-lg font-medium">{L.instructions}</h3>
-            </AccordionTrigger>
+              </AccordionTrigger>
               <AccordionContent className="px-6 pb-6 pt-0">
-                <div className="flex flex-wrap gap-4">
-                  {instructionJpg && (
-                    <a href={instructionJpg} target="_blank" className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors">
-                      <Play className="h-4 w-4" />
-                      Watch Product Video
-                    </a>
-                  )}
-                  {instructionPdf && (
-                    <a href={instructionPdf} target="_blank" download className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M16 13H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M16 17H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M10 9H9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      Download PDF Instructions
-                    </a>
-                  )}
-                  {!instructionJpg && !instructionPdf && (
-                    <p className="text-muted-foreground">No instructions available for this product.</p>
-                  )}
-                </div>
-            </AccordionContent>
-          </AccordionItem>
+                {/* Display instruction image directly from custom.instruction_jpg_en */}
+                {product?.instructionJpgEn && (
+                  <>
+                    {console.log("instructionJpgEn metafield:", product.instructionJpgEn)}
+                    {(() => {
+                      // Try to extract the image URL from different possible structures
+                      let imageUrl = null;
+                      
+                      // If it's a string, use it directly
+                      if (typeof product.instructionJpgEn === 'string') {
+                        imageUrl = product.instructionJpgEn;
+                      }
+                      // If it's an object with a value property
+                      else if (product.instructionJpgEn?.value) {
+                        imageUrl = product.instructionJpgEn.value;
+                      }
+                      // If it's an object with a reference that has a url
+                      else if (product.instructionJpgEn?.reference?.url) {
+                        imageUrl = product.instructionJpgEn.reference.url;
+                      }
+                      // If it's an object with references array
+                      else if (product.instructionJpgEn?.references?.nodes?.[0]?.url) {
+                        imageUrl = product.instructionJpgEn.references.nodes[0].url;
+                      }
+                      // If it's an object with reference that has an image
+                      else if (product.instructionJpgEn?.reference?.image?.url) {
+                        imageUrl = product.instructionJpgEn.reference.image.url;
+                      }
+                      
+                      console.log("Extracted image URL:", imageUrl);
+                      
+                      // Display the image if we found a URL
+                      if (imageUrl) {
+                        return (
+                          <div className="mt-4">
+                            <img 
+                              src={imageUrl} 
+                              alt="Product Instructions" 
+                              className="max-w-full h-auto rounded border" 
+                            />
+                          </div>
+                        );
+                      }
+                      
+                      // If no image URL found, return null
+                      return null;
+                    })()}
+                  </>
+                )}
+                
+                {/* Fallback to generic instructionJpg if language-specific one is not available */}
+                {!product?.instructionJpgEn && product?.instructionJpg && (
+                  <>
+                    {console.log("Falling back to generic instructionJpg metafield:", product.instructionJpg)}
+                    {(() => {
+                      // Try to extract the image URL from different possible structures
+                      let imageUrl = null;
+                      
+                      // If it's a string, use it directly
+                      if (typeof product.instructionJpg === 'string') {
+                        imageUrl = product.instructionJpg;
+                      }
+                      // If it's an object with a value property
+                      else if (product.instructionJpg?.value) {
+                        imageUrl = product.instructionJpg.value;
+                      }
+                      // If it's an object with a reference that has a url
+                      else if (product.instructionJpg?.reference?.url) {
+                        imageUrl = product.instructionJpg.reference.url;
+                      }
+                      // If it's an object with references array
+                      else if (product.instructionJpg?.references?.nodes?.[0]?.url) {
+                        imageUrl = product.instructionJpg.references.nodes[0].url;
+                      }
+                      // If it's an object with reference that has an image
+                      else if (product.instructionJpg?.reference?.image?.url) {
+                        imageUrl = product.instructionJpg.reference.image.url;
+                      }
+                      
+                      console.log("Extracted fallback image URL:", imageUrl);
+                      
+                      // Display the image if we found a URL
+                      if (imageUrl) {
+                        return (
+                          <div className="mt-4">
+                            <img 
+                              src={imageUrl} 
+                              alt="Product Instructions" 
+                              className="max-w-full h-auto rounded border" 
+                            />
+                  </div>
+                        );
+                      }
+                      
+                      // If no image URL found, return null
+                      return null;
+                    })()}
+                  </>
+                )}
+                
+                {/* If no instruction images are available, show a message */}
+                {(!product?.instructionJpgEn && !product?.instructionJpg) && (
+                  <p className="text-muted-foreground mt-4">No instructions available for this product.</p>
+                )}
+              </AccordionContent>
+            </AccordionItem>
 
             <AccordionItem value="technical" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
@@ -608,6 +742,68 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6 pt-0">
                 {(() => {
+                  // Prefer array input for technical parameters. If it's a string, split into separate items.
+                  const rawTechValue: any = (product as any)?.technicalParameters?.value;
+                  const rawTech: any = typeof rawTechValue !== 'undefined' ? rawTechValue : (product as any)?.technicalParameters;
+
+                  let items: string[] = [];
+                  if (Array.isArray(rawTech)) {
+                    items = rawTech.map((x) => (typeof x === 'string' ? x.trim() : '')).filter(Boolean);
+                  } else if (typeof rawTech === 'string' && rawTech.trim().length > 0) {
+                    const s = rawTech.trim();
+                    let parsed: string[] | null = null;
+                    // Try strict JSON array first
+                    if (s.startsWith('[') && s.endsWith(']')) {
+                      try {
+                        const arr = JSON.parse(s);
+                        if (Array.isArray(arr)) {
+                          parsed = arr.map((x) => (typeof x === 'string' ? x.trim() : '')).filter(Boolean);
+                        }
+                      } catch {}
+                      // Fallback: bracketed quoted values split
+                      if (!parsed) {
+                        const inner = s.slice(1, -1);
+                        const parts = inner
+                          .split(/"\s*,\s*"|"\s*;\s*"/)
+                          .map((t) => t.replace(/^\"|\"$/g, '').trim())
+                          .filter(Boolean);
+                        if (parts.length > 0) parsed = parts;
+                      }
+                    }
+
+                    if (parsed) {
+                      items = parsed;
+                    } else {
+                      // Generic free-form split by newlines or semicolons
+                      const text = s.replace(/\r\n?/g, '\n');
+                      items = text
+                        .split(/\n+|;\s*/)
+                        .map((t) => t.replace(/^[\-•\u2022]\s*/, '').trim())
+                        .filter(Boolean);
+                    }
+                  }
+
+                  if (items.length > 0) {
+                    return (
+                      <div className="space-y-1 text-base text-foreground">
+                        {items.map((p: string, i: number) => {
+                          const idx = p.indexOf(':');
+                          if (idx >= 0) {
+                            const label = p.slice(0, idx).trim();
+                            const val = p.slice(idx + 1).trim();
+                            return (
+                              <div key={i}>
+                                <span className="font-medium">{label}:</span>{' '}{val}
+                              </div>
+                            );
+                          }
+                          return <div key={i}>{p}</div>;
+                        })}
+                      </div>
+                    );
+                  }
+                  
+                  // Fallback to original shipping package and weight display
                   let shippingPackage: string | null = (product as any)?.shippingPackage || null;
                   const spMf: any = (product as any)?.shippingPackageMetafield;
                   if (!shippingPackage && spMf) {
@@ -618,14 +814,18 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   const v0: any = (product as any)?.variants?.nodes?.[0];
                   const weightStr = v0?.weight ? `${v0.weight} ${v0.weightUnit || ""}`.trim() : "";
                   const hasAny = Boolean(shippingPackage) || Boolean(weightStr);
-                  return hasAny ? (
-                    <dl className="text-sm text-foreground space-y-2">
-                      <div><dt className="font-medium inline">Shipping Package:</dt> <dd className="inline">{shippingPackage || "—"}</dd></div>
-                      <div><dt className="font-medium inline">Product weight:</dt> <dd className="inline">{weightStr || "—"}</dd></div>
-                    </dl>
-                  ) : (
-                    <p className="text-muted-foreground">{L.noTechData}</p>
-                  );
+                  
+                  if (hasAny) {
+                    return (
+                      <dl className="text-sm text-foreground space-y-2">
+                        <div><dt className="font-medium inline">Shipping Package:</dt> <dd className="inline">{shippingPackage || "—"}</dd></div>
+                        <div><dt className="font-medium inline">Product weight:</dt> <dd className="inline">{weightStr || "—"}</dd></div>
+                      </dl>
+                    );
+                  }
+                  
+                  // If no technical data available
+                  return <p className="text-muted-foreground">{L.noTechData}</p>;
                 })()}
               </AccordionContent>
             </AccordionItem>

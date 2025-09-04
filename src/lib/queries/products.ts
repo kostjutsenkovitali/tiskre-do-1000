@@ -95,10 +95,64 @@ export const GET_PRODUCT = gql`
           }
         }
       }
+      instructionJpgEn: metafield(namespace: "custom", key: "instruction_jpg_en") {
+        value
+        reference {
+          __typename
+          ... on MediaImage { image { url altText } }
+          ... on GenericFile { url }
+          ... on Video { sources { url mimeType } }
+        }
+        references(first: 10) {
+          nodes {
+            __typename
+            ... on MediaImage { image { url altText } }
+            ... on GenericFile { url }
+            ... on Video { sources { url mimeType } }
+          }
+        }
+      }
+      instructionJpgEe: metafield(namespace: "custom", key: "instruction_jpg_ee") {
+        value
+        reference {
+          __typename
+          ... on MediaImage { image { url altText } }
+          ... on GenericFile { url }
+          ... on Video { sources { url mimeType } }
+        }
+        references(first: 10) {
+          nodes {
+            __typename
+            ... on MediaImage { image { url altText } }
+            ... on GenericFile { url }
+            ... on Video { sources { url mimeType } }
+          }
+        }
+      }
+      instructionJpgFi: metafield(namespace: "custom", key: "instruction_jpg_fi") {
+        value
+        reference {
+          __typename
+          ... on MediaImage { image { url altText } }
+          ... on GenericFile { url }
+          ... on Video { sources { url mimeType } }
+        }
+        references(first: 10) {
+          nodes {
+            __typename
+            ... on MediaImage { image { url altText } }
+            ... on GenericFile { url }
+            ... on Video { sources { url mimeType } }
+          }
+        }
+      }
       instructionPdf: metafield(namespace: "custom", key: "instruction_pdf") {
         value
         reference { __typename ... on GenericFile { url } }
         references(first: 5) { nodes { __typename ... on GenericFile { url } } }
+      }
+      technicalParameters: metafield(namespace: "custom", key: "technical_parameters") {
+        value
       }
       collections(first: 4) {
         nodes { id handle title }
