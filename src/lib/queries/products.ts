@@ -47,7 +47,7 @@ export const GET_PRODUCT = gql`
       media(first: 20) {
         nodes {
           __typename
-          ... on MediaImage { image { url altText width height } }
+          ... on MediaImage { id image { url altText width height } }
           ... on Video { id sources { url mimeType } }
         }
       }
@@ -79,66 +79,28 @@ export const GET_PRODUCT = gql`
         }
       }
       instructionJpg: metafield(namespace: "custom", key: "instruction_jpg") {
+        type
         value
-        reference {
-          __typename
-          ... on MediaImage { image { url altText } }
-          ... on GenericFile { url }
-          ... on Video { sources { url mimeType } }
-        }
-        references(first: 10) {
-          nodes {
-            __typename
-            ... on MediaImage { image { url altText } }
-            ... on GenericFile { url }
-            ... on Video { sources { url mimeType } }
-          }
-        }
+        reference { __typename ... on MediaImage { image { url altText } } ... on GenericFile { url } }
+        references(first: 10) { nodes { __typename ... on MediaImage { image { url altText } } ... on GenericFile { url } } }
       }
       instructionJpgEn: metafield(namespace: "custom", key: "instruction_jpg_en") {
         type
         value
-        reference {
-          __typename
-          ... on MediaImage {
-            image {
-              url
-            }
-          }
-          ... on GenericFile {
-            url
-          }
-        }
+        reference { __typename ... on MediaImage { image { url altText } } ... on GenericFile { url } }
+        references(first: 10) { nodes { __typename ... on MediaImage { image { url altText } } ... on GenericFile { url } } }
       }
       instructionJpgEe: metafield(namespace: "custom", key: "instruction_jpg_ee") {
         type
         value
-        reference {
-          __typename
-          ... on MediaImage {
-            image {
-              url
-            }
-          }
-          ... on GenericFile {
-            url
-          }
-        }
+        reference { __typename ... on MediaImage { image { url altText } } ... on GenericFile { url } }
+        references(first: 10) { nodes { __typename ... on MediaImage { image { url altText } } ... on GenericFile { url } } }
       }
       instructionJpgFi: metafield(namespace: "custom", key: "instruction_jpg_fi") {
         type
         value
-        reference {
-          __typename
-          ... on MediaImage {
-            image {
-              url
-            }
-          }
-          ... on GenericFile {
-            url
-          }
-        }
+        reference { __typename ... on MediaImage { image { url altText } } ... on GenericFile { url } }
+        references(first: 10) { nodes { __typename ... on MediaImage { image { url altText } } ... on GenericFile { url } } }
       }
       instructionPdfEn: metafield(namespace: "custom", key: "instruction_pdf_en") {
         type

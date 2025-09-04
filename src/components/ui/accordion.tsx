@@ -31,7 +31,7 @@ export function AccordionItem({ value, className = "", children }: { value: stri
   return <ItemContext.Provider value={value}><div className={className}>{children}</div></ItemContext.Provider>;
 }
 
-export function AccordionTrigger({ className = "", children }: { className?: string; children: React.ReactNode }) {
+export function AccordionTrigger({ className = "", children, onToggle }: { className?: string; children: React.ReactNode; onToggle?: (open: boolean) => void }) {
   const ctx = React.useContext(AccordionContext);
   const itemValue = React.useContext(ItemContext);
   if (!ctx || !itemValue) return <div className={className}>{children}</div>;
@@ -41,8 +41,10 @@ export function AccordionTrigger({ className = "", children }: { className?: str
       type="button"
       className={`w-full text-left flex justify-between items-center ${className}`}
       onClick={() => {
+        const nextOpen = !isOpen;
         if (isOpen) ctx.setValue(ctx.collapsible ? null : itemValue);
         else ctx.setValue(itemValue);
+        try { onToggle?.(nextOpen); } catch {}
       }}
       aria-expanded={isOpen}
     >

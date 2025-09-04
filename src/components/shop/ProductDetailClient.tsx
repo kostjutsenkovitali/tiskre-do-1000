@@ -43,6 +43,8 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   const [selectedImage, setSelectedImage] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
+  const [debugInstr, setDebugInstr] = useState(false);
+  const [instrOpened, setInstrOpened] = useState(false);
 
   // Fix image handling to work with Shopify data structure
   const images = useMemo(() => {
@@ -73,8 +75,6 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
     
     // Remove duplicates
     const uniqueImages = Array.from(new Set(list));
-    
-    console.log("Product images found:", uniqueImages.length, uniqueImages);
     return uniqueImages;
   }, [product]);
 
@@ -181,16 +181,14 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
       })()
     : [];
     
-  console.log("Bullet points from product.bulletPoints:", product?.bulletPoints);
-  console.log("Processed bulletPoints array:", bulletPoints);
+  
     
   // Handle bullet points from metafield if not in product object directly
   if (bulletPoints.length === 0 && product?.bulletPointsMetafield) {
     const mf = product.bulletPointsMetafield;
-    console.log("Using bulletPointsMetafield:", mf);
     // Check if mf has a value property (which is typical for metafields)
     if (mf && typeof mf === "object" && "value" in mf) {
-      console.log("Metafield has value property:", mf.value);
+      
       if (typeof mf.value === "string") {
         const parsed = tryParseJsonArray(mf.value) || splitLoose(mf.value);
         bulletPoints.push(...parsed);
@@ -201,27 +199,33 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
     } else if (Array.isArray(mf)) {
       bulletPoints.push(...mf.filter((x: any) => typeof x === "string"));
     }
-    console.log("Bullet points after metafield processing:", bulletPoints);
+    
   }
     
   // Fix instruction handling for Shopify data structure
-  let instructionJpg: string | null = null;
+  let instructionImages: string[] = [];
   let instructionPdf: string | null = null;
   
-  // Resolve instructionJpg from metafield objects
-  if (product?.instructionJpgEn?.reference?.image?.url) {
-    instructionJpg = product.instructionJpgEn.reference.image.url;
-  } else if (product?.instructionJpgEn?.reference?.url) {
-    instructionJpg = product.instructionJpgEn.reference.url;
-  } else if (product?.instructionJpg?.reference?.image?.url) {
-    instructionJpg = product.instructionJpg.reference.image.url;
-  } else if (product?.instructionJpg?.reference?.url) {
-    instructionJpg = product.instructionJpg.reference.url;
-  } else if (product?.instructionJpgEn?.value && !product.instructionJpgEn.value.startsWith('shopify://')) {
-    instructionJpg = product.instructionJpgEn.value;
-  } else if (product?.instructionJpg?.value && !product.instructionJpg.value.startsWith('shopify://')) {
-    instructionJpg = product.instructionJpg.value;
-  }
+  const collectImageUrls = (mf: any) => {
+    if (!mf) return;
+    // Single reference
+    const refUrl = mf?.reference?.image?.url || mf?.reference?.url;
+    if (typeof refUrl === "string") instructionImages.push(refUrl);
+    // Multiple references
+    const nodes: any[] = mf?.references?.nodes || [];
+    for (const n of nodes) {
+      const url = n?.image?.url || n?.url;
+      if (typeof url === "string") instructionImages.push(url);
+    }
+    // Direct value if it's an http(s) URL
+    const val: string | undefined = typeof mf?.value === "string" ? mf.value : undefined;
+    if (val && /^https?:\/\//i.test(val)) instructionImages.push(val);
+  };
+  // Prefer locale-specific metafield, then generic
+  collectImageUrls((product as any)?.instructionJpgEn);
+  collectImageUrls((product as any)?.instructionJpg);
+  // De-duplicate
+  instructionImages = Array.from(new Set(instructionImages.filter(Boolean)));
   
   // Resolve instructionPdf from metafield objects
   if (product?.instructionPdfEn?.reference?.url) {
@@ -234,17 +238,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
     instructionPdf = product.instructionPdf.value;
   }
   
-  // Debug logging
-  console.log("Product instruction data:", {
-    instructionJpgEn: product?.instructionJpgEn,
-    instructionJpg: product?.instructionJpg,
-    instructionPdfEn: product?.instructionPdfEn,
-    instructionPdf: product?.instructionPdf,
-    resolvedInstructionJpg: instructionJpg,
-    resolvedInstructionPdf: instructionPdf,
-    locale: locale,
-    localeKey: locale.toLowerCase()
-  });
+  
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #e8d8c8 100%)" }}>
@@ -565,6 +559,38 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                 <h3 className="text-lg font-medium">{L.description}</h3>
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6 pt-0">
+                {false && (() => {
+                  const mfEn: any = (product as any)?.instructionJpgEn;
+                  const mfGen: any = (product as any)?.instructionJpg;
+                  const mfPdfEn: any = (product as any)?.instructionPdfEn;
+                  const mfPdf: any = (product as any)?.instructionPdf;
+                  const getDetails = (mf: any) => ({
+                    type: mf?.type,
+                    valuePrefix: typeof mf?.value === 'string' ? mf.value.slice(0, 80) : undefined,
+                    hasReferenceUrl: !!mf?.reference?.url,
+                    hasReferenceImageUrl: !!mf?.reference?.image?.url,
+                    referencesCount: Array.isArray(mf?.references?.nodes) ? mf.references.nodes.length : 0,
+                    firstNodeUrl: mf?.references?.nodes?.[0]?.image?.url || mf?.references?.nodes?.[0]?.url,
+                  });
+                  const dbg = {
+                    expectedMetafields: [
+                      'custom.instruction_jpg_en',
+                      'custom.instruction_jpg',
+                      'custom.instruction_pdf_en',
+                      'custom.instruction_pdf',
+                    ],
+                    graphQLSelection: 'metafield { value reference { url image { url } } references { nodes { url image { url } } } }',
+                    jpgEn: getDetails(mfEn),
+                    jpg: getDetails(mfGen),
+                    pdfEn: getDetails(mfPdfEn),
+                    pdf: getDetails(mfPdf),
+                    resolvedImages: instructionImages,
+                    resolvedPdf: instructionPdf,
+                  };
+                  return (
+                    <pre className="mb-4 whitespace-pre-wrap text-xs bg-black/5 p-3 rounded border border-black/10">{JSON.stringify(dbg, null, 2)}</pre>
+                  );
+                })()}
                 <div 
                   className="prose prose-neutral max-w-none dark:prose-invert"
                   dangerouslySetInnerHTML={{ 
@@ -580,27 +606,26 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
             </AccordionItem>
 
             <AccordionItem value="instructions" className="border border-gray-200 rounded-none bg-[#b8b8a8]">
-              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+              <AccordionTrigger className="px-6 py-4 hover:no-underline" onToggle={(open) => setInstrOpened(open)}>
                 <h3 className="text-lg font-medium">{L.instructions}</h3>
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6 pt-0">
-                {/* Display instruction image directly from resolved URL */}
-                {instructionJpg && (
-                  <div className="mt-4">
-                    <img 
-                      src={instructionJpg} 
-                      alt="Product Instructions" 
-                      className="max-w-full h-auto rounded border" 
-                    />
-                  </div>
-                )}
                 
+                {/* Display instruction images (all) */}
+                {instructionImages.length > 0 && (
+                  <div className="mt-4 space-y-4">
+                    {instructionImages.map((src, i) => (
+                      <img key={i} src={src} alt={`Product Instructions ${i+1}`} className="max-w-full h-auto rounded border" />
+                    ))}
+                    </div>
+                  )}
+
                 {/* Display PDF download link if available */}
                 {instructionPdf && (
-                  <a 
-                    href={instructionPdf} 
+                      <a
+                        href={instructionPdf}
                     target="_blank" 
-                    download 
+                        download
                     className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-muted transition-colors mt-4"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -615,7 +640,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                 )}
                 
                 {/* If no instruction files are available, show a message */}
-                {!instructionJpg && !instructionPdf && (
+                {instructionImages.length === 0 && !instructionPdf && (
                   <p className="text-muted-foreground mt-4">No instructions available for this product.</p>
                 )}
               </AccordionContent>
@@ -679,12 +704,12 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                             return (
                               <div key={i}>
                                 <span className="font-medium">{label}:</span>{' '}{val}
-                              </div>
+                    </div>
                             );
                           }
                           return <div key={i}>{p}</div>;
                         })}
-                      </div>
+                </div>
                     );
                   }
                   
