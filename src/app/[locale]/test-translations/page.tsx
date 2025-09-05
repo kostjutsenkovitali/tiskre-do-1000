@@ -1,3 +1,5 @@
+"use client";
+
 import { useI18n } from "@/contexts/I18nProvider";
 
 export default function TranslationTest() {

@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import { isLocale, resolveInContext, LOCALES, type Locale } from "@/i18n/config";
+import { Suspense } from "react";
 
 // Context is provided by a client provider to avoid client hook usage in a server layout.
 
@@ -12,7 +13,6 @@ type Props = {
   children: React.ReactNode;
   params: { locale: string };
 };
-
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale: raw } = await params;
@@ -34,7 +34,9 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <LanguageProvider value={ctx}>
       <I18nProvider locale={locale} messages={messages}>
-        <Header />
+        <Suspense fallback={<div />}>
+          <Header />
+        </Suspense>
         {children}
         <Footer />
         <CartDrawer />
@@ -46,5 +48,3 @@ export default async function LocaleLayout({ children, params }: Props) {
 export async function generateStaticParams() {
   return LOCALES.map((l) => ({ locale: l }));
 }
-
-
