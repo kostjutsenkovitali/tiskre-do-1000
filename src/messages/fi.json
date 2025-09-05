@@ -35,6 +35,18 @@
       "processing": "Käsittelyssä"
     }
   },
+  "Cart": {
+    "title": "Ostoskori",
+    "emptyCart": "Ostoskorisi on tyhjä",
+    "emptyCartDescription": "Lisää tuotteita aloittaaksesi.",
+    "continueShopping": "Jatka ostoksia",
+    "orderSummary": "Tilauksen yhteenveto",
+    "subtotal": "Välisumma",
+    "total": "Yhteensä",
+    "proceedToCheckout": "Siirry kassalle",
+    "quantity": "Määrä",
+    "remove": "Poista"
+  },
   "Contact": {
     "title": "Ota yhteyttä",
     "intro": "Haluaisimme kuulla sinusta. Lähetä viesti, niin vastaamme mahdollisimman pian.",
@@ -119,5 +131,10 @@
       "smokers": "Savustinlaitteet",
       "outdoorKitchens": "Ulkokeittiöt"
     }
+  },
+  "Products": {
+    "SG2 Smoker": "SG2 Savustin",
+    "Kamado Grill Cart": "Kamado Grillikärry",
+    "Outdoor Kitchen Set": "Ulkokeittiön Setti"
   }
 }

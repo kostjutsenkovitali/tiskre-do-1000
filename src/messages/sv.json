@@ -35,6 +35,18 @@
       "processing": "Behandlas"
     }
   },
+  "Cart": {
+    "title": "Varukorg",
+    "emptyCart": "Din varukorg är tom",
+    "emptyCartDescription": "Lägg till några artiklar för att komma igång.",
+    "continueShopping": "Fortsätt handla",
+    "orderSummary": "Orderöversikt",
+    "subtotal": "Delsumma",
+    "total": "Totalt",
+    "proceedToCheckout": "Gå till kassan",
+    "quantity": "Antal",
+    "remove": "Ta bort"
+  },
   "Contact": {
     "title": "Kontakta oss",
     "intro": "Vi vill gärna höra från dig. Skicka ett meddelande så svarar vi så snart som möjligt.",
@@ -119,5 +131,10 @@
       "smokers": "Rökugnar",
       "outdoorKitchens": "Utekök"
     }
+  },
+  "Products": {
+    "SG2 Smoker": "SG2 Rökugn",
+    "Kamado Grill Cart": "Kamado Grillvagn",
+    "Outdoor Kitchen Set": "Uteköksset"
   }
 }

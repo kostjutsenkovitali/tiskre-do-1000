@@ -6,12 +6,45 @@ import { useCart } from "@/hooks/use-cart";
 import { usePathname } from "next/navigation";
 import { detectLocaleFromPath, shopPath } from "@/lib/paths";
 import { brandedCheckoutUrl } from "@/lib/shopify";
+import { useI18n } from "@/contexts/I18nProvider";
+
+// Function to translate product titles
+function translateProductTitle(title: string, locale: string, translations: any): string {
+  // If we have a direct translation for this product title, use it
+  if (translations.Products && translations.Products[title]) {
+    return translations.Products[title];
+  }
+  
+  // If no translation is found, return the original title
+  return title;
+}
+
+// Import all translation files
+import enTranslations from "@/messages/en.json";
+import etTranslations from "@/messages/et.json";
+import fiTranslations from "@/messages/fi.json";
+import deTranslations from "@/messages/de.json";
+import frTranslations from "@/messages/fr.json";
+import svTranslations from "@/messages/sv.json";
+
+const localeTranslations: Record<string, any> = {
+  en: enTranslations,
+  et: etTranslations,
+  fi: fiTranslations,
+  de: deTranslations,
+  fr: frTranslations,
+  sv: svTranslations,
+};
 
 export default function Cart() {
   const { cart, update, remove } = useCart();
   const pathname = usePathname();
   const locale = detectLocaleFromPath(pathname);
   const shopHref = shopPath(locale);
+  const { t } = useI18n();
+  
+  // Get translations for the current locale
+  const translations = localeTranslations[locale] || enTranslations;
 
   const lines = cart?.lines.nodes || [];
   const subtotal = lines.reduce((sum, line: any) => sum + Number(line?.merchandise?.price?.amount || 0) * (line.quantity || 0), 0);
@@ -23,10 +56,10 @@ export default function Cart() {
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h1 className="text-2xl font-medium text-foreground mb-2">Your cart is empty</h1>
-            <p className="text-muted-foreground mb-8">Add some items to get started.</p>
+            <h1 className="text-2xl font-medium text-foreground mb-2">{t("Cart.emptyCart")}</h1>
+            <p className="text-muted-foreground mb-8">{t("Cart.emptyCartDescription")}</p>
             <Link href={shopHref}>
-              <Button>Continue Shopping</Button>
+              <Button className="rounded-none active:scale-95 transition-transform duration-150">{t("Cart.continueShopping")}</Button>
             </Link>
           </div>
         </div>
@@ -37,12 +70,13 @@ export default function Cart() {
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #a8b8b8 100%)" }}>
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-medium text-foreground mb-8">Shopping Cart</h1>
+        <h1 className="text-2xl font-medium text-foreground mb-8">{t("Cart.title")}</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-4">
             {lines.map((line: any) => {
-              const title = line?.merchandise?.product?.title || line?.merchandise?.title;
+              const originalTitle = line?.merchandise?.product?.title || line?.merchandise?.title;
+              const translatedTitle = translateProductTitle(originalTitle, locale, translations);
               const price = Number(line?.merchandise?.price?.amount || 0);
               const image = line?.merchandise?.image?.url || null;
               return (
@@ -51,7 +85,7 @@ export default function Cart() {
                     <div className="flex items-center gap-4">
                       {image ? <img src={image} alt="" className="w-16 h-16 object-cover rounded" /> : <div className="w-16 h-16 bg-muted rounded" />}
                       <div className="flex-1">
-                        <h3 className="font-medium text-foreground">{title}</h3>
+                        <h3 className="font-medium text-foreground">{translatedTitle}</h3>
                         <p className="text-muted-foreground">{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(price)}</p>
                       </div>
 
@@ -78,6 +112,7 @@ export default function Cart() {
 
                       <Button variant="ghost" size="sm" onClick={() => remove(line.id)}>
                         <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">{t("Cart.remove")}</span>
                       </Button>
                     </div>
                   </div>
@@ -88,16 +123,16 @@ export default function Cart() {
 
           <div className="lg:col-span-1">
             <div className="border rounded-none">
-              <div className="p-4 border-b"><h2 className="font-medium">Order Summary</h2></div>
+              <div className="p-4 border-b"><h2 className="font-medium">{t("Cart.orderSummary")}</h2></div>
               <div className="p-4 space-y-4">
-                <div className="flex justify-between"><span>Subtotal</span><span>{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(subtotal)}</span></div>
+                <div className="flex justify-between"><span>{t("Cart.subtotal")}</span><span>{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(subtotal)}</span></div>
                 <div className="border-t pt-4">
-                  <div className="flex justify-between font-medium text-lg"><span>Total</span><span>{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(subtotal)}</span></div>
+                  <div className="flex justify-between font-medium text-lg"><span>{t("Cart.total")}</span><span>{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(subtotal)}</span></div>
                 </div>
                 {cart?.checkoutUrl ? (
-                  <Link href={brandedCheckoutUrl(cart.checkoutUrl)}><Button className="w-full">Proceed to Checkout</Button></Link>
+                  <Link href={brandedCheckoutUrl(cart.checkoutUrl)}><Button className="w-full rounded-none active:scale-95 transition-transform duration-150">{t("Cart.proceedToCheckout")}</Button></Link>
                 ) : null}
-                <Link href={shopHref}><Button variant="outline" className="w-full">Continue Shopping</Button></Link>
+                <Link href={shopHref}><Button variant="outline" className="w-full rounded-none active:scale-95 transition-transform duration-150">{t("Cart.continueShopping")}</Button></Link>
               </div>
             </div>
           </div>

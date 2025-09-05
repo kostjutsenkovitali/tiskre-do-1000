@@ -35,6 +35,18 @@
       "processing": "En cours de traitement"
     }
   },
+  "Cart": {
+    "title": "Panier",
+    "emptyCart": "Votre panier est vide",
+    "emptyCartDescription": "Ajoutez des articles pour commencer.",
+    "continueShopping": "Continuer les achats",
+    "orderSummary": "Récapitulatif de la commande",
+    "subtotal": "Sous-total",
+    "total": "Total",
+    "proceedToCheckout": "Passer à la caisse",
+    "quantity": "Quantité",
+    "remove": "Supprimer"
+  },
   "Contact": {
     "title": "Contactez-nous",
     "intro": "Nous serions ravis d'avoir de vos nouvelles. Envoyez-nous un message et nous vous répondrons dès que possible.",
@@ -119,5 +131,10 @@
       "smokers": "Fumoirs",
       "outdoorKitchens": "Cuisines d'extérieur"
     }
+  },
+  "Products": {
+    "SG2 Smoker": "Fumoir SG2",
+    "Kamado Grill Cart": "Chariot de Gril Kamado",
+    "Outdoor Kitchen Set": "Ensemble de Cuisine Extérieure"
   }
 }

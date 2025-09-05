@@ -12,6 +12,7 @@ type Props = {
 export default function AddToCartButton({ variantId, productId, quantity = 1, className }: Props) {
   const { add } = useCart();
   const [loading, setLoading] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
   
   return (
     <button
@@ -26,7 +27,12 @@ export default function AddToCartButton({ variantId, productId, quantity = 1, cl
           setLoading(false);
         }
       }}
-      className={`${className || "rounded-none border px-4 py-2 text-sm"} transition-transform duration-150 active:scale-95`}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onMouseLeave={() => setIsPressed(false)}
+      onTouchStart={() => setIsPressed(true)}
+      onTouchEnd={() => setIsPressed(false)}
+      className={`${className || "rounded-none border px-4 py-2 text-sm"} ${isPressed ? 'scale-95' : 'scale-100'} transition-transform duration-150`}
     >
       {loading ? "Adding..." : "Add to cart"}
     </button>

@@ -35,6 +35,18 @@
       "processing": "Töötlemisel"
     }
   },
+  "Cart": {
+    "title": "Ostukorv",
+    "emptyCart": "Teie ostukorv on tühi",
+    "emptyCartDescription": "Lisage mõned tooted alustamiseks.",
+    "continueShopping": "Jätka ostlemist",
+    "orderSummary": "Tellimuse kokkuvõte",
+    "subtotal": "Vahesumma",
+    "total": "Kokku",
+    "proceedToCheckout": "Edasi kassasse",
+    "quantity": "Kogus",
+    "remove": "Eemalda"
+  },
   "Contact": {
     "title": "Võta ühendust",
     "intro": "Meil on hea meel sinust kuulda. Saada meile sõnum ja vastame esimesel võimalusel.",
@@ -119,5 +131,10 @@
       "smokers": "Suitsetajad",
       "outdoorKitchens": "Õue köögid"
     }
+  },
+  "Products": {
+    "SG2 Smoker": "SG2 Suitsetaja",
+    "Kamado Grill Cart": "Kamado Grilli Käru",
+    "Outdoor Kitchen Set": "Õueköögi Komplekt"
   }
 }
