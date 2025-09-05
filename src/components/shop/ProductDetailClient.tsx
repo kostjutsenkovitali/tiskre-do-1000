@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import AddToCartButton from "@/components/AddToCartButton";
 import { useCart } from "@/hooks/use-cart";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,78 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   const [debugInstr, setDebugInstr] = useState(false);
   const [instrOpened, setInstrOpened] = useState(false);
 
+  // Lens tuning constants
+  const lensSize = 180; // px
+  const zoom = 2.2; // ×
+
+  // Lens state and refs
+  const imgWrapRef = useRef<HTMLDivElement | null>(null);
+  const [showLens, setShowLens] = useState(false); // deprecated lens, kept for compatibility
+  const [lensPos, setLensPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [bgPos, setBgPos] = useState<{ x: string; y: string }>({ x: "50%", y: "50%" });
+
+  // Lightbox state
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  // openGallery is defined later after images
+  let openGallery: () => void = () => {};
+  const closeGallery = () => setGalleryOpen(false);
+  const galleryPrev = () => setSelectedImage((i) => (i - 1 + images.length) % images.length);
+  const galleryNext = () => setSelectedImage((i) => (i + 1) % images.length);
+
+  useEffect(() => {
+    if (!galleryOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeGallery();
+      else if (e.key === "ArrowLeft") galleryPrev();
+      else if (e.key === "ArrowRight") galleryNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [galleryOpen]);
+
+  // Custom magnifier cursor (SVG data URL)
+  const magnifierCursor = useMemo(() => {
+    const svg = `<?xml version='1.0' encoding='UTF-8'?>
+      <svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'>
+        <defs>
+          <filter id='ds' x='-50%' y='-50%' width='200%' height='200%'>
+            <feDropShadow dx='0' dy='2' stdDeviation='2' flood-color='rgba(0,0,0,0.35)'/>
+          </filter>
+        </defs>
+        <g filter='url(#ds)'>
+          <circle cx='20' cy='20' r='14' fill='white' fill-opacity='0.9' stroke='#111' stroke-width='3'/>
+          <rect x='19' y='12' width='2' height='16' fill='#111'/>
+          <rect x='12' y='19' width='16' height='2' fill='#111'/>
+          <line x1='28' y1='28' x2='38' y2='38' stroke='#111' stroke-width='4' stroke-linecap='round'/>
+        </g>
+      </svg>`;
+    return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 24 24, zoom-in`;
+  }, []);
+
+  useEffect(() => {
+    // Hide lens if switching to video
+    if (showVideo && showLens) setShowLens(false);
+  }, [showVideo]);
+
+  const handleLensEnter = () => {
+    /* legacy lens noop */
+  };
+  const handleLensLeave = () => setShowLens(false);
+  const handleLensMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!imgWrapRef.current) return;
+    if (!images.length) return;
+    const rect = imgWrapRef.current.getBoundingClientRect();
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+    // Clamp inside
+    x = Math.max(0, Math.min(rect.width, x));
+    y = Math.max(0, Math.min(rect.height, y));
+    setLensPos({ x, y });
+    const px = (x / rect.width) * 100;
+    const py = (y / rect.height) * 100;
+    setBgPos({ x: `${px}%`, y: `${py}%` });
+  };
+
   // Fix image handling to work with Shopify data structure
   const images = useMemo(() => {
     const list: string[] = [];
@@ -79,6 +151,9 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   }, [product]);
 
   const visibleCount = 6;
+
+  // finalize openGallery now that images exists
+  openGallery = () => { if (!showVideo && images.length) setGalleryOpen(true); };
 
   const ensureThumbVisible = (idx: number) => {
     if (idx < thumbStart) setThumbStart(idx);
@@ -268,7 +343,15 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
           {/* LEFT: Images */}
           <div className="space-y-4">
             {/* Main image with thin grey frame, square corners */}
-            <div className="relative aspect-square bg-muted border border-gray-300 overflow-hidden group rounded-none">
+            <div
+              ref={imgWrapRef}
+              className="relative aspect-square bg-muted border border-gray-300 overflow-visible group rounded-none"
+              style={{ cursor: !showVideo && images.length ? magnifierCursor as any : undefined }}
+              onMouseEnter={handleLensEnter}
+              onMouseLeave={handleLensLeave}
+              onMouseMove={handleLensMove}
+              onClick={openGallery}
+            >
               {(() => {
                 const url: string | undefined = (product as any)?.productVideo;
                 const isDirect = typeof url === "string" && /\.(mp4|webm|ogg)(\?.*)?$/i.test(url);
@@ -291,11 +374,11 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                 };
                 if (showVideo && url) {
                   return isDirect ? (
-                    <video src={url} controls playsInline className="w-full h-full object-cover" />
+                    <video src={url} controls playsInline className="w-full h-full object-cover cursor-zoom-in" />
                   ) : (
                     <iframe
                       src={toEmbedUrl(url)}
-                      className="w-full h-full"
+                      className="w-full h-full cursor-zoom-in"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                       title="Product video"
@@ -306,8 +389,8 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                 <Image
                   src={images[selectedImage] ?? images[0]}
                     alt={product.title || "Product image"}
-                  fill
-                  className="object-cover"
+                    fill
+                    className="object-cover cursor-zoom-in !cursor-zoom-in"
                     sizes="(min-width: 1024px) 50vw, 100vw"
                   />
                 ) : (
@@ -317,21 +400,24 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                 );
               })()}
 
+              {/* Lens overlay */}
+              {false && showLens && images.length > 0 && !showVideo && (
+                <div className="pointer-events-none absolute" />
+              )}
+
               {!showVideo && images.length > 0 && (
                 <>
                   <button
                     aria-label="Previous image"
                     onClick={goPrev}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-all duration-150 active:scale-95"
-                    disabled={images.length <= 1}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button
                     aria-label="Next image"
                     onClick={goNext}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-all duration-150 active:scale-95"
-                    disabled={images.length <= 1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
@@ -347,28 +433,28 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                     {images.map((_, index) => {
                       // This is an actual image
                       const isActive = index === selectedImage;
-                      return (
-                        <button
+                        return (
+                          <button
                           key={`image-${index}`}
                           onClick={() => goTo(index)}
-                          className={`aspect-square w-full border ${
-                            isActive
-                              ? "border-black"
-                              : "border-border hover:border-black/40"
+                            className={`aspect-square w-full border ${
+                              isActive
+                                ? "border-black"
+                                : "border-border hover:border-black/40"
                           } rounded-none overflow-hidden transition-all duration-150 active:scale-95`}
                           aria-label={`Select image ${index + 1}`}
-                        >
-                          <Image
+                          >
+                            <Image
                             src={images[index]}
                             alt={`${product.title || "Product"} ${index + 1}`}
-                            width={200}
-                            height={200}
-                            className="object-cover w-full h-full"
+                              width={200}
+                              height={200}
+                              className="object-cover w-full h-full"
                             sizes="100px"
-                          />
-                        </button>
-                      );
-                    })}
+                            />
+                          </button>
+                        );
+                      })}
                     {/* Fill remaining slots with empty divs if less than 6 images */}
                     {Array(Math.max(0, 6 - images.length)).fill(null).map((_, index) => (
                       <div 
@@ -378,6 +464,32 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                     ))}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {galleryOpen && (
+              <div className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center" onClick={closeGallery}>
+                <button
+                  aria-label="Close"
+                  className="absolute top-4 right-4 text-white text-3xl"
+                  onClick={(e) => { e.stopPropagation(); closeGallery(); }}
+                >×</button>
+                <button
+                  aria-label="Prev"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl"
+                  onClick={(e) => { e.stopPropagation(); galleryPrev(); }}
+                >‹</button>
+                <button
+                  aria-label="Next"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl"
+                  onClick={(e) => { e.stopPropagation(); galleryNext(); }}
+                >›</button>
+                <img
+                  src={images[selectedImage]}
+                  alt=""
+                  className="max-h-[90vh] max-w-[90vw] object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
               </div>
             )}
           </div>
