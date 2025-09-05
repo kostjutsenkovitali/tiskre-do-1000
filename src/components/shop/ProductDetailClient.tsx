@@ -93,8 +93,17 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
     ensureThumbVisible(next);
   };
 
-  const goPrev = () => goTo(selectedImage - 1);
-  const goNext = () => goTo(selectedImage + 1);
+  const goPrev = () => {
+    if (images.length > 0) {
+      goTo(selectedImage - 1);
+    }
+  };
+  
+  const goNext = () => {
+    if (images.length > 0) {
+      goTo(selectedImage + 1);
+    }
+  };
 
   const canScrollThumbsLeft = thumbStart > 0;
   const canScrollThumbsRight =
@@ -113,9 +122,11 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
   }
 
   const mockReviews = [
-    { id: 1, author: "Sarah M.", rating: 5, comment: "Excellent quality and fast shipping!" },
-    { id: 2, author: "John D.", rating: 4, comment: "Great product, exactly as described." },
-    { id: 3, author: "Emma K.", rating: 5, comment: "Love the minimalist design. Perfect for my needs." },
+    { id: 1, author: "Kadi M.", rating: 5, comment: "Suurepärane kvaliteet ja kiire saatmine!" },
+    { id: 2, author: "Juhani K.", rating: 4, comment: "Hästi toode, täpselt nagu kirjeldatud." },
+    { id: 3, author: "Liisa P.", rating: 5, comment: "Armas minimalistlik disain. Täiuslik minu vajadustele." },
+    { id: 4, author: "Mikko L.", rating: 5, comment: "Erinomainen tuote, toimi ihan kuten mainittiin!" },
+    { id: 5, author: "Kristiina T.", rating: 4, comment: "Hyvä laatu, nopea toimitus. Suosittelen!" },
   ];
 
   const labels: Record<string, {
@@ -306,12 +317,13 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                 );
               })()}
 
-              {!showVideo && images.length > 1 ? (
+              {!showVideo && images.length > 0 && (
                 <>
                   <button
                     aria-label="Previous image"
                     onClick={goPrev}
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-all duration-150 active:scale-95"
+                    disabled={images.length <= 1}
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
@@ -319,91 +331,55 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                     aria-label="Next image"
                     onClick={goNext}
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/80 hover:bg-background border border-border rounded-none flex items-center justify-center transition-all duration-150 active:scale-95"
+                    disabled={images.length <= 1}
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
                 </>
-              ) : null}
+              )}
             </div>
 
-            {/* 6-up thumbnail carousel (square thumbs, straight corners) */}
-            {images.length > 0 ? (
+            {/* 6-up thumbnail carousel (square thumbs, straight corners) - Show only actual images without placeholders */}
+            {images.length > 0 && (
               <div className="w-full">
                 <div className="relative flex items-center gap-2">
-                  {/* Left scroll button - only show if we have more images than visible slots AND we're not at the start */}
-                  {images.length > visibleCount && (
-                    <button
-                      aria-label="Scroll thumbnails left"
-                      onClick={() => setThumbStart(Math.max(0, thumbStart - 1))}
-                      disabled={!canScrollThumbsLeft}
-                      className="w-8 h-8 border border-border rounded-none flex items-center justify-center disabled:opacity-40 transition-all duration-150 active:scale-95"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                  )}
-
                   <div className="grid grid-cols-6 gap-2 flex-1">
-                    {Array(6).fill(null).map((_, index) => {
-                      if (index < images.length) {
-                        // This is an actual image
-                        const isActive = index === selectedImage;
-                        return (
-                          <button
-                            key={`image-${index}`}
-                            onClick={() => goTo(index)}
-                            className={`aspect-square w-full border ${
-                              isActive
-                                ? "border-black"
-                                : "border-border hover:border-black/40"
-                            } rounded-none overflow-hidden transition-all duration-150 active:scale-95`}
-                            aria-label={`Select image ${index + 1}`}
-                          >
-                            <Image
-                              src={images[index]}
-                              alt={`${product.title || "Product"} ${index + 1}`}
-                              width={200}
-                              height={200}
-                              className="object-cover w-full h-full"
-                              sizes="100px"
-                            />
-                          </button>
-                        );
-                      } else {
-                        // Empty placeholder thumbnails to maintain 6-column grid
-                        return (
-                          <div 
-                            key={`placeholder-${index}`}
-                            className="aspect-square w-full border border-gray-100 rounded-none overflow-hidden bg-gray-50 flex items-center justify-center"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
-                              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                              <circle cx="9" cy="9" r="2" />
-                              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                            </svg>
-                          </div>
-                        );
-                      }
-                      })}
+                    {images.map((_, index) => {
+                      // This is an actual image
+                      const isActive = index === selectedImage;
+                      return (
+                        <button
+                          key={`image-${index}`}
+                          onClick={() => goTo(index)}
+                          className={`aspect-square w-full border ${
+                            isActive
+                              ? "border-black"
+                              : "border-border hover:border-black/40"
+                          } rounded-none overflow-hidden transition-all duration-150 active:scale-95`}
+                          aria-label={`Select image ${index + 1}`}
+                        >
+                          <Image
+                            src={images[index]}
+                            alt={`${product.title || "Product"} ${index + 1}`}
+                            width={200}
+                            height={200}
+                            className="object-cover w-full h-full"
+                            sizes="100px"
+                          />
+                        </button>
+                      );
+                    })}
+                    {/* Fill remaining slots with empty divs if less than 6 images */}
+                    {Array(Math.max(0, 6 - images.length)).fill(null).map((_, index) => (
+                      <div 
+                        key={`empty-${index}`}
+                        className="aspect-square w-full"
+                      />
+                    ))}
                   </div>
-
-                  {/* Right scroll button - only show if we have more images than visible slots AND we're not at the end */}
-                  {images.length > visibleCount && (
-                    <button
-                      aria-label="Scroll thumbnails right"
-                      onClick={() =>
-                        setThumbStart(
-                          Math.min(images.length - visibleCount, thumbStart + 1)
-                        )
-                      }
-                      disabled={!canScrollThumbsRight}
-                      className="w-8 h-8 border border-border rounded-none flex items-center justify-center disabled:opacity-40 transition-all duration-150 active:scale-95"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  )}
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
 
           {/* RIGHT: Details */}
