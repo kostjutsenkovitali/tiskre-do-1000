@@ -19,7 +19,7 @@ export default function Cart() {
 
   if (!lines.length) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #a8b8b8 100%)" }}>
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -35,7 +35,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #a8b8b8 100%)" }}>
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-2xl font-medium text-foreground mb-8">Shopping Cart</h1>
 
@@ -46,7 +46,7 @@ export default function Cart() {
               const price = Number(line?.merchandise?.price?.amount || 0);
               const image = line?.merchandise?.image?.url || null;
               return (
-                <div key={line.id} className="border rounded-lg">
+                <div key={line.id} className="border rounded-none">
                   <div className="p-4">
                     <div className="flex items-center gap-4">
                       {image ? <img src={image} alt="" className="w-16 h-16 object-cover rounded" /> : <div className="w-16 h-16 bg-muted rounded" />}
@@ -55,7 +55,7 @@ export default function Cart() {
                         <p className="text-muted-foreground">{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(price)}</p>
                       </div>
 
-                      <div className="flex items-center border rounded-md">
+                      <div className="flex items-center border rounded-none">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -87,7 +87,7 @@ export default function Cart() {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="border rounded-lg">
+            <div className="border rounded-none">
               <div className="p-4 border-b"><h2 className="font-medium">Order Summary</h2></div>
               <div className="p-4 space-y-4">
                 <div className="flex justify-between"><span>Subtotal</span><span>{new Intl.NumberFormat(undefined, { style: "currency", currency }).format(subtotal)}</span></div>

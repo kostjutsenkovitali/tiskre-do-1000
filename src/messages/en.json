@@ -18,7 +18,22 @@
     "newPassword": "New Password",
     "confirmPassword": "Confirm New Password",
     "updatePassword": "Update Password",
-    "fullName": "Full Name"
+    "fullName": "Full Name",
+    "loading": "Loading...",
+    "profileUpdated": "Profile updated successfully",
+    "updateFailed": "Failed to update profile",
+    "noOrders": "No orders yet",
+    "orderStatus": {
+      "pending": "Pending",
+      "authorized": "Authorized",
+      "paid": "Paid",
+      "partially_paid": "Partially Paid",
+      "refunded": "Refunded",
+      "partially_refunded": "Partially Refunded",
+      "voided": "Voided",
+      "delivered": "Delivered",
+      "processing": "Processing"
+    }
   },
   "Contact": {
     "title": "Contact Us",
@@ -83,7 +98,7 @@
       "test3": "Set it up in my small smokehouse. No hassle — it just works. The smoke is smooth and steady.",
       "test5": "The best thing since sliced bread.",
       "test6": "SG2 is really a great thing.",
-      "test7": "Let’s see how SG2 works."
+      "test7": "Let's see how SG2 works."
     }
   },
   "Common": {

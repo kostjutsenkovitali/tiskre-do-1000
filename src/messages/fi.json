@@ -18,7 +18,22 @@
     "newPassword": "Uusi salasana",
     "confirmPassword": "Vahvista uusi salasana",
     "updatePassword": "Päivitä salasana",
-    "fullName": "Koko nimi"
+    "fullName": "Koko nimi",
+    "loading": "Ladataan...",
+    "profileUpdated": "Profiili päivitetty onnistuneesti",
+    "updateFailed": "Profiilin päivitys epäonnistui",
+    "noOrders": "Ei tilauksia vielä",
+    "orderStatus": {
+      "pending": "Odottaa",
+      "authorized": "Valtuutettu",
+      "paid": "Maksettu",
+      "partially_paid": "Osittain maksettu",
+      "refunded": "Hyvitetty",
+      "partially_refunded": "Osittain hyvitetty",
+      "voided": "Peruutettu",
+      "delivered": "Toimitettu",
+      "processing": "Käsittelyssä"
+    }
   },
   "Contact": {
     "title": "Ota yhteyttä",

@@ -18,7 +18,22 @@
     "newPassword": "Uus parool",
     "confirmPassword": "Kinnita uus parool",
     "updatePassword": "Uuenda parooli",
-    "fullName": "Täisnimi"
+    "fullName": "Täisnimi",
+    "loading": "Laadimine...",
+    "profileUpdated": "Profiil edukalt uuendatud",
+    "updateFailed": "Profiili uuendamine ebaõnnestus",
+    "noOrders": "Tellimusi pole veel",
+    "orderStatus": {
+      "pending": "Ootel",
+      "authorized": "Autoriseeritud",
+      "paid": "Makstud",
+      "partially_paid": "Osaliselt makstud",
+      "refunded": "Tagastatud",
+      "partially_refunded": "Osaliselt tagastatud",
+      "voided": "Tühistatud",
+      "delivered": "Kohale toimetatud",
+      "processing": "Töötlemisel"
+    }
   },
   "Contact": {
     "title": "Võta ühendust",

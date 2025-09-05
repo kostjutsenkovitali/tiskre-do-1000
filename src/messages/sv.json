@@ -18,7 +18,22 @@
     "newPassword": "Nytt lösenord",
     "confirmPassword": "Bekräfta nytt lösenord",
     "updatePassword": "Uppdatera lösenord",
-    "fullName": "Fullständigt namn"
+    "fullName": "Fullständigt namn",
+    "loading": "Laddar...",
+    "profileUpdated": "Profilen uppdaterad framgångsrikt",
+    "updateFailed": "Misslyckades med att uppdatera profilen",
+    "noOrders": "Inga beställningar ännu",
+    "orderStatus": {
+      "pending": "Väntar",
+      "authorized": "Auktoriserad",
+      "paid": "Betald",
+      "partially_paid": "Delvis betald",
+      "refunded": "Återbetald",
+      "partially_refunded": "Delvis återbetald",
+      "voided": "Annullerad",
+      "delivered": "Levererad",
+      "processing": "Behandlas"
+    }
   },
   "Contact": {
     "title": "Kontakta oss",

@@ -12,6 +12,7 @@ type Props = {
 export default function AddToCartButton({ variantId, productId, quantity = 1, className }: Props) {
   const { add } = useCart();
   const [loading, setLoading] = useState(false);
+  
   return (
     <button
       disabled={loading}
@@ -25,11 +26,9 @@ export default function AddToCartButton({ variantId, productId, quantity = 1, cl
           setLoading(false);
         }
       }}
-      className={className || "rounded-none border px-4 py-2 text-sm"}
+      className={`${className || "rounded-none border px-4 py-2 text-sm"} transition-transform duration-150 active:scale-95`}
     >
       {loading ? "Adding..." : "Add to cart"}
     </button>
   );
 }
-
-

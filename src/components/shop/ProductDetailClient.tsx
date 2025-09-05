@@ -182,7 +182,6 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
     : [];
     
   
-    
   // Handle bullet points from metafield if not in product object directly
   if (bulletPoints.length === 0 && product?.bulletPointsMetafield) {
     const mf = product.bulletPointsMetafield;
@@ -238,7 +237,10 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
     instructionPdf = product.instructionPdf.value;
   }
   
-  
+  // Get the merchandise ID for payment buttons
+  const getMerchandiseId = () => {
+    return product?.variants?.nodes?.[0]?.id || product?.id || "";
+  };
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #e8d8c8 100%)" }}>
@@ -471,13 +473,13 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   quantity={quantity}
                 />
                 <div className="grid grid-cols-3 gap-3">
-                  {/* Google Pay */}
+                  {/* Google Pay - First button */}
                   <button
                     type="button"
                     aria-label="Google Pay"
                     className="h-10 w-full rounded-none flex items-center justify-center gap-2 bg-black text-white shadow-sm hover:opacity-90 transition-all duration-150 active:scale-95"
                     onClick={() => {
-                      const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
+                      const merchId = getMerchandiseId();
                       if (merchId) addAndCheckout(merchId, quantity);
                     }}
                   >
@@ -490,30 +492,30 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                     <span className="text-sm font-medium">G&nbsp;Pay</span>
                   </button>
 
-                  {/* PayPal */}
+                  {/* PayPal with official brand style - Second button */}
                   <button
                     type="button"
                     aria-label="PayPal"
-                    className="h-10 w-full rounded-none flex items-center justify-center gap-2 bg-[#FFC439] text-[#003087] shadow-sm hover:opacity-95 transition-all duration-150 active:scale-95"
+                    className="h-10 w-full rounded-none flex items-center justify-center gap-2 bg-[#FFC439] text-[#111111] shadow-sm hover:opacity-95 transition-all duration-150 active:scale-95"
                     onClick={() => {
-                      const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
+                      const merchId = getMerchandiseId();
                       if (merchId) addAndCheckout(merchId, quantity);
                     }}
                   >
-                    <svg width="20" height="20" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <path fill="#003087" d="M30.3 8.2c-1-4.1-5.1-6.2-9.7-6.2H11c-.6 0-1.1.4-1.2 1l-3.6 22c-.1.6.3 1.2 1 1.2h5.7l.8-4.6c.1-.6.6-1 1.2-1h2.5c5.9 0 10.8-2.3 12.2-8.9.1-.5.1-1.1.1-1.7s0-1.1-.1-1.8z"/>
-                      <path fill="#001C64" d="M16.3 10.9c.1-.6.6-1 1.2-1h3.7c1.5 0 2.7.3 3.6.9.4.3.8.7 1 .9.2.4.3.9.3 1.5 0 .4 0 .8-.1 1.2-1.2 5.3-5.3 7.1-10.3 7.1h-2.5c-.6 0-1.1.4-1.2 1l-.8 4.6h-4.9c-.6 0-1-.6-.9-1.2l3.6-22c.1-.6.6-1 1.2-1h10.9c3.4 0 6.6.9 8.3 2.9-1.7-1.5-4.3-2-7.2-2h-5.7c-.6 0-1.1.4-1.2 1l-1 5.2z"/>
+                    <svg width="22" height="22" viewBox="0 0 256 308" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path fill="#003087" d="M211.6 75.2c-8-9.8-20.8-15.4-37.9-16.6H97.7c-4.8 0-8.9 3.5-9.6 8.2L63 243.6c-.6 4 2.4 7.7 6.6 7.7h35.8l5.6-35.3c.7-4.6 4.7-8 9.4-8h21.2c41.6 0 74.2-16.2 83.8-63.3 4.1-19.8 1.9-35.7-13.8-49.5z"/>
+                      <path fill="#0070BA" d="M116.5 96.7c.7-4.6 4.7-8 9.4-8h34c13.6.9 24.4 4.6 31.8 10.5 7.8 6.2 11.1 14.8 9.2 25.4-7.5 39.6-36.8 52.7-74.5 52.7h-15.7c-4.7 0-8.7 3.4-9.4 8l-6.5 40.9H76.3c-4.2 0-7.2-3.7-6.6-7.7l24.5-160.2c.7-4.7 4.8-8.2 9.6-8.2h12.7l-.1.6z"/>
                     </svg>
                     <span className="text-sm font-semibold">PayPal</span>
                   </button>
 
-                  {/* Stripe */}
+                  {/* Stripe - Third button */}
                   <button
                     type="button"
                     aria-label="Stripe"
-                    className="h-10 w-full rounded-none flex items-center justify-center gap-2 bg-white text-white shadow-sm hover:opacity-95 transition-all duration-150 border border-gray-300"
+                    className="h-10 w-full rounded-none flex items-center justify-center gap-2 bg-white text-white shadow-sm hover:opacity-95 transition-all duration-150 border border-gray-300 active:scale-95"
                     onClick={() => {
-                      const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
+                      const merchId = getMerchandiseId();
                       if (merchId) addAndCheckout(merchId, quantity);
                     }}
                   >
@@ -538,13 +540,13 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
 
                 {/* Watch Product Video button - moved to be under bullet points container */}
                 {product.productVideo && (
-                  <Button 
+                  <button 
                     onClick={() => setShowVideo(!showVideo)}
-                    className="mt-4 w-auto px-6 h-11 rounded-none bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all duration-150"
+                    className="mt-4 w-auto px-6 h-11 rounded-none bg-blue-600 text-white hover:bg-blue-700 transition-all duration-150 active:scale-95"
                   >
-                    <Play className="h-4 w-4 mr-2" />
+                    <Play className="h-4 w-4 mr-2 inline" />
                     {L.watchVideo}
-                  </Button>
+                  </button>
                 )}
               </div>
             </div>

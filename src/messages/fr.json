@@ -18,7 +18,22 @@
     "newPassword": "Nouveau mot de passe",
     "confirmPassword": "Confirmer le nouveau mot de passe",
     "updatePassword": "Mettre à jour le mot de passe",
-    "fullName": "Nom complet"
+    "fullName": "Nom complet",
+    "loading": "Chargement...",
+    "profileUpdated": "Profil mis à jour avec succès",
+    "updateFailed": "Échec de la mise à jour du profil",
+    "noOrders": "Aucune commande pour le moment",
+    "orderStatus": {
+      "pending": "En attente",
+      "authorized": "Autorisé",
+      "paid": "Payé",
+      "partially_paid": "Partiellement payé",
+      "refunded": "Remboursé",
+      "partially_refunded": "Partiellement remboursé",
+      "voided": "Annulé",
+      "delivered": "Livré",
+      "processing": "En cours de traitement"
+    }
   },
   "Contact": {
     "title": "Contactez-nous",

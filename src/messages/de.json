@@ -18,7 +18,22 @@
     "newPassword": "Neues Passwort",
     "confirmPassword": "Neues Passwort bestätigen",
     "updatePassword": "Passwort aktualisieren",
-    "fullName": "Vollständiger Name"
+    "fullName": "Vollständiger Name",
+    "loading": "Wird geladen...",
+    "profileUpdated": "Profil erfolgreich aktualisiert",
+    "updateFailed": "Profilaktualisierung fehlgeschlagen",
+    "noOrders": "Noch keine Bestellungen",
+    "orderStatus": {
+      "pending": "Ausstehend",
+      "authorized": "Autorisiert",
+      "paid": "Bezahlt",
+      "partially_paid": "Teilweise bezahlt",
+      "refunded": "Erstattet",
+      "partially_refunded": "Teilweise erstattet",
+      "voided": "Storniert",
+      "delivered": "Geliefert",
+      "processing": "In Bearbeitung"
+    }
   },
   "Contact": {
     "title": "Kontakt aufnehmen",
