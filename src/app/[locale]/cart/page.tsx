@@ -56,7 +56,14 @@ export default function Cart() {
                       </div>
 
                       <div className="flex items-center border rounded-md">
-                        <Button variant="ghost" size="sm" onClick={() => update(line.id, Math.max(1, line.quantity - 1))}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const nextQty = (line.quantity || 0) - 1;
+                            if (nextQty <= 0) remove(line.id); else update(line.id, nextQty);
+                          }}
+                        >
                           <Minus className="h-4 w-4" />
                         </Button>
                         <span className="px-3 py-1 min-w-[2rem] text-center">{line.quantity}</span>

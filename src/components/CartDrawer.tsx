@@ -63,7 +63,14 @@ export default function CartDrawer() {
                     <div className="text-sm truncate">{title}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="rounded-none border px-2 text-sm" onClick={() => update(line.id, Math.max(1, line.quantity - 1))}>-</button>
+                    <button
+                      className="rounded-none border px-2 text-sm"
+                      onClick={() => {
+                        const nextQty = (line.quantity || 0) - 1;
+                        if (nextQty <= 0) remove(line.id); else update(line.id, nextQty);
+                      }}
+                    >-
+                    </button>
                     <span className="text-sm tabular-nums w-6 text-center">{line.quantity}</span>
                     <button className="rounded-none border px-2 text-sm" onClick={() => update(line.id, line.quantity + 1)}>+</button>
                     <button className="rounded-none border px-2 text-sm" onClick={() => remove(line.id)}>Remove</button>

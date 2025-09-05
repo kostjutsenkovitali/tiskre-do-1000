@@ -465,7 +465,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
 
               <div className="space-y-3">
                 <AddToCartButton
-                  className="w-full h-11 rounded-none bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform duration-150"
+                  className="w-full h-11 rounded-none bg-gray-900 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform duration-150"
                   variantId={product?.variants?.nodes?.[0]?.id}
                   productId={!product?.variants?.nodes?.length ? product?.id : undefined}
                   quantity={quantity}
@@ -475,7 +475,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   <button
                     type="button"
                     aria-label="Google Pay"
-                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-black text-white shadow-sm hover:opacity-90 transition-all duration-150 active:scale-95"
+                    className="h-10 w-full rounded-none flex items-center justify-center gap-2 bg-black text-white shadow-sm hover:opacity-90 transition-all duration-150 active:scale-95"
                     onClick={() => {
                       const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
                       if (merchId) addAndCheckout(merchId, quantity);
@@ -494,7 +494,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   <button
                     type="button"
                     aria-label="PayPal"
-                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-[#FFC439] text-[#003087] shadow-sm hover:opacity-95 transition-all duration-150 active:scale-95"
+                    className="h-10 w-full rounded-none flex items-center justify-center gap-2 bg-[#FFC439] text-[#003087] shadow-sm hover:opacity-95 transition-all duration-150 active:scale-95"
                     onClick={() => {
                       const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
                       if (merchId) addAndCheckout(merchId, quantity);
@@ -511,7 +511,7 @@ export default function ProductDetailClient({ locale, product, related = [] }: P
                   <button
                     type="button"
                     aria-label="Stripe"
-                    className="h-10 w-full rounded-[6px] flex items-center justify-center gap-2 bg-white text-white shadow-sm hover:opacity-95 transition-all duration-150 border border-gray-300"
+                    className="h-10 w-full rounded-none flex items-center justify-center gap-2 bg-white text-white shadow-sm hover:opacity-95 transition-all duration-150 border border-gray-300"
                     onClick={() => {
                       const merchId = product?.variants?.nodes?.[0]?.id || product?.id;
                       if (merchId) addAndCheckout(merchId, quantity);
