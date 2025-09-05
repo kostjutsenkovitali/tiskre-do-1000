@@ -68,12 +68,16 @@ export default async function CategoryPage({ params }: Props) {
       name: c.title 
     }));
     
+    // Show category header only for smokers category
+    const showCategoryHeader = category === "smokers";
+    
     return (
       <ShopClient 
         products={products as any} 
         categories={collections} 
         hrefBase={`/${rawLocale}/${segment}`} 
         selectedCategory={category} 
+        showCategoryHeader={showCategoryHeader}
       />
     );
   } catch (error) {

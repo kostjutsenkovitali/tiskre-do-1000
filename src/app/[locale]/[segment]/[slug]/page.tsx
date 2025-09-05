@@ -2,7 +2,7 @@ import {notFound} from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {isLocale, getSegment, resolveInContext, LOCALES, segments} from "@/i18n/config";
-import {GET_PRODUCT, GET_COLLECTION_PRODUCTS} from "@/lib/queries/products";
+import {GET_PRODUCT} from "@/lib/queries/products";
 import {GET_ARTICLE} from "@/lib/queries/blog";
 import type { Metadata } from "next";
 import sanitizeHtml from "sanitize-html";
@@ -57,16 +57,6 @@ export default async function DetailBySegment({params}: Props) {
       const p = data.product;
       if (!p) notFound();
       
-      // Debug logging
-      console.log("Raw Shopify product data:", p);
-      console.log("Instruction metafields:", {
-        instructionJpg: p.instructionJpg,
-        instructionJpgEn: p.instructionJpgEn,
-        instructionJpgEe: p.instructionJpgEe,
-        instructionJpgFi: p.instructionJpgFi,
-        instructionPdf: p.instructionPdf
-      });
-      
       // Map Shopify product to the expected ProductLike shape for the client component
       const firstVariant = p.variants?.nodes?.[0];
       const price = firstVariant ? `${firstVariant.price.amount} ${firstVariant.price.currencyCode}` : "";
@@ -92,31 +82,23 @@ export default async function DetailBySegment({params}: Props) {
       
       const bulletPoints: string[] = (() => {
         const mf = p.bulletPoints;
-        console.log("Raw bulletPoints metafield:", mf);
         // Check if mf has a value property (which is typical for metafields)
         if (mf && typeof mf === "object" && "value" in mf) {
-          console.log("Metafield has value property:", mf.value);
           if (typeof mf.value === "string") {
             const points = mf.value.split("\n").filter(Boolean);
-            console.log("Parsed bullet points from metafield value:", points);
             return points;
           }
         }
         if (typeof mf === "string") {
           const points = mf.split("\n").filter(Boolean);
-          console.log("Parsed bullet points from string:", points);
           return points;
         }
         if (Array.isArray(mf)) {
           const points = mf.filter((x: any) => typeof x === "string");
-          console.log("Parsed bullet points from array:", points);
           return points;
         }
-        console.log("No valid bullet points found");
         return [];
       })();
-      
-      console.log("Final bulletPoints array:", bulletPoints);
 
       const productLike = {
         id: p.id || p.handle,
@@ -154,7 +136,7 @@ export default async function DetailBySegment({params}: Props) {
       // Pass both product and locale props to ProductDetailClient
       return <ProductDetailClient locale={rawLocale} product={productLike} related={[]} />;
     } catch (error) {
-      console.error('Failed to fetch product:', error);
+      // Failed to fetch product, return 404
       notFound();
     }
   }
@@ -212,7 +194,7 @@ export default async function DetailBySegment({params}: Props) {
       </div>
     );
   } catch (error) {
-    console.error('Failed to fetch article:', error);
+    // Failed to fetch article, return 404
     notFound();
   }
 }
@@ -252,7 +234,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       }
     }
   } catch (error) {
-    console.error('Failed to generate metadata:', error);
+    // Failed to generate metadata, return default
   }
   
   return { title: "Page Not Found" };

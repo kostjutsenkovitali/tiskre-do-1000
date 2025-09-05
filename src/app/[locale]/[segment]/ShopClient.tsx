@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState, useEffect } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -35,6 +36,7 @@ interface ShopClientProps {
   categories: FormattedCollection[]; // Changed from collections to categories
   hrefBase?: string;
   selectedCategory?: string; // Add this new prop
+  showCategoryHeader?: boolean; // Add this new prop for showing the image header
 }
 
 // Mapping from category slugs to translation keys
@@ -45,7 +47,7 @@ const CATEGORY_TRANSLATION_KEYS: Record<string, string> = {
   "outdoor-kitchens": "Home.categories.outdoorKitchens",
 };
 
-export default function ShopClient({ products, categories, hrefBase = "/shop", selectedCategory }: ShopClientProps) {
+export default function ShopClient({ products, categories, hrefBase = "/shop", selectedCategory, showCategoryHeader = false }: ShopClientProps) {
   const pathname = usePathname();
   const locale = detectLocaleFromPath(pathname);
   const { t } = useI18n(); // Use the translation hook
@@ -86,7 +88,7 @@ export default function ShopClient({ products, categories, hrefBase = "/shop", s
       const inCategory =
         selectedCategoryState === "all"
           ? true
-          : (p as any).collections?.some((c: any) => c.handle === selectedCategoryState);
+          : (p as any).collections?.nodes?.some((c: any) => c.handle === selectedCategoryState);
 
       return inPrice && inCategory;
     });
@@ -107,6 +109,7 @@ export default function ShopClient({ products, categories, hrefBase = "/shop", s
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8f8f8 0%, #e8d8c8 100%)" }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
+          {/* Filters on the left side (original position) */}
           <aside className="lg:w-64 flex-shrink-0">
             <div className="space-y-6">
               <Card className="rounded-none border border-gray-200">
@@ -156,7 +159,22 @@ export default function ShopClient({ products, categories, hrefBase = "/shop", s
             </div>
           </aside>
 
+          {/* Main content area */}
           <main className="flex-1">
+            {/* SG2-text image in the original position (only for smokers category) */}
+            {showCategoryHeader && selectedCategoryState === "smokers" && (
+              <div className="mb-8 flex justify-center">
+                <Image 
+                  src="/portfolio/SG2-text.png" 
+                  alt="SG2 Smoker" 
+                  width={800} 
+                  height={400} 
+                  className="object-contain"
+                />
+              </div>
+            )}
+
+            {/* "Shop" label, product text, and product cards shifted down */}
             <div className="mb-6">
               <h1 className="text-2xl font-medium text-foreground mb-2">{T.shop}</h1>
               <p className="text-muted-foreground">{T.productsFound(filtered.length)}</p>

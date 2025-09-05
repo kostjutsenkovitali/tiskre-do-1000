@@ -68,11 +68,11 @@ const easeOutCubic = (t: number) => 1 - Math.pow(1 - clamp01(t), 3);
 
 /* ======= GRID (use your NEW table exactly) ======= */
 export const gridFromTable4: string[][] = [
-  ["BigOverlapLeftUp", "BigOverlapLeftBottom SmallUnderlyingRightBottomShop(https://tiskre-do.eu/product/new-product/)", "empty"],
-  ["SmallOverlapRightBottomShop(https://tiskre-do.eu/product/new-product/)", "SmallOverlapLeftBottom BigUnderlyingRightUp", "SmallUnderlyingLeftBottomShop(https://tiskre-do.eu/product/new-product/) BigOverlapRightBottom"],
-  ["SmallOverlapLeftUp BigUnderlyingRightBottom", "BigOverlapLeftUpShop(https://tiskre-do.eu/product/new-product/)", "BigUnderlyingLeftUp SmallOverlapRightBottom"],
-  ["BigOverlapLeftUp SmallUnderlyingRightUp", "BigUnderlyingRightBottomShop(https://tiskre-do.eu/product/new-product/) SmallOverlapLeftUp", "SmallOverlapLeftUp BigUnderlyingRightBottom"],
-  ["SmallOverlapLeftBottomShop(https://tiskre-do.eu/product/new-product/)", "SmallOverlapLeftUp", "SmallOverlapLeftBottom"],
+  ["BigOverlapLeftUp", "BigOverlapLeftBottom SmallUnderlyingRightBottomShop(handle:sg2)", "empty"],
+  ["SmallOverlapRightBottomShop(handle:new-product)", "SmallOverlapLeftBottom BigUnderlyingRightUp", "SmallUnderlyingLeftBottomShop(handle:new-product) BigOverlapRightBottom"],
+  ["SmallOverlapLeftUp BigUnderlyingRightBottom", "BigOverlapLeftUpShop(handle:new-product)", "BigUnderlyingLeftUp SmallOverlapRightBottom"],
+  ["BigOverlapLeftUp SmallUnderlyingRightUp", "BigUnderlyingRightBottomShop(handle:new-product) SmallOverlapLeftUp", "SmallOverlapLeftUp BigUnderlyingRightBottom"],
+  ["SmallOverlapLeftBottomShop(handle:new-product)", "SmallOverlapLeftUp", "SmallOverlapLeftBottom"],
   ["BigUnderlyingLeftUp SmallOverlapRightBottom", "BigOverlapLeftUp SmallUnderlyingRightUp", "BigOverlapLeftUp"],
   ["BigOverlapRightUp", "BigUnderlyingLeftBottom SmallOverlapRightUp", "BigOverlapLeftUp"],
   ["SmallOverlapLeftBottom", "SmallOverlapLeftBottom", "empty"],
@@ -624,7 +624,7 @@ export default function PortfolioSection() {
                       {t("Portfolio.coldSmoke")}<br />generator<br />SG-2
                     </h2>
                     <a
-                      href="/product/sg-2"
+                      href="handle:sg2"
                       style={{
                         display: "inline-block",
                         marginTop: "1rem",

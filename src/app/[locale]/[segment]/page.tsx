@@ -105,11 +105,11 @@ export default async function IndexBySegment({params, searchParams}: Props) {
         ? `${basePath}${q ? `?${new URLSearchParams({ q }).toString()}` : ""}`
         : null;
 
-      return <ShopClient products={products as any} categories={collections} hrefBase={`/${rawLocale}/${segment}`} />;
+      return <ShopClient products={products as any} categories={collections} hrefBase={`/${rawLocale}/${segment}`} showCategoryHeader={false} />;
     } catch (error) {
       console.error('Failed to fetch products:', error);
       // Fallback to client-side rendering
-      return <ShopClient products={[]} categories={collections} hrefBase={`/${rawLocale}/${segment}`} />;
+      return <ShopClient products={[]} categories={collections} hrefBase={`/${rawLocale}/${segment}`} showCategoryHeader={false} />;
     }
   }
 
