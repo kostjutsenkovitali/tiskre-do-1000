@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/contexts/I18nProvider";
+import { productPath, detectLocaleFromPath, shopPath } from "@/lib/paths";
 import type { CSSProperties } from "react";
 
 /* =========================
@@ -240,6 +241,11 @@ export default function PortfolioSection() {
 
   const spacerRef = useRef<HTMLDivElement>(null);
 
+  // Get the current locale for shop path
+  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+  const portfolioLocale = detectLocaleFromPath(currentPath);
+  const localizedShopPath = shopPath(portfolioLocale);
+
   useEffect(() => setMounted(true), []);
 
   // Esc to close overlay
@@ -454,6 +460,8 @@ export default function PortfolioSection() {
     letterSpacing: "0.02em",
     border: "1px solid #000",
   };
+
+
 
   return (
     <div
@@ -728,9 +736,7 @@ export default function PortfolioSection() {
                       {/* two blank lines */}
                       <div style={{ height: "2em" }} />
                       {/* single button, black/white */}
-                      <a href="/shop" style={BTN_STYLE}>
-                        {t("Portfolio.shopNow")}
-                      </a>
+                      <a href={localizedShopPath} style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
                     </div>
                   )}
 
@@ -751,7 +757,7 @@ export default function PortfolioSection() {
                       <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
                         {t("Portfolio.kamadoOffRoad")}
                       </div>
-                      <a href="/shop" style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
+                      <a href={localizedShopPath} style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
                     </div>
                   )}
 
@@ -772,7 +778,7 @@ export default function PortfolioSection() {
                       <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
                         {t("Portfolio.dreamOutdoorKitchen")}
                       </div>
-                      <a href="/shop" style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
+                      <a href={localizedShopPath} style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
                     </div>
                   )}
                 </div>
@@ -877,13 +883,21 @@ export default function PortfolioSection() {
             >
               <div className="absolute left-1/2 bottom-6 -translate-x-1/2 flex gap-3" style={{ pointerEvents: "auto" }}>
                 {focused.shopUrl ? (
-                  <a
-                    href={focused.shopUrl}
-                    className="px-5 py-2 font-semibold uppercase text-sm shadow-md rounded-md border"
-                    style={{ background: "rgba(255,255,255,0.92)", color: "#111", letterSpacing: "0.05em" }}
-                  >
-                    {t("Portfolio.shopNow")}
-                  </a>
+                  (() => {
+                    const loc = typeof window !== "undefined" ? detectLocaleFromPath(window.location.pathname) : "en";
+                    const href = focused.shopUrl.startsWith("handle:")
+                      ? productPath(loc as any, focused.shopUrl.replace(/^handle:/, ""))
+                      : focused.shopUrl;
+                    return (
+                      <a
+                        href={href}
+                        className="px-5 py-2 font-semibold uppercase text-sm shadow-md rounded-md border"
+                        style={{ background: "rgba(255,255,255,0.92)", color: "#111", letterSpacing: "0.05em" }}
+                      >
+                        {t("Portfolio.shopNow")}
+                      </a>
+                    );
+                  })()
                 ) : null}
 
                 <button

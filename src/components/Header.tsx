@@ -199,7 +199,7 @@ export default function Header() {
           {/* Logo (unchanged size) */}
           <Link href="/" aria-label="Home" className="inline-flex items-center">
             <div ref={logoBoxRef} className="h-16 sm:h-18 w-[360px] relative">
-              <ThreeModel ref={modelRef} src="/hexagon/hextext.glb" height="100%" flat scale={1.1} />
+              <ThreeModel ref={modelRef} src="/hexagon/hextext.glb" height="100%" flat scale={1.05} />
             </div>
           </Link>
 

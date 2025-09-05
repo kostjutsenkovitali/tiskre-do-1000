@@ -9,10 +9,41 @@ import { brandedCheckoutUrl } from "@/lib/shopify";
 import { useI18n } from "@/contexts/I18nProvider";
 
 // Function to translate product titles
-function translateProductTitle(title: string, locale: string, translations: any): string {
+function translateProductTitle(title: string, locale: string, translations: any, handle?: string): string {
   // If we have a direct translation for this product title, use it
   if (translations.Products && translations.Products[title]) {
     return translations.Products[title];
+  }
+  
+  // Try to find a translation by handle if available
+  if (handle && translations.Products && translations.Products[handle]) {
+    return translations.Products[handle];
+  }
+  
+  // Try to find a partial match (case insensitive)
+  if (translations.Products) {
+    const keys = Object.keys(translations.Products);
+    const lowerTitle = title.toLowerCase();
+    for (const key of keys) {
+      if (key.toLowerCase() === lowerTitle) {
+        return translations.Products[key];
+      }
+    }
+    
+    // Try partial matching
+    for (const key of keys) {
+      if (title.includes(key) || key.includes(title)) {
+        return translations.Products[key];
+      }
+    }
+    
+    // Try normalized handle matching
+    const normalizedTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    for (const key of keys) {
+      if (key === normalizedTitle) {
+        return translations.Products[key];
+      }
+    }
   }
   
   // If no translation is found, return the original title
@@ -76,9 +107,13 @@ export default function Cart() {
           <div className="lg:col-span-2 space-y-4">
             {lines.map((line: any) => {
               const originalTitle = line?.merchandise?.product?.title || line?.merchandise?.title;
-              const translatedTitle = translateProductTitle(originalTitle, locale, translations);
+              const productHandle = line?.merchandise?.product?.handle;
+              const translatedTitle = translateProductTitle(originalTitle, locale, translations, productHandle);
               const price = Number(line?.merchandise?.price?.amount || 0);
               const image = line?.merchandise?.image?.url || null;
+              
+
+              
               return (
                 <div key={line.id} className="border rounded-none">
                   <div className="p-4">

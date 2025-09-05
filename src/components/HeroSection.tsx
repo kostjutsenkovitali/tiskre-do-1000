@@ -1,8 +1,11 @@
-// src/components/HeroSection.tsx
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { HeroCategoryName } from "@/components/HeroCategoryName"; // Import the client component for category names
 import { HeroViewMoreText } from "@/components/HeroViewMoreText"; // Import the client component for "View more" text
+import { usePathname } from "next/navigation";
+import { shopPath, detectLocaleFromPath } from "@/lib/paths";
 
 type Category = {
   name: string;
@@ -53,11 +56,15 @@ function findCategory(pool: Category[], wantedSlug: string, fallbackName: string
 }
 
 export function HeroSection({ categories = [] }: Props) {
+  const pathname = usePathname();
+  const locale = detectLocaleFromPath(pathname);
+  const localizedShopPath = shopPath(locale);
+
   const cards = TARGETS.map((t) => {
     const cat = findCategory(categories, t.slug, t.fallbackName);
     const name = cat?.name ?? t.fallbackName;
     const descHtml = normalizeDescription(cat); // may be empty if your API truly doesn't send any description
-    const href = cat ? `/shop/category/${cat.slug}` : "/shop";
+    const href = cat ? `${localizedShopPath}/category/${cat.slug}` : localizedShopPath;
     return { name, descHtml, href, image: t.image, slug: cat?.slug ?? t.slug };
   });
 

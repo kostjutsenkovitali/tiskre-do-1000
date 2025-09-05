@@ -89,7 +89,8 @@
     "intro": "Find detailed setup, care, and usage instructions for all our products organized by category.",
     "contactSupport": "Can't find instructions for your product?",
     "contactSupportLink": "Contact our support team",
-    "viewProduct": "View Product"
+    "viewProduct": "View Product",
+    "downloadPdf": "Download PDF Instruction"
   },
   "Portfolio": {
     "coldSmoke": "Cold smoke",
@@ -134,7 +135,10 @@
   },
   "Products": {
     "SG2 Smoker": "SG2 Smoker",
+    "sg2-smoker": "SG2 Smoker",
     "Kamado Grill Cart": "Kamado Grill Cart",
-    "Outdoor Kitchen Set": "Outdoor Kitchen Set"
+    "kamado-grill-cart": "Kamado Grill Cart",
+    "Outdoor Kitchen Set": "Outdoor Kitchen Set",
+    "outdoor-kitchen-set": "Outdoor Kitchen Set"
   }
 }

@@ -89,7 +89,8 @@
     "intro": "Leidke üksikasjalikud seadistus-, hooldus- ja kasutusjuhendid kõigi meie toodete kohta, kategooriate kaupa korraldatud.",
     "contactSupport": "Kas te ei leia oma toote juhiseid?",
     "contactSupportLink": "Võtke ühendust meie tugimeeskonnaga",
-    "viewProduct": "Vaata toodet"
+    "viewProduct": "Vaata toodet",
+    "downloadPdf": "Laadi alla PDF juhend"
   },
   "Portfolio": {
     "coldSmoke": "Külmsuits",
@@ -134,7 +135,10 @@
   },
   "Products": {
     "SG2 Smoker": "SG2 Suitsetaja",
+    "sg2-smoker": "SG2 Suitsetaja",
     "Kamado Grill Cart": "Kamado Grilli Käru",
-    "Outdoor Kitchen Set": "Õueköögi Komplekt"
+    "kamado-grill-cart": "Kamado Grilli Käru",
+    "Outdoor Kitchen Set": "Õueköögi Komplekt",
+    "outdoor-kitchen-set": "Õueköögi Komplekt"
   }
 }

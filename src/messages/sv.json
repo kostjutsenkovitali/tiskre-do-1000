@@ -89,7 +89,8 @@
     "intro": "Hitta detaljerade installations-, skötsel- och användningsanvisningar för alla våra produkter organiserade efter kategori.",
     "contactSupport": "Hittar du inte instruktionerna för din produkt?",
     "contactSupportLink": "Kontakta vårt supportteam",
-    "viewProduct": "Visa produkt"
+    "viewProduct": "Visa produkt",
+    "downloadPdf": "Ladda ner PDF-instruktioner"
   },
   "Portfolio": {
     "coldSmoke": "Kallrök",
@@ -134,7 +135,10 @@
   },
   "Products": {
     "SG2 Smoker": "SG2 Rökugn",
+    "sg2-smoker": "SG2 Rökugn",
     "Kamado Grill Cart": "Kamado Grillvagn",
-    "Outdoor Kitchen Set": "Uteköksset"
+    "kamado-grill-cart": "Kamado Grillvagn",
+    "Outdoor Kitchen Set": "Uteköksset",
+    "outdoor-kitchen-set": "Uteköksset"
   }
 }

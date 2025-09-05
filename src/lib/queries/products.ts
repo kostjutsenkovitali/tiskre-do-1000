@@ -146,6 +146,29 @@ export const GET_COLLECTION_PRODUCTS = gql`
           title
           featuredImage { url altText }
           priceRange { minVariantPrice { amount currencyCode } }
+          collections(first: 10) { nodes { handle title } }
+        }
+      }
+    }
+  }
+`;
+
+export const GET_COLLECTION_PRODUCTS_WITH_INSTRUCTIONS = gql`
+  query GetCollectionProductsWithInstructions($handle: String!, $first: Int = 8, $country: CountryCode, $language: LanguageCode) @inContext(country: $country, language: $language) {
+    collection(handle: $handle) {
+      products(first: $first) {
+        nodes {
+          id
+          handle
+          title
+          featuredImage { url altText }
+          priceRange { minVariantPrice { amount currencyCode } }
+          instructionPdfEn: metafield(namespace: "custom", key: "instruction_pdf_en") {
+            reference { __typename ... on GenericFile { url } }
+          }
+          instructionPdf: metafield(namespace: "custom", key: "instruction_pdf") {
+            reference { __typename ... on GenericFile { url } }
+          }
         }
       }
     }

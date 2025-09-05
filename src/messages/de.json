@@ -89,7 +89,8 @@
     "intro": "Finden Sie detaillierte Einrichtungs-, Pflege- und Gebrauchsanweisungen für alle unsere Produkte, nach Kategorien geordnet.",
     "contactSupport": "Sie finden die Anleitung für Ihr Produkt nicht?",
     "contactSupportLink": "Kontaktieren Sie unser Support-Team",
-    "viewProduct": "Produkt ansehen"
+    "viewProduct": "Produkt ansehen",
+    "downloadPdf": "PDF-Anleitung herunterladen"
   },
   "Portfolio": {
     "coldSmoke": "Kalt rauchen",
@@ -134,7 +135,10 @@
   },
   "Products": {
     "SG2 Smoker": "SG2 Räucherofen",
+    "sg2-smoker": "SG2 Räucherofen",
     "Kamado Grill Cart": "Kamado Grillwagen",
-    "Outdoor Kitchen Set": "Außenküchen-Set"
+    "kamado-grill-cart": "Kamado Grillwagen",
+    "Outdoor Kitchen Set": "Außenküchen-Set",
+    "outdoor-kitchen-set": "Außenküchen-Set"
   }
 }

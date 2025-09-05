@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -34,6 +34,7 @@ interface ShopClientProps {
   products: FormattedProduct[];
   categories: FormattedCollection[]; // Changed from collections to categories
   hrefBase?: string;
+  selectedCategory?: string; // Add this new prop
 }
 
 // Mapping from category slugs to translation keys
@@ -44,7 +45,7 @@ const CATEGORY_TRANSLATION_KEYS: Record<string, string> = {
   "outdoor-kitchens": "Home.categories.outdoorKitchens",
 };
 
-export default function ShopClient({ products, categories, hrefBase = "/shop" }: ShopClientProps) {
+export default function ShopClient({ products, categories, hrefBase = "/shop", selectedCategory }: ShopClientProps) {
   const pathname = usePathname();
   const locale = detectLocaleFromPath(pathname);
   const { t } = useI18n(); // Use the translation hook
@@ -58,11 +59,18 @@ export default function ShopClient({ products, categories, hrefBase = "/shop" }:
     sv: { shop: "Butik", categories: "Kategorier", priceRange: "Prisintervall", all: "Alla", productsFound: (n) => `${n} produkter hittades`, noResults: "Inga produkter hittades.", clearFilters: "Rensa filter" },
   };
   const T = L[locale] || L.en;
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategoryState, setSelectedCategoryState] = useState<string>(selectedCategory || "all");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
 
+  // Update selected category when prop changes
+  useEffect(() => {
+    if (selectedCategory && selectedCategoryState !== selectedCategory) {
+      setSelectedCategoryState(selectedCategory);
+    }
+  }, [selectedCategory, selectedCategoryState]);
+
   const selectCategory = (slug: string) => {
-    setSelectedCategory(slug);
+    setSelectedCategoryState(slug);
   };
 
   const numericPrice = (priceStr: string) => {
@@ -76,13 +84,13 @@ export default function ShopClient({ products, categories, hrefBase = "/shop" }:
       const inPrice = price >= priceRange[0] && price <= priceRange[1];
 
       const inCategory =
-        selectedCategory === "all"
+        selectedCategoryState === "all"
           ? true
-          : (p as any).collections?.some((c: any) => c.handle === selectedCategory);
+          : (p as any).collections?.some((c: any) => c.handle === selectedCategoryState);
 
       return inPrice && inCategory;
     });
-  }, [products, selectedCategory, priceRange]);
+  }, [products, selectedCategoryState, priceRange]);
 
   const minSelectable = 0;
   const maxSelectable = 2000;
@@ -108,15 +116,15 @@ export default function ShopClient({ products, categories, hrefBase = "/shop" }:
                 <CardContent className="space-y-2">
                   <Button
                     key="all-categories"
-                    variant={selectedCategory === "all" ? "solid" : "ghost"}
-                    className={`w-full justify-start rounded-none ${selectedCategory === "all" ? "bg-primary text-primary-foreground" : ""}`}
+                    variant={selectedCategoryState === "all" ? "solid" : "ghost"}
+                    className={`w-full justify-start rounded-none ${selectedCategoryState === "all" ? "bg-primary text-primary-foreground" : ""}`}
                     onClick={() => selectCategory("all")}
                   >
                     {T.all}
                   </Button>
 
                   {categories.map((category) => {
-                    const active = selectedCategory === category.slug;
+                    const active = selectedCategoryState === category.slug;
                     // Use translated name if available, otherwise fall back to original name
                     const displayName = CATEGORY_TRANSLATION_KEYS[category.slug] ? t(CATEGORY_TRANSLATION_KEYS[category.slug]) : category.name;
                     return (
@@ -166,7 +174,7 @@ export default function ShopClient({ products, categories, hrefBase = "/shop" }:
                 <Button
                   className="mt-4 rounded-none"
                   onClick={() => {
-                    setSelectedCategory("all");
+                    setSelectedCategoryState("all");
                     setPriceRange([minSelectable, maxSelectable]);
                   }}
                 >

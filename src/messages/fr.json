@@ -89,7 +89,8 @@
     "intro": "Trouvez des instructions détaillées de configuration, d'entretien et d'utilisation pour tous nos produits organisés par catégorie.",
     "contactSupport": "Vous ne trouvez pas les instructions de votre produit ?",
     "contactSupportLink": "Contactez notre équipe de support",
-    "viewProduct": "Voir le produit"
+    "viewProduct": "Voir le produit",
+    "downloadPdf": "Télécharger l'instruction PDF"
   },
   "Portfolio": {
     "coldSmoke": "Fumée froide",
@@ -134,7 +135,10 @@
   },
   "Products": {
     "SG2 Smoker": "Fumoir SG2",
+    "sg2-smoker": "Fumoir SG2",
     "Kamado Grill Cart": "Chariot de Gril Kamado",
-    "Outdoor Kitchen Set": "Ensemble de Cuisine Extérieure"
+    "kamado-grill-cart": "Chariot de Gril Kamado",
+    "Outdoor Kitchen Set": "Ensemble de Cuisine Extérieure",
+    "outdoor-kitchen-set": "Ensemble de Cuisine Extérieure"
   }
 }

@@ -89,7 +89,8 @@
     "intro": "Löydä yksityiskohtaiset asennus-, huolto- ja käyttöohjeet kaikille tuotteillemme kategorioittain järjestettynä.",
     "contactSupport": "Etkö löydä tuotteesi ohjeita?",
     "contactSupportLink": "Ota yhteyttä tukitiimiimme",
-    "viewProduct": "Katso tuotetta"
+    "viewProduct": "Katso tuotetta",
+    "downloadPdf": "Lataa PDF-ohje"
   },
   "Portfolio": {
     "coldSmoke": "Kylmäsavu",
@@ -134,7 +135,10 @@
   },
   "Products": {
     "SG2 Smoker": "SG2 Savustin",
+    "sg2-smoker": "SG2 Savustin",
     "Kamado Grill Cart": "Kamado Grillikärry",
-    "Outdoor Kitchen Set": "Ulkokeittiön Setti"
+    "kamado-grill-cart": "Kamado Grillikärry",
+    "Outdoor Kitchen Set": "Ulkokeittiön Setti",
+    "outdoor-kitchen-set": "Ulkokeittiön Setti"
   }
 }

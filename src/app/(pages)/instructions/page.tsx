@@ -3,10 +3,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { sf } from "@/lib/shopify";
-import { GET_COLLECTIONS, GET_COLLECTION_PRODUCTS } from "@/lib/queries/products";
-import { DEFAULT_LOCALE } from "@/i18n/config";
+import { GET_COLLECTIONS, GET_COLLECTION_PRODUCTS_WITH_INSTRUCTIONS } from "@/lib/queries/products";
+import { DEFAULT_LOCALE, resolveInContext } from "@/i18n/config";
 import { productPath } from "@/lib/paths";
 import InstructionsContent from "@/components/InstructionsContent";
+import DownloadPdfText from "@/components/DownloadPdfText";
 import ViewProductText from "@/components/ViewProductText";
 import { Suspense } from "react";
 
@@ -15,13 +16,21 @@ export default async function InstructionsPage() {
   const collectionsRes = await sf<{ collections: { nodes: Array<{ id: string; handle: string; title: string }> } }>(GET_COLLECTIONS, { first: 20 });
   const collections = collectionsRes?.collections?.nodes || [];
 
-  const categories = [] as Array<{ name: string; products: Array<{ name: string; handle: string }> }>;
+  const categories = [] as Array<{ name: string; products: Array<{ name: string; handle: string; instructionPdfEn: string | null; instructionPdf: string | null }> }>;
   for (const c of collections) {
     try {
-      const prodsRes = await sf<{ collection: { products: { nodes: Array<{ handle: string; title: string }> } } }>(GET_COLLECTION_PRODUCTS, { handle: c.handle, first: 12 });
+      const prodsRes = await sf<{ collection: { products: { nodes: Array<{ handle: string; title: string; instructionPdfEn: { reference: { url: string } } | null; instructionPdf: { reference: { url: string } } | null }> } } }>(GET_COLLECTION_PRODUCTS_WITH_INSTRUCTIONS, { handle: c.handle, first: 12, ...resolveInContext(DEFAULT_LOCALE) });
       const nodes = prodsRes?.collection?.products?.nodes || [];
       if (nodes.length) {
-        categories.push({ name: c.title, products: nodes.map((n) => ({ name: n.title, handle: n.handle })) });
+        categories.push({ 
+          name: c.title, 
+          products: nodes.map((n) => ({ 
+            name: n.title, 
+            handle: n.handle,
+            instructionPdfEn: n.instructionPdfEn?.reference?.url || null,
+            instructionPdf: n.instructionPdf?.reference?.url || null
+          })) 
+        });
       }
     } catch {}
   }
@@ -54,14 +63,27 @@ export default async function InstructionsPage() {
                             <div>
                               <h3 className="font-medium text-foreground">{product.name}</h3>
                             </div>
-                            <Link 
-                              href={productPath(DEFAULT_LOCALE as any, product.handle)}
-                              className="inline-flex items-center text-foreground hover:underline"
-                            >
-                              <Suspense fallback={<span>View Product</span>}>
-                                <ViewProductText />
-                              </Suspense>
-                            </Link>
+                            {product.instructionPdfEn || product.instructionPdf ? (
+                              <a 
+                                href={product.instructionPdfEn || product.instructionPdf || "#"}
+                                target="_blank"
+                                download
+                                className="inline-flex items-center text-foreground hover:underline"
+                              >
+                                <Suspense fallback={<span>Download PDF Instruction</span>}>
+                                  <DownloadPdfText />
+                                </Suspense>
+                              </a>
+                            ) : (
+                              <Link 
+                                href={productPath(DEFAULT_LOCALE as any, product.handle)}
+                                className="inline-flex items-center text-foreground hover:underline"
+                              >
+                                <Suspense fallback={<span>View Product</span>}>
+                                  <ViewProductText />
+                                </Suspense>
+                              </Link>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
