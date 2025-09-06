@@ -47,9 +47,10 @@ export async function generateStaticParams() {
   }));
 }
 
-// Make it a static page with revalidation
+// Make it a static page
 export const dynamic = "force-static";
-export const revalidate = 3600; // Revalidate at most every hour
+// Removed revalidate since it's not compatible with static export
+// export const revalidate = 3600; // Revalidate at most every hour
 
 export default async function LocaleHome({ params }: Props) {
   const { locale } = await params;

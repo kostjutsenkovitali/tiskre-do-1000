@@ -1,5 +1,5 @@
-// Localized contact route wrapper: renders the shared Contact page at /[locale]/contact
-import Contact from "@/app/(pages)/contact/page";
+// Localized delivery route wrapper: renders the shared Delivery page at /[locale]/delivery
+import Delivery from "@/app/(pages)/delivery/page";
 
 // This page needs to be statically generated
 export const dynamic = 'force-static';
@@ -14,6 +14,6 @@ export async function generateStaticParams() {
   }));
 }
 
-export default function LocalizedContactPage() {
-  return <Contact />;
+export default function LocalizedDeliveryPage() {
+  return <Delivery />;
 }

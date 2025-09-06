@@ -117,6 +117,9 @@ function BlogPostContent() {
   );
 }
 
+// Make this page statically generated
+export const dynamic = 'force-static';
+
 export default function BlogPost() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div>Loading...</div></div>}>
@@ -124,5 +127,3 @@ export default function BlogPost() {
     </Suspense>
   );
 }
-
-

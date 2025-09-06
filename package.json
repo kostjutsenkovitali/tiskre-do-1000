@@ -12,9 +12,9 @@
     "lint": "next lint",
     "clean": "rimraf .next out out.zip",
     "export": "next export",
-    "postexport": "node scripts/make-htaccess.js && node scripts/restore-dynamic-after-export.js",
+    "test:deploy": "node scripts/test-deployment.js",
     "zip:out": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Compress-Archive -Path out\\* -DestinationPath out.zip -Force\"",
-    "prepare:out": "npm run clean && npm run build && npm run export && npm run zip:out"
+    "prepare:out": "next build"
   },
   "dependencies": {
     "@shopify/storefront-api-client": "^1.0.9",
@@ -23,6 +23,7 @@
     "graphql-request": "^7.2.0",
     "lucide-react": "^0.464.0",
     "next": "15.4.6",
+    "next-sitemap": "^4.2.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "sanitize-html": "^2.17.0",

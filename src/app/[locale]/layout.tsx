@@ -7,7 +7,8 @@ import CartDrawer from "@/components/CartDrawer";
 import { isLocale, resolveInContext, LOCALES, type Locale } from "@/i18n/config";
 import { Suspense } from "react";
 
-// Context is provided by a client provider to avoid client hook usage in a server layout.
+// Make this layout statically generated
+export const dynamic = 'force-static';
 
 type Props = {
   children: React.ReactNode;

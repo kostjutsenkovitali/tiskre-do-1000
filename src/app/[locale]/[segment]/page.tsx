@@ -8,9 +8,11 @@ import {sf} from "@/lib/shopify";
 import type {GetProductsResponse} from "@/lib/types/shopify";
 import ShopClient from "./ShopClient";
 
-// Enable ISR with 1 hour revalidation
-export const revalidate = 3600;
+// Enable static export
 export const dynamic = "force-static";
+
+// Remove ISR since it's not compatible with static export
+// export const revalidate = 3600;
 
 // Fetch Shopify collections at build time
 async function getShopifyCollections(locale: string) {
@@ -73,7 +75,7 @@ export default async function IndexBySegment({params}: Props) {
     // Fetch collections at build time
     const collections = await getShopifyCollections(rawLocale);
     
-    // For ISR, we'll fetch initial data but allow client-side updates
+    // For static export, we'll fetch initial data at build time
     try {
       const data = await sf<GetProductsResponse>(GET_PRODUCTS, {
         first,
@@ -100,12 +102,12 @@ export default async function IndexBySegment({params}: Props) {
       return <ShopClient products={products as any} categories={collections} hrefBase={`/${rawLocale}/${segment}`} showCategoryHeader={false} />;
     } catch (error) {
       console.error('Failed to fetch products:', error);
-      // Fallback to client-side rendering
+      // Fallback to empty product list for static export
       return <ShopClient products={[]} categories={collections} hrefBase={`/${rawLocale}/${segment}`} showCategoryHeader={false} />;
     }
   }
 
-  // Blog index with ISR
+  // Blog index - fetch at build time for static export
   const first = 12;
   const query = undefined;
   const { language } = resolveInContext(rawLocale);
@@ -134,7 +136,7 @@ export default async function IndexBySegment({params}: Props) {
           <Link key={a.handle + a.publishedAt} href={`/${rawLocale}/${segment}/${a.handle}`} className="group">
             <div className="relative aspect-[4/3] overflow-hidden rounded border border-gray-200">
               {a.image ? (
-                <Image src={a.image.url} alt={a.image.altText || a.title} fill className="object-cover transition-transform group-hover:scale-[1.03]" />
+                <Image src={a.image.url} alt={a.image.altText || a.title} fill className="object-cover transition-transform group-hover:scale-[1.03]" unoptimized />
               ) : (
                 <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                   <span className="text-gray-400">No image</span>

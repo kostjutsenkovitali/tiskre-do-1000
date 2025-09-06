@@ -31,9 +31,10 @@ export async function generateStaticParams() {
   return [{}]; // Generate one static version
 }
 
-// Make it a static page with revalidation
+// Make it a static page
 export const dynamic = "force-static";
-export const revalidate = 3600; // Revalidate at most every hour
+// Removed revalidate since it's not compatible with static export
+// export const revalidate = 3600; // Revalidate at most every hour
 
 export default async function HomeCmsPage() {
   const categories = await getProductCategories();

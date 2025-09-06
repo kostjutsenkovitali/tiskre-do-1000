@@ -10,8 +10,11 @@ import { SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
 import {sf} from "@/lib/shopify";
 import ProductDetailClient from "@/components/shop/ProductDetailClient";
 
-// Enable ISR with 1 hour revalidation for product pages
-export const revalidate = 3600;
+// Enable static export
+export const dynamic = "force-static";
+
+// Remove ISR since it's not compatible with static export
+// export const revalidate = 3600;
 
 // Generate static params for popular products and articles
 export async function generateStaticParams() {
@@ -174,7 +177,7 @@ export default async function DetailBySegment({params}: Props) {
         <article>
           {article.image && (
             <div className="aspect-video rounded-lg overflow-hidden mb-8">
-              <Image src={article.image.url} alt={article.image.altText || article.title} fill className="object-cover" />
+              <Image src={article.image.url} alt={article.image.altText || article.title} fill className="object-cover" unoptimized />
             </div>
           )}
 

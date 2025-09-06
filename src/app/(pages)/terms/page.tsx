@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
+// Make this page statically generated
+export const dynamic = 'force-static';
+
 export default function Terms() {
   return (
     <div className="min-h-screen bg-background">
@@ -113,5 +116,3 @@ export default function Terms() {
     </div>
   );
 }
-
-

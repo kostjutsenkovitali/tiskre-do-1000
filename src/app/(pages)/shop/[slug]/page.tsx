@@ -6,6 +6,9 @@ import { resolveInContext, DEFAULT_LOCALE } from "@/i18n/config";
 import type { GetProductsResponse } from "@/lib/types/shopify";
 import { detectLocaleFromPath } from "@/lib/paths";
 
+// Make this page statically generated
+export const dynamic = 'force-static';
+
 type Props = { params: { slug: string } };
 
 export default async function ProductDetailPage({ params }: Props) {

@@ -4,8 +4,11 @@ import { GET_COLLECTION_PRODUCTS, GET_COLLECTIONS } from "@/lib/queries/products
 import { sf } from "@/lib/shopify";
 import ShopClient from "../../ShopClient";
 
-// Enable ISR with 1 hour revalidation
-export const revalidate = 3600;
+// Enable static export
+export const dynamic = 'force-static';
+
+// Remove ISR since it's not compatible with static export
+// export const revalidate = 3600;
 
 // Generate static params for all locales/segments and Shopify collections
 export async function generateStaticParams() {

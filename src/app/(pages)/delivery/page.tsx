@@ -1,5 +1,7 @@
-"use client";
 import { Truck, Clock, MapPin, Package, Globe, CheckCircle } from "lucide-react";
+
+// Make this page statically generated
+export const dynamic = 'force-static';
 
 export default function Delivery() {
   return (
@@ -142,5 +144,3 @@ export default function Delivery() {
     </div>
   );
 }
-
-
