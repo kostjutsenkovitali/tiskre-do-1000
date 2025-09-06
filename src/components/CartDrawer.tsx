@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useCart } from "@/hooks/use-cart";
 import Link from "next/link";
 import { useI18n } from "@/contexts/I18nProvider";
+import { brandedCheckoutUrl } from "@/lib/shopify";
 
 export default function CartDrawer() {
   const { cart, update, remove } = useCart();
@@ -94,9 +95,25 @@ export default function CartDrawer() {
               className="rounded-none border px-4 py-2 text-sm"
               onClick={async () => {
                 try {
-                  const res = await fetch("/api/cart/prepareCheckout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ cartId: cart.id }) });
-                  const json = await res.json();
-                  if (json?.checkoutUrl) window.location.href = json.checkoutUrl;
+                  // Prefer direct Shopify checkout URL (works in static export)
+                  if (cart?.checkoutUrl) {
+                    window.location.href = brandedCheckoutUrl(cart.checkoutUrl);
+                    return;
+                  }
+                  // Fallback: try API if available, then fall back again to any checkoutUrl
+                  const res = await fetch("/api/cart/prepareCheckout", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ cartId: cart.id })
+                  }).catch(() => null);
+                  if (res && res.ok) {
+                    const json = await res.json().catch(() => null);
+                    if (json?.checkoutUrl) {
+                      window.location.href = json.checkoutUrl;
+                      return;
+                    }
+                  }
+                  if (cart?.checkoutUrl) window.location.href = brandedCheckoutUrl(cart.checkoutUrl);
                 } catch {}
               }}
             >

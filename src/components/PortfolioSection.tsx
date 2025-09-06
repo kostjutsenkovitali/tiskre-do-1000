@@ -442,9 +442,10 @@ export default function PortfolioSection() {
   const afterCortenCenter = clamp01((vwProgress - 75) / 75);
   const oakOpacity = 1 - afterCortenCenter;
 
-  // Common font size for right-panel overlays (match "Our most sought...")
-  const FLY_FONT_VW = 2.1; // Fixed value for font size
-  const OVERLAY_FONT = `${FLY_FONT_VW}vw`;
+  // Fonts: keep first slider sizes; use OVERLAY_FONT for base and double it on slides 2-4
+  const FLY_FONT_VW = 2.1; // keep for flying letters only
+  const OVERLAY_FONT = "clamp(14px, 1.1vw, 18px)";
+  const SECONDARY_FONT = `calc(2 * (${OVERLAY_FONT}))`;
 
   // Button style (black background, white text)
   const BTN_STYLE: CSSProperties = {
@@ -602,7 +603,7 @@ export default function PortfolioSection() {
                 >
                   <div
                     style={{
-                      marginLeft: "clamp(144px, 20vw, 400px)",
+                      marginLeft: "clamp(120px, 18vw, 360px)",
                       opacity: clamp01(gatherP * 1.2),
                       transform: `translateX(calc(${(1 - gatherP) * 8}vw + 1.2vw)) scale(3)`,
                       transformOrigin: "left center",
@@ -615,21 +616,37 @@ export default function PortfolioSection() {
                     <h2
                       style={{
                         margin: 0,
-                        fontSize: "clamp(28px, 2.6vw, 46px)",
+                        fontSize: "calc(0.5 * clamp(28px, 2.6vw, 46px))",
                         lineHeight: 1.15,
                         fontWeight: 900,
                         color: "#111",
                       }}
                     >
-                      {t("Portfolio.coldSmoke")}<br />generator<br />SG-2
+                      {(() => {
+                        const cs = t("Portfolio.coldSmoke");
+                        const parts = cs.split(/\s+/);
+                        const p0 = parts[0] || cs;
+                        const p1 = parts[1] || "";
+                        return (
+                          <>
+                            {p0}
+                            <br />
+                            {p1}
+                            <br />
+                            {"generator"}
+                            <br />
+                            {"SG2"}
+                          </>
+                        );
+                      })()}
                     </h2>
                     <a
-                      href="handle:sg2"
+                      href={localizedShopPath}
                       style={{
                         display: "inline-block",
                         marginTop: "1rem",
                         padding: "0.9rem 1.6rem",
-                        fontSize: "clamp(14px, 1.1vw, 18px)",
+                        fontSize: OVERLAY_FONT,
                         borderRadius: 0,
                         background: "#111",
                         color: "#fff",
@@ -730,13 +747,25 @@ export default function PortfolioSection() {
                         lineHeight: 1.05,
                       }}
                     >
-                      <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
-                        {t("Portfolio.outdoorGrillTable")}
+                      <div style={{ fontSize: SECONDARY_FONT, fontWeight: 900 }}>
+                        {(() => {
+                          const title = t("Portfolio.outdoorGrillTable");
+                          const words = title.split(/\s+/);
+                          const first = words[0] || title;
+                          const rest = words.slice(1).join(" ");
+                          return (
+                            <>
+                              {first.toLowerCase()}
+                              <br />
+                              {rest.toLowerCase()}
+                            </>
+                          );
+                        })()}
                       </div>
                       {/* two blank lines */}
                       <div style={{ height: "2em" }} />
                       {/* single button, black/white */}
-                      <a href={localizedShopPath} style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
+                      <a href={localizedShopPath} style={{ ...BTN_STYLE, fontSize: SECONDARY_FONT }}>{t("Portfolio.shopNow")}</a>
                     </div>
                   )}
 
@@ -754,10 +783,10 @@ export default function PortfolioSection() {
                         lineHeight: 1.05,
                       }}
                     >
-                      <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
+                      <div style={{ fontSize: SECONDARY_FONT, fontWeight: 900 }}>
                         {t("Portfolio.kamadoOffRoad")}
                       </div>
-                      <a href={localizedShopPath} style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
+                      <a href={localizedShopPath} style={{ ...BTN_STYLE, fontSize: SECONDARY_FONT }}>{t("Portfolio.shopNow")}</a>
                     </div>
                   )}
 
@@ -775,10 +804,10 @@ export default function PortfolioSection() {
                         lineHeight: 1.05,
                       }}
                     >
-                      <div style={{ fontSize: OVERLAY_FONT, fontWeight: 900 }}>
+                      <div style={{ fontSize: SECONDARY_FONT, fontWeight: 900 }}>
                         {t("Portfolio.dreamOutdoorKitchen")}
                       </div>
-                      <a href={localizedShopPath} style={BTN_STYLE}>{t("Portfolio.shopNow")}</a>
+                      <a href={localizedShopPath} style={{ ...BTN_STYLE, fontSize: SECONDARY_FONT }}>{t("Portfolio.shopNow")}</a>
                     </div>
                   )}
                 </div>

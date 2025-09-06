@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { DEFAULT_LOCALE, LOCALES, segments, isLocale } from "@/i18n/config";
 
 // Pages that should be redirected to locale-specific versions
-const LOCALIZED_PAGES = ['about', 'contact', 'instructions'];
+const LOCALIZED_PAGES = ['about', 'contact', 'instructions', 'cart'];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
