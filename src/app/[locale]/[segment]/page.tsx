@@ -10,6 +10,7 @@ import ShopClient from "./ShopClient";
 
 // Enable ISR with 1 hour revalidation
 export const revalidate = 3600;
+export const dynamic = "force-static";
 
 // Fetch Shopify collections at build time
 async function getShopifyCollections(locale: string) {
@@ -53,7 +54,7 @@ type Props = {
   searchParams?: { q?: string; after?: string; first?: string; query?: string };
 };
 
-export default async function IndexBySegment({params, searchParams}: Props) {
+export default async function IndexBySegment({params}: Props) {
   const { locale: rawLocale, segment } = await params;
   if (!isLocale(rawLocale)) notFound();
 
@@ -66,8 +67,8 @@ export default async function IndexBySegment({params, searchParams}: Props) {
   if (isShop) {
     const {country, language} = resolveInContext(rawLocale);
     const first = 12;
-    const q = (await searchParams)?.q?.trim() || undefined;
-    const after = (await searchParams)?.after || undefined;
+    const q = undefined;
+    const after = undefined;
     
     // Fetch collections at build time
     const collections = await getShopifyCollections(rawLocale);
@@ -96,15 +97,6 @@ export default async function IndexBySegment({params, searchParams}: Props) {
         collections: n.collections?.nodes || [],
       }));
       
-      const pageInfo = data.products.pageInfo;
-      const basePath = `/${rawLocale}/${segment}`;
-      const nextHref = pageInfo.hasNextPage && pageInfo.endCursor
-        ? `${basePath}?${new URLSearchParams({ ...(q ? { q } : {}), after: pageInfo.endCursor }).toString()}`
-        : null;
-      const prevHref = after
-        ? `${basePath}${q ? `?${new URLSearchParams({ q }).toString()}` : ""}`
-        : null;
-
       return <ShopClient products={products as any} categories={collections} hrefBase={`/${rawLocale}/${segment}`} showCategoryHeader={false} />;
     } catch (error) {
       console.error('Failed to fetch products:', error);
@@ -114,8 +106,8 @@ export default async function IndexBySegment({params, searchParams}: Props) {
   }
 
   // Blog index with ISR
-  const first = Number(searchParams?.first || 12);
-  const query = searchParams?.query || undefined;
+  const first = 12;
+  const query = undefined;
   const { language } = resolveInContext(rawLocale);
   const blogHandle = "news";
   let nodes: any[] = [];

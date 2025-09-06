@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- Home -->
+  <url>
+    <loc>https://tiskre-do.eu/</loc>
+    <lastmod>2025-09-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Static pages -->
+  <url>
+    <loc>https://tiskre-do.eu/about</loc>
+    <lastmod>2025-09-06</lastmod>
+  </url>
+  <url>
+    <loc>https://tiskre-do.eu/account</loc>
+    <lastmod>2025-09-06</lastmod>
+  </url>
+  <url>
+    <loc>https://tiskre-do.eu/blog</loc>
+    <lastmod>2025-09-06</lastmod>
+  </url>
+  <url>
+    <loc>https://tiskre-do.eu/contact</loc>
+    <lastmod>2025-09-06</lastmod>
+  </url>
+  <url>
+    <loc>https://tiskre-do.eu/delivery</loc>
+    <lastmod>2025-09-06</lastmod>
+  </url>
+  <url>
+    <loc>https://tiskre-do.eu/instructions</loc>
+    <lastmod>2025-09-06</lastmod>
+  </url>
+  <url>
+    <loc>https://tiskre-do.eu/returns</loc>
+    <lastmod>2025-09-06</lastmod>
+  </url>
+  <url>
+    <loc>https://tiskre-do.eu/shop</loc>
+    <lastmod>2025-09-06</lastmod>
+  </url>
+  <url>
+    <loc>https://tiskre-do.eu/terms</loc>
+    <lastmod>2025-09-06</lastmod>
+  </url>
+
+  <!-- Localized routes -->
+  <url><loc>https://tiskre-do.eu/en/checkout</loc><lastmod>2025-09-06</lastmod></url>
+  <url><loc>https://tiskre-do.eu/et/checkout</loc><lastmod>2025-09-06</lastmod></url>
+  <url><loc>https://tiskre-do.eu/de/checkout</loc><lastmod>2025-09-06</lastmod></url>
+
+  <url><loc>https://tiskre-do.eu/en/contact</loc><lastmod>2025-09-06</lastmod></url>
+  <url><loc>https://tiskre-do.eu/et/contact</loc><lastmod>2025-09-06</lastmod></url>
+  <url><loc>https://tiskre-do.eu/de/contact</loc><lastmod>2025-09-06</lastmod></url>
+
+  <url><loc>https://tiskre-do.eu/en/instructions</loc><lastmod>2025-09-06</lastmod></url>
+  <url><loc>https://tiskre-do.eu/et/instructions</loc><lastmod>2025-09-06</lastmod></url>
+  <url><loc>https://tiskre-do.eu/de/instructions</loc><lastmod>2025-09-06</lastmod></url>
+
+  <!-- Shop product pages -->
+  <url><loc>https://tiskre-do.eu/shop/sg2</loc><lastmod>2025-09-06</lastmod></url>
+  <url><loc>https://tiskre-do.eu/shop/tiskre-do-sg2-cold-smoke-generator-copy</loc><lastmod>2025-09-06</lastmod></url>
+  <url><loc>https://tiskre-do.eu/shop/kamado-off-road-cart-3</loc><lastmod>2025-09-06</lastmod></url>
+
+</urlset>

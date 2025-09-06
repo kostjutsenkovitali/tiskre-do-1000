@@ -7,13 +7,32 @@ import ShopClient from "../../ShopClient";
 // Enable ISR with 1 hour revalidation
 export const revalidate = 3600;
 
-// Generate static params for popular categories
+// Generate static params for all locales/segments and Shopify collections
 export async function generateStaticParams() {
-  const params: any[] = [];
-  
-  // For now, return empty array - category pages will be generated on-demand via ISR
-  return params;
+  const allParams: Array<{ locale: string; segment: string; category: string }> = [];
+  for (const locale of LOCALES) {
+    const shopSeg = segments.shop[locale];
+    try {
+      const { language } = resolveInContext(locale as any);
+      const data = await sf<{ collections: { nodes: Array<{ handle: string }> } }>(GET_COLLECTIONS, {
+        first: 50,
+        language,
+      });
+      const nodes = data?.collections?.nodes ?? [];
+      for (const c of nodes) {
+        if (c?.handle) {
+          allParams.push({ locale, segment: shopSeg, category: c.handle });
+        }
+      }
+    } catch {
+      // Ignore fetch errors at build time for static export
+    }
+  }
+  return allParams;
 }
+
+// Required for static export: no runtime dynamic params
+export const dynamicParams = false;
 
 type Props = {
   params: { locale: string; segment: string; category: string };

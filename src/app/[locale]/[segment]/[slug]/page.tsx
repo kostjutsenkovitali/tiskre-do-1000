@@ -2,8 +2,8 @@ import {notFound} from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {isLocale, getSegment, resolveInContext, LOCALES, segments} from "@/i18n/config";
-import {GET_PRODUCT} from "@/lib/queries/products";
-import {GET_ARTICLE} from "@/lib/queries/blog";
+import {GET_PRODUCT, GET_PRODUCTS} from "@/lib/queries/products";
+import {GET_ARTICLE, LIST_ARTICLES} from "@/lib/queries/blog";
 import type { Metadata } from "next";
 import sanitizeHtml from "sanitize-html";
 import { SHOPIFY_BLOG_HANDLE } from "@/lib/shopify";
@@ -15,25 +15,38 @@ export const revalidate = 3600;
 
 // Generate static params for popular products and articles
 export async function generateStaticParams() {
-  const params: any[] = [];
-  
-  // For now, return empty array - products will be generated on-demand via ISR
-  // In a real app, you'd fetch popular products/articles here
-  
-  // Example of how to pre-generate popular items:
-  // const popularProducts = await getPopularProducts();
-  // for (const locale of LOCALES) {
-  //   for (const product of popularProducts) {
-  //     params.push({
-  //       locale,
-  //       segment: segments.shop[locale],
-  //       slug: product.handle,
-  //     });
-  //   }
-  // }
-  
+  const params: Array<{ locale: string; segment: string; slug: string }> = [];
+  for (const locale of LOCALES) {
+    // Products
+    try {
+      const { language } = resolveInContext(locale as any);
+      const products = await sf<{ products: { nodes: Array<{ handle: string }> } }>(GET_PRODUCTS, {
+        first: 50,
+        language,
+      });
+      const productHandles = products?.products?.nodes?.map((n: any) => n.handle).filter(Boolean) || [];
+      for (const handle of productHandles) {
+        params.push({ locale, segment: segments.shop[locale], slug: handle });
+      }
+    } catch {}
+
+    // Blog articles
+    try {
+      const { language } = resolveInContext(locale as any);
+      const arts = await sf<{ articles: { nodes: Array<{ handle: string }> } }>(LIST_ARTICLES, {
+        first: 30,
+        language,
+      });
+      const articleHandles = arts?.articles?.nodes?.map((a: any) => a.handle).filter(Boolean) || [];
+      for (const handle of articleHandles) {
+        params.push({ locale, segment: segments.blog[locale], slug: handle });
+      }
+    } catch {}
+  }
   return params;
 }
+
+export const dynamicParams = false;
 
 type Props = {
   params: any;
