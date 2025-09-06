@@ -19,8 +19,23 @@
   }
 }
 
+:root { --header-scale: 0.75; --logo-scale: 0.8; }
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-fira-sans), system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* Header scaling + logo word-mark metrics lock */
+.logo-wordmark{
+  font-family: var(--font-logo, system-ui, Arial);
+  font-weight: 700;
+  letter-spacing: .02em;
+  line-height: 1;
+  font-size: calc(var(--logo-fs, 20px) * var(--header-scale));
+  font-synthesis-weight: none;
+  font-synthesis-style: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }

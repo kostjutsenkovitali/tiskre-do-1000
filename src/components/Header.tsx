@@ -191,25 +191,26 @@ export default function Header() {
   return (
     <>
       <header
-        className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/60 dark:bg-black/40 border-b border-black/10 dark:border-white/10 shadow-sm"
+        className="site-header sticky top-0 z-50 w-full backdrop-blur-md bg-white/60 dark:bg-black/40 border-b border-black/10 dark:border-white/10 shadow-sm"
         aria-label="Site header"
       >
         {/* Reduced vertical padding to shrink total height */}
-        <div className="w-full px-3 py-1 flex items-center justify-between">
+        <div className="w-full px-3 flex items-center justify-between" style={{ paddingBlock: `calc(var(--header-py, 14px) * var(--header-scale))` }}>
           {/* Logo (unchanged size) */}
           <Link href="/" aria-label="Home" className="inline-flex items-center">
-            <div ref={logoBoxRef} className="h-16 sm:h-18 w-[360px] relative">
+            <div ref={logoBoxRef} className="relative" style={{ width: `calc(clamp(220px, 22vw, 360px) * var(--header-scale) * var(--logo-scale))`, height: `calc(clamp(48px, 6vw, 72px) * var(--header-scale) * var(--logo-scale))` }}>
               <ThreeModel ref={modelRef} src="/hexagon/hextext.glb" height="100%" flat scale={1.05} />
             </div>
           </Link>
 
           {/* Nav (unchanged item sizes; slightly tighter gap) */}
-          <nav className="hidden lg:flex items-center gap-1.5">
+          <nav className="hidden lg:flex items-center" style={{ gap: `calc(var(--nav-gap, 12px) * var(--header-scale))`, fontSize: `calc(var(--nav-font, 14px) * var(--header-scale))` }}>
             {nav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={navItemClass(Boolean(item.isActive))}
+                style={{ paddingInline: `calc(var(--nav-px, 12px) * var(--header-scale))`, paddingBlock: `calc(var(--nav-py, 6px) * var(--header-scale))`, fontSize: `calc(var(--nav-font, 14px) * var(--header-scale))` }}
                 aria-current={item.isActive ? "page" : undefined}
               >
                 {item.label}
@@ -226,6 +227,7 @@ export default function Header() {
                   navItemClass(false),
                   "list-none cursor-pointer select-none [&::-webkit-details-marker]:hidden",
                 ].join(" ")}
+                style={{ paddingInline: `calc(var(--nav-px, 12px) * var(--header-scale))`, paddingBlock: `calc(var(--nav-py, 6px) * var(--header-scale))`, fontSize: `calc(var(--nav-font, 14px) * var(--header-scale))` }}
               >
                 {currentLang.name}
               </summary>
@@ -246,14 +248,16 @@ export default function Header() {
                         <img
                           src={lang.flag}
                           alt={`${lang.name} flag`}
-                          className="h-5 w-auto"
+                          className="w-auto"
+                          style={{ height: `calc(var(--icon, 22px) * var(--header-scale))` }}
                           loading="lazy"
                         />
                         <span
                           className={[
                             baseCaps,
-                            "text-[12px] tracking-[0.20em] text-black/80 dark:text-white/85",
+                            "tracking-[0.20em] text-black/80 dark:text-white/85",
                           ].join(" ")}
+                          style={{ fontSize: `calc(var(--nav-font, 12px) * var(--header-scale))` }}
                         >
                           {lang.name}
                         </span>
@@ -270,12 +274,13 @@ export default function Header() {
                 variant="ghost"
                 size="icon"
                 className={[
-                  "h-9 w-9 rounded-md border-2",
+                  "rounded-md border-2",
                   "border-black/50 dark:border-white/60",
                   "hover:bg-black/[0.12] dark:hover:bg-white/[0.18]",
                 ].join(" ")}
+                style={{ width: `calc(var(--icon, 22px) * var(--header-scale) * 1.6)`, height: `calc(var(--icon, 22px) * var(--header-scale) * 1.6)` }}
               >
-                <User className="h-5 w-5" />
+                <User style={{ width: `calc(var(--icon, 22px) * var(--header-scale))`, height: `calc(var(--icon, 22px) * var(--header-scale))` }} />
               </Button>
             </Link>
 
@@ -283,23 +288,22 @@ export default function Header() {
             <Link
               href={`/${locale}/cart`}
               aria-label="Open cart"
-              className={[
-                "inline-flex items-center gap-2 px-3 h-9 rounded-md border-2",
-                "border-black/50 dark:border-white/60",
-                "hover:bg-black/[0.12] dark:hover:bg-white/[0.18]",
-              ].join(" ")}
+              className={["inline-flex items-center rounded-md border-2", "border-black/50 dark:border-white/60", "hover:bg-black/[0.12] dark:hover:bg-white/[0.18]"].join(" ")}
+              style={{ gap: `calc(var(--nav-gap, 12px) * var(--header-scale))`, paddingInline: `calc(var(--nav-px, 12px) * var(--header-scale))`, paddingBlock: `calc(var(--nav-py, 6px) * var(--header-scale))` }}
             >
               <Image
                 src="/Cart.png"
                 alt="Cart"
-                width={20}
-                height={20}
+                width={0}
+                height={0}
                 draggable={false}
-                className="h-5 w-5 object-contain"
+                className="object-contain"
+                style={{ width: `calc(var(--icon, 22px) * var(--header-scale))`, height: `calc(var(--icon, 22px) * var(--header-scale))` }}
               />
-              <span className={[baseCaps, "text-[12px] sm:text-[13px] text-black/80 dark:text-white/80"].join(" ")}>Cart</span>
+              <span className={[baseCaps, "text-black/80 dark:text-white/80"].join(" ")} style={{ fontSize: `calc(var(--nav-font, 12px) * var(--header-scale))` }}>Cart</span>
+              
               {count > 0 && (
-                <span className="ml-1 text-[11px] tabular-nums text-black/60 dark:text-white/60">
+                <span className="ml-1 tabular-nums text-black/60 dark:text-white/60" style={{ fontSize: `calc(11px * var(--header-scale))` }}>
                   ({count})
                 </span>
               )}
