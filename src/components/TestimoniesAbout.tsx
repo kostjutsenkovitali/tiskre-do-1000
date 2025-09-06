@@ -1077,7 +1077,7 @@ export default function TestimoniesAbout() {
                     aspectRatio: "4500 / 1900",
                     margin: "0 auto",
                     overflow: "visible",
-                    transform: "translateY(-250px) scale(1.3)",
+                    transform: `translateY(-250px) scale(${(1.3 * 0.97).toFixed(2)})`,
                     transformOrigin: "center top",
                   }}
                 >
@@ -1092,7 +1092,7 @@ export default function TestimoniesAbout() {
                 </div>
 
                 {/* Photos row */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2vw", width: "100%", transform: "translateY(-100px)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2vw", width: "100%", transform: "translateY(0px)" }}>
                   <img
                     src="/about/vitali.jpg"
                     alt="Vitali"
