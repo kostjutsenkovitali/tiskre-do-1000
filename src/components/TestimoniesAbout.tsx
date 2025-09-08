@@ -753,23 +753,15 @@ export default function TestimoniesAbout() {
     setDebugLines((arr) => [...arr.slice(-60), `[${new Date().toLocaleTimeString()}] ${s}`]);
 
   // Configuration for future dropping logic
-  const FLOOR_Y = 0;              // base floor at world ymin (fitBBox)
+  type Axis = 'y' | 'z';
+  const DROP_AXIS: Axis = 'y';
+  const FLOOR_POS = 0;            // static floor plane position
   const DROP_GRAVITY = 3800;      // units/s^2 in GLB world
-  const DROP_DAMPING = 0.14;      // when hitting floor, tiny bounce
-  const DROP_INTERVAL_MS = 320;   // delay between successive object drops
-  const MAX_DROP_TIME_MS = 8000;  // safety cap per object
+  const DROP_DAMPING = 0.14;      // legacy param (not used by Rapier)
+  const DROP_INTERVAL_MS = 320;   // delay between successive object spawns
+  const MAX_DROP_TIME_MS = 8000;  // safety cap per object (still used for logging)
   const WORLD_H = 1900;           // from fitBBox (ymax - ymin)
-
-  // Map screen bottom edge → world Y for current canvas size/position
-  function getDynamicFloorY(): number {
-    const el = glbBoxRef.current;
-    if (!el) return FLOOR_Y;
-    const r = el.getBoundingClientRect();
-    const deltaPx = Math.max(0, window.innerHeight - (r.top + r.height)); // how far canvas bottom is above screen bottom
-    const worldPerPx = WORLD_H / Math.max(1, r.height);
-    // Move floor down in world so it aligns with screen bottom
-    return FLOOR_Y - deltaPx * worldPerPx;
-  }
+  const PHYS_DT = 1 / 60;
 
   // Queue for per-object permissioned drops
   const dropQueueRef = useRef<THREE.Mesh[]>([]);
@@ -800,48 +792,101 @@ export default function TestimoniesAbout() {
     (mesh as any).__height = height;
   }
 
-  // Animate one mesh until it reaches the floor
-  function dropOne(mesh: THREE.Mesh, floorY: number): Promise<void> {
-    return new Promise((resolve) => {
-      let lastTs = performance.now();
-      const startTs = lastTs;
+  // Rapier physics (lazy) refs
+  const rapierRef = useRef<any>(null);
+  const worldRef = useRef<any>(null);
+  const rafPhysRef = useRef<number>(0);
+  const accRef = useRef(0);
+  const meshToBodyRef = useRef<Map<THREE.Mesh, any>>(new Map());
+  const bodySleepRef = useRef<Map<any, number>>(new Map());
+  const floorAddedRef = useRef(false);
 
-      const step = (now: number) => {
-        const dt = Math.min(0.04, (now - lastTs) / 1000);
-        lastTs = now;
-
-        let vy = (mesh as any).__vy as number;
-        vy -= DROP_GRAVITY * dt;
-        let newY = mesh.position.y + vy * dt;
-
-        if (newY <= floorY) {
-          newY = floorY;
-          vy = -vy * DROP_DAMPING;
-          if (Math.abs(vy) < 60) {
-            mesh.position.y = newY;
-            (mesh as any).__vy = 0;
-            (mesh as any).__dropping = false;
-            resolve();
-            return;
-          }
-        }
-
-        mesh.position.y = newY;
-        (mesh as any).__vy = vy;
-
-        if (now - startTs > MAX_DROP_TIME_MS) {
-          pushDbg(`Timeout: forcing settle for '${mesh.name || mesh.uuid}'.`);
-          (mesh as any).__dropping = false;
-          resolve();
-          return;
-        }
-
-        requestAnimationFrame(step);
-      };
-
-      requestAnimationFrame(step);
-    });
+  async function ensurePhysicsWorld() {
+    if (!rapierRef.current) {
+      const Rapier = await import("@dimforge/rapier3d-compat");
+      await (Rapier as any).init();
+      rapierRef.current = Rapier;
+    }
+    if (!worldRef.current) {
+      const Rapier = rapierRef.current;
+      const gravity = DROP_AXIS === 'y' ? { x: 0, y: -DROP_GRAVITY, z: 0 } : { x: 0, y: 0, z: -DROP_GRAVITY };
+      worldRef.current = new Rapier.World(gravity);
+      floorAddedRef.current = false;
+      startPhysicsLoop();
+      pushDbg("Physics world initialized.");
+    }
+    if (!floorAddedRef.current) {
+      const Rapier = rapierRef.current;
+      const floorBody = worldRef.current.createRigidBody(Rapier.RigidBodyDesc.fixed());
+      const floorCol = DROP_AXIS === 'y'
+        ? Rapier.ColliderDesc.cuboid(10000, 1, 10000).setTranslation(0, FLOOR_POS - 1, 0)
+        : Rapier.ColliderDesc.cuboid(10000, 10000, 1).setTranslation(0, 0, FLOOR_POS - 1);
+      worldRef.current.createCollider(floorCol, floorBody);
+      floorAddedRef.current = true;
+      pushDbg("Floor collider added.");
+    }
   }
+
+  function startPhysicsLoop() {
+    cancelAnimationFrame(rafPhysRef.current);
+    accRef.current = 0;
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      accRef.current += dt;
+      const world = worldRef.current;
+      if (world) {
+        while (accRef.current >= PHYS_DT) {
+          world.step();
+          accRef.current -= PHYS_DT;
+        }
+        // Sync meshes (respect parent transforms) and detect settling
+        meshToBodyRef.current.forEach((rb, mesh) => {
+          const t = rb.translation();
+          const r = rb.rotation();
+          const worldMat = new THREE.Matrix4().compose(
+            new THREE.Vector3(t.x, t.y, t.z),
+            new THREE.Quaternion(r.x, r.y, r.z, r.w),
+            mesh.scale.clone() // keep current local scale
+          );
+          if (mesh.parent) {
+            const parentInv = new THREE.Matrix4().copy(mesh.parent.matrixWorld).invert();
+            const localMat = new THREE.Matrix4().multiplyMatrices(parentInv, worldMat);
+            const pos = new THREE.Vector3();
+            const quat = new THREE.Quaternion();
+            const scl = new THREE.Vector3();
+            localMat.decompose(pos, quat, scl);
+            mesh.position.copy(pos);
+            mesh.quaternion.copy(quat);
+          } else {
+            mesh.position.set(t.x, t.y, t.z);
+            mesh.quaternion.set(r.x, r.y, r.z, r.w);
+          }
+          const lin = rb.linvel();
+          const ang = rb.angvel();
+          const ls = Math.hypot(lin.x, lin.y, lin.z);
+          const as = Math.hypot(ang.x, ang.y, ang.z);
+          let slept = bodySleepRef.current.get(rb) || 0;
+          if (ls < 0.2 && as < 0.2) slept += PHYS_DT; else slept = 0;
+          bodySleepRef.current.set(rb, slept);
+        });
+      }
+      (modelRef.current as any)?.requestRender?.();
+      rafPhysRef.current = requestAnimationFrame(step);
+    };
+    rafPhysRef.current = requestAnimationFrame(step);
+  }
+
+  // Cleanup physics on unmount
+  useEffect(() => {
+    return () => {
+      try { cancelAnimationFrame(rafPhysRef.current); } catch {}
+      meshToBodyRef.current.clear();
+      bodySleepRef.current.clear();
+      worldRef.current = null;
+    };
+  }, []);
 
   // Build queue and wait for per-object permission
   async function startDroppingSequence() {
@@ -900,10 +945,56 @@ export default function TestimoniesAbout() {
     if (!arr.length || i >= arr.length) return;
     const mesh = arr[i];
     setCanDropNext(false);
+    await ensurePhysicsWorld();
     prepareMeshForDrop(mesh);
-    const floorY = getDynamicFloorY();
-    pushDbg(`Dropping [${i + 1}/${arr.length}] '${mesh.name || mesh.uuid}' … floorY=${floorY.toFixed(1)}`);
-    await dropOne(mesh, floorY);
+    const Rapier = rapierRef.current;
+    const world = worldRef.current;
+    // Compute world bbox center and half extents
+    const box = new THREE.Box3().setFromObject(mesh);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const half = size.clone().multiplyScalar(0.5);
+    // Spawn body above by small offset and with small random velocities
+    const offset = 10;
+    const tx = center.x + (DROP_AXIS === 'z' ? 0 : 0);
+    const ty = center.y + (DROP_AXIS === 'y' ? offset : 0);
+    const tz = center.z + (DROP_AXIS === 'z' ? offset : 0);
+    const rbDesc = Rapier.RigidBodyDesc.dynamic()
+      .setTranslation(tx, ty, tz)
+      .setRotation(mesh.quaternion)
+      .setLinearDamping(0.1)
+      .setAngularDamping(0.7)
+      .setCcdEnabled(true);
+    const rb = world.createRigidBody(rbDesc);
+    const colDesc = Rapier.ColliderDesc.cuboid(
+      Math.max(half.x, 2),
+      Math.max(half.y, 2),
+      Math.max(half.z, 2)
+    )
+      .setFriction(0.9)
+      .setRestitution(0.2)
+      .setDensity(1.0);
+    world.createCollider(colDesc, rb);
+    // tiny random angular & lateral velocity
+    const rand = () => (Math.random() - 0.5) * 2;
+    const ang = { x: 0.5 * rand(), y: 0.5 * rand(), z: 0.5 * rand() };
+    const lat = { x: 5 * rand(), y: 5 * rand(), z: 5 * rand() };
+    rb.setAngvel(ang, true);
+    rb.setLinvel(lat, true);
+    meshToBodyRef.current.set(mesh, rb);
+    bodySleepRef.current.set(rb, 0);
+    pushDbg(`Spawned body for '${mesh.name || mesh.uuid}' with half=(${half.x.toFixed(1)},${half.y.toFixed(1)},${half.z.toFixed(1)})`);
+    // Wait until settled (~0.5s below thresholds)
+    const start = performance.now();
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        const slept = bodySleepRef.current.get(rb) || 0;
+        if (slept >= 0.5) { resolve(); return; }
+        if (performance.now() - start > MAX_DROP_TIME_MS) { pushDbg(`Timeout: forcing settle '${mesh.name || mesh.uuid}'.`); resolve(); return; }
+        requestAnimationFrame(check);
+      };
+      requestAnimationFrame(check);
+    });
     pushDbg(`Settled '${mesh.name || mesh.uuid}'.`);
     dropIndexRef.current = i + 1;
     if (dropIndexRef.current < arr.length) {
@@ -1268,7 +1359,7 @@ export default function TestimoniesAbout() {
 
           {phase === "dropping" && (
             <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>
-              Dropping objects… One by one onto floor (Y={FLOOR_Y}). Gravity={DROP_GRAVITY}, damping={DROP_DAMPING}
+              Dropping objects… One by one onto floor (axis={DROP_AXIS}, pos={FLOOR_POS}). Gravity={DROP_GRAVITY}
             </div>
           )}
 

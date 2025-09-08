@@ -17,6 +17,7 @@ export type ThreeModelHandle = {
   setSpeed: (speed: number) => void;
   playChild: (childName: string, opts?: { fadeIn?: number; procedural?: boolean }) => void;
   getScene: () => THREE.Scene | null;
+  requestRender?: () => void;
 };
 
 type Props = {
@@ -55,16 +56,17 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
   ref
 ) {
   const mountRef = useRef<HTMLDivElement | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer>();
-  const sceneRef = useRef<THREE.Scene>();
-  const perspRef = useRef<THREE.PerspectiveCamera>();
-  const orthoRef = useRef<THREE.OrthographicCamera>();
-  const mixerRef = useRef<THREE.AnimationMixer>();
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const perspRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const orthoRef = useRef<THREE.OrthographicCamera | null>(null);
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const currentActionRef = useRef<THREE.AnimationAction | null>(null);
   const clipsRef = useRef<THREE.AnimationClip[]>([]);
   const clockRef = useRef(new THREE.Clock());
   const rootRef = useRef<THREE.Object3D | null>(null);
   const [ready, setReady] = useState(false);
+  const renderOnceRef = useRef<() => void>(() => {});
 
   // Helper to center and fit in ortho camera for flat mode (used when no fitBBox provided)
   function centerAlignAndFit(target: THREE.Object3D, frustumH: number, isFlat: boolean) {
@@ -165,7 +167,7 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
       // @ts-ignore
       (draco as any).setWasmPath(dracoDecoderPath);
     }
-    draco.preload?.();
+    try { (draco as any).preload?.(); } catch {}
     loader.setDRACOLoader(draco);
 
     let raf = 0;
@@ -175,7 +177,7 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
       (gltf) => {
         const model = gltf.scene;
         rootRef.current = model;
-        model.traverse((o) => {
+        model.traverse((o: any) => {
           if (!o.name) o.name = o.uuid;
           // Replace materials with unlit for flat mode
           if (flat && (o as any).isMesh) {
@@ -260,6 +262,7 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
       renderer.render(scene, camera);
     };
     onFrame();
+    renderOnceRef.current = () => renderer.render(scene, camera);
 
     const onResize = () => {
       if (!mount) return;
@@ -347,6 +350,9 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
 
   useImperativeHandle(ref, () => ({
     getScene: () => sceneRef.current || null,
+    requestRender: () => {
+      try { renderOnceRef.current?.(); } catch {}
+    },
     play: (clipName?: string, fadeIn = 0.2) => {
       if (!mixerRef.current) return;
       const clips = clipsRef.current;
