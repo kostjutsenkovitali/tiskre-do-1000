@@ -753,11 +753,29 @@ export default function TestimoniesAbout() {
     setDebugLines((arr) => [...arr.slice(-60), `[${new Date().toLocaleTimeString()}] ${s}`]);
 
   // Configuration for future dropping logic
-  const FLOOR_Y = 0;              // world "floor" in GLB space (orthographic flat mode)
+  const FLOOR_Y = 0;              // base floor at world ymin (fitBBox)
   const DROP_GRAVITY = 3800;      // units/s^2 in GLB world
   const DROP_DAMPING = 0.14;      // when hitting floor, tiny bounce
   const DROP_INTERVAL_MS = 320;   // delay between successive object drops
   const MAX_DROP_TIME_MS = 8000;  // safety cap per object
+  const WORLD_H = 1900;           // from fitBBox (ymax - ymin)
+
+  // Map screen bottom edge → world Y for current canvas size/position
+  function getDynamicFloorY(): number {
+    const el = glbBoxRef.current;
+    if (!el) return FLOOR_Y;
+    const r = el.getBoundingClientRect();
+    const deltaPx = Math.max(0, window.innerHeight - (r.top + r.height)); // how far canvas bottom is above screen bottom
+    const worldPerPx = WORLD_H / Math.max(1, r.height);
+    // Move floor down in world so it aligns with screen bottom
+    return FLOOR_Y - deltaPx * worldPerPx;
+  }
+
+  // Queue for per-object permissioned drops
+  const dropQueueRef = useRef<THREE.Mesh[]>([]);
+  const dropIndexRef = useRef(0);
+  const [canDropNext, setCanDropNext] = useState(false);
+  const [dropTotal, setDropTotal] = useState(0);
 
   // Utility: traverse and collect candidate "solid" meshes
   function collectDroppableMeshes(root: THREE.Object3D): THREE.Mesh[] {
@@ -783,7 +801,7 @@ export default function TestimoniesAbout() {
   }
 
   // Animate one mesh until it reaches the floor
-  function dropOne(mesh: THREE.Mesh): Promise<void> {
+  function dropOne(mesh: THREE.Mesh, floorY: number): Promise<void> {
     return new Promise((resolve) => {
       let lastTs = performance.now();
       const startTs = lastTs;
@@ -796,8 +814,8 @@ export default function TestimoniesAbout() {
         vy -= DROP_GRAVITY * dt;
         let newY = mesh.position.y + vy * dt;
 
-        if (newY <= FLOOR_Y) {
-          newY = FLOOR_Y;
+        if (newY <= floorY) {
+          newY = floorY;
           vy = -vy * DROP_DAMPING;
           if (Math.abs(vy) < 60) {
             mesh.position.y = newY;
@@ -825,7 +843,7 @@ export default function TestimoniesAbout() {
     });
   }
 
-  // Orchestrate drops for all meshes, one by one
+  // Build queue and wait for per-object permission
   async function startDroppingSequence() {
     const scene = modelRef.current?.getScene();
     if (!scene) {
@@ -861,21 +879,43 @@ export default function TestimoniesAbout() {
     });
     sized.sort((a, b) => b.h - a.h);
 
-    for (let i = 0; i < sized.length; i++) {
-      const mesh = sized[i].m;
-      prepareMeshForDrop(mesh);
-      pushDbg(`Dropping [${i + 1}/${sized.length}] '${mesh.name || mesh.uuid}' …`);
-      await dropOne(mesh);
-      pushDbg(`Settled '${mesh.name || mesh.uuid}'.`);
-      if (i < sized.length - 1) {
-        await new Promise((r) => setTimeout(r, DROP_INTERVAL_MS));
-      }
+    // Exclude frame-1 solid object from dropping
+    const excludeRe = /^(frame[-_]?1)$/i;
+    const filtered = sized.filter(({ m }) => !excludeRe.test(m.name || ""));
+    if (filtered.length !== sized.length) {
+      pushDbg(`Excluded ${sized.length - filtered.length} mesh(es) by name (frame-1).`);
     }
 
-    pushDbg("All objects settled. Releasing scroll.");
-    unlockScroll(lockYRef.current);
-    setScrollLocked(false);
-    setPhase("done");
+    dropQueueRef.current = filtered.map((s) => s.m);
+    dropIndexRef.current = 0;
+    setDropTotal(dropQueueRef.current.length);
+    setCanDropNext(true);
+    pushDbg(`Ready: click 'Drop next object' to start [1/${dropQueueRef.current.length}]`);
+  }
+
+  // Trigger a single object drop; called by HUD button per permission
+  async function dropNextObject() {
+    const i = dropIndexRef.current;
+    const arr = dropQueueRef.current;
+    if (!arr.length || i >= arr.length) return;
+    const mesh = arr[i];
+    setCanDropNext(false);
+    prepareMeshForDrop(mesh);
+    const floorY = getDynamicFloorY();
+    pushDbg(`Dropping [${i + 1}/${arr.length}] '${mesh.name || mesh.uuid}' … floorY=${floorY.toFixed(1)}`);
+    await dropOne(mesh, floorY);
+    pushDbg(`Settled '${mesh.name || mesh.uuid}'.`);
+    dropIndexRef.current = i + 1;
+    if (dropIndexRef.current < arr.length) {
+      await new Promise((r) => setTimeout(r, DROP_INTERVAL_MS));
+      setCanDropNext(true);
+      pushDbg(`Ready for next [${dropIndexRef.current + 1}/${arr.length}].`);
+    } else {
+      pushDbg("All objects settled. Releasing scroll.");
+      unlockScroll(lockYRef.current);
+      setScrollLocked(false);
+      setPhase("done");
+    }
   }
 
   // After laser finishes, swap models
@@ -1229,6 +1269,18 @@ export default function TestimoniesAbout() {
           {phase === "dropping" && (
             <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>
               Dropping objects… One by one onto floor (Y={FLOOR_Y}). Gravity={DROP_GRAVITY}, damping={DROP_DAMPING}
+            </div>
+          )}
+
+          {phase === "dropping" && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                disabled={!canDropNext}
+                onClick={() => dropNextObject()}
+                style={{ padding: "8px 12px", fontWeight: 800, borderRadius: 8, border: "1px solid #ccc", background: canDropNext ? "#0ea5e9" : "#64748b", color: "#fff", cursor: canDropNext ? "pointer" : "not-allowed" }}
+              >
+                ⬇️ Drop next object {dropIndexRef.current + 1}/{dropTotal}
+              </button>
             </div>
           )}
 
