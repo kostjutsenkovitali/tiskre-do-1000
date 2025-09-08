@@ -18,6 +18,8 @@ export type ThreeModelHandle = {
   playChild: (childName: string, opts?: { fadeIn?: number; procedural?: boolean }) => void;
   getScene: () => THREE.Scene | null;
   requestRender?: () => void;
+  setOrthoBounds?: (b: { left: number; right: number; top: number; bottom: number }) => void;
+  getOrthoBounds?: () => { left: number; right: number; top: number; bottom: number } | null;
 };
 
 type Props = {
@@ -60,6 +62,7 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
   const sceneRef = useRef<THREE.Scene | null>(null);
   const perspRef = useRef<THREE.PerspectiveCamera | null>(null);
   const orthoRef = useRef<THREE.OrthographicCamera | null>(null);
+  const orthoBoundsRef = useRef<{ left: number; right: number; top: number; bottom: number } | null>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const currentActionRef = useRef<THREE.AnimationAction | null>(null);
   const clipsRef = useRef<THREE.AnimationClip[]>([]);
@@ -172,9 +175,8 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
 
     let raf = 0;
 
-    loader.load(
-      src || modelPath || "",
-      (gltf) => {
+    const loadPath = src || modelPath || "";
+    const onLoaded = (gltf: any) => {
         const model = gltf.scene;
         rootRef.current = model;
         model.traverse((o: any) => {
@@ -229,6 +231,25 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
           model.position.x += -min.x + origin[0];
           model.position.y += -min.y + origin[1];
           model.position.z += -min.z + origin[2];
+
+          // Initialize ortho bounds to fitBBox if not set yet, and apply to camera
+          if (!orthoBoundsRef.current) {
+            orthoBoundsRef.current = {
+              left: fitBBox.xmin,
+              right: fitBBox.xmax,
+              top: fitBBox.ymax,
+              bottom: fitBBox.ymin,
+            };
+          }
+          if (orthoRef.current && orthoBoundsRef.current) {
+            const o = orthoRef.current;
+            const b = orthoBoundsRef.current;
+            o.left = b.left;
+            o.right = b.right;
+            o.top = b.top;
+            o.bottom = b.bottom;
+            o.updateProjectionMatrix();
+          }
         } else if (flat) {
           // Default flat fit behavior (no absolute alignment)
           centerAlignAndFit(model, FRUSTUM_H, flat);
@@ -247,13 +268,22 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
         }
 
         setReady(true);
-      },
-      undefined,
-      (e) => {
-        console.error("GLB load error:", e);
-        setReady(true);
-      }
-    );
+      };
+
+    if (loadPath) {
+      loader.load(
+        loadPath,
+        onLoaded,
+        undefined,
+        (e) => {
+          console.error("GLB load error:", e);
+          setReady(true);
+        }
+      );
+    } else {
+      // No model requested; render empty scene to allow external content (e.g., clones)
+      setReady(true);
+    }
 
     const onFrame = () => {
       raf = requestAnimationFrame(onFrame);
@@ -271,11 +301,17 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
       renderer.setSize(w, h, false);
       if (orthoRef.current) {
         if (fitBBox) {
-          // Map camera frustum directly to world extents so (0,0) is consistent
-          orthoRef.current.left = fitBBox.xmin;
-          orthoRef.current.right = fitBBox.xmax;
-          orthoRef.current.top = fitBBox.ymax;
-          orthoRef.current.bottom = fitBBox.ymin;
+          // Use current ortho bounds if provided (can be extended by caller)
+          const b = orthoBoundsRef.current || {
+            left: fitBBox.xmin,
+            right: fitBBox.xmax,
+            top: fitBBox.ymax,
+            bottom: fitBBox.ymin,
+          };
+          orthoRef.current.left = b.left;
+          orthoRef.current.right = b.right;
+          orthoRef.current.top = b.top;
+          orthoRef.current.bottom = b.bottom;
           orthoRef.current.updateProjectionMatrix();
         } else {
           const a = Math.max(1e-6, w / h);
@@ -352,6 +388,24 @@ export default forwardRef<ThreeModelHandle, Props>(function ThreeModel(
     getScene: () => sceneRef.current || null,
     requestRender: () => {
       try { renderOnceRef.current?.(); } catch {}
+    },
+    setOrthoBounds: (b) => {
+      orthoBoundsRef.current = { ...b };
+      if (orthoRef.current) {
+        orthoRef.current.left = b.left;
+        orthoRef.current.right = b.right;
+        orthoRef.current.top = b.top;
+        orthoRef.current.bottom = b.bottom;
+        orthoRef.current.updateProjectionMatrix();
+      }
+      try { renderOnceRef.current?.(); } catch {}
+    },
+    getOrthoBounds: () => {
+      if (orthoBoundsRef.current) return { ...orthoBoundsRef.current };
+      if (fitBBox) {
+        return { left: fitBBox.xmin, right: fitBBox.xmax, top: fitBBox.ymax, bottom: fitBBox.ymin };
+      }
+      return null;
     },
     play: (clipName?: string, fadeIn = 0.2) => {
       if (!mixerRef.current) return;

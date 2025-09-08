@@ -3,6 +3,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, ReactNode } from "react";
 import Link from "next/link";
+import FullscreenStage from "@/components/FullscreenStage";
 // useI18n imported once at top (line 6). Remove duplicate import here.
 import ThreeModel, { ThreeModelHandle } from "@/components/ThreeModel";
 import * as THREE from "three";
@@ -733,6 +734,7 @@ export default function TestimoniesAbout() {
   const glbBoxRef = useRef<HTMLDivElement>(null);
   // Access to Three.js scene inside ThreeModel
   const modelRef = useRef<ThreeModelHandle | null>(null);
+  const stageRef = useRef<ThreeModelHandle | null>(null);
 
   const [headerHeight, setHeaderHeight] = useState(0);
   const [vp, setVp] = useState(0);
@@ -755,7 +757,7 @@ export default function TestimoniesAbout() {
   // Configuration for future dropping logic
   type Axis = 'y' | 'z';
   const DROP_AXIS: Axis = 'y';
-  const FLOOR_POS = 0;            // static floor plane position
+  const FLOOR_POS = 0;            // initial; will be overridden to viewport-bottom
   const DROP_GRAVITY = 3800;      // units/s^2 in GLB world
   const DROP_DAMPING = 0.14;      // legacy param (not used by Rapier)
   const DROP_INTERVAL_MS = 320;   // delay between successive object spawns
@@ -798,8 +800,32 @@ export default function TestimoniesAbout() {
   const rafPhysRef = useRef<number>(0);
   const accRef = useRef(0);
   const meshToBodyRef = useRef<Map<THREE.Mesh, any>>(new Map());
+  const meshCloneToBodyRef = useRef<Map<THREE.Mesh, any>>(new Map());
+  const dropsGroupRef = useRef<THREE.Group | null>(null);
   const bodySleepRef = useRef<Map<any, number>>(new Map());
   const floorAddedRef = useRef(false);
+  const floorColliderRef = useRef<any>(null);
+  const floorPosRef = useRef<number>(FLOOR_POS);
+
+  // Compute world floor position such that it visually maps to viewport bottom
+  function computeViewportFloorPos(): number {
+    try {
+      const el = glbBoxRef.current;
+      if (!el) return 0;
+      const rect = el.getBoundingClientRect();
+      const H = rect.height || 1;
+      // World bbox height is 1900 (SHEET_BBOX)
+      const s = H / (SHEET_BBOX.ymax - SHEET_BBOX.ymin);
+      const screenBottom = window.innerHeight || 0;
+      const screenYInBox = screenBottom - rect.top; // px from top of GLB box
+      // With perfect aspect match, padding oy≈0, mapping: screenY = H - y*s
+      // => y = (H - screenY) / s
+      const yWorld = (H - screenYInBox) / s;
+      return yWorld;
+    } catch {
+      return 0;
+    }
+  }
 
   async function ensurePhysicsWorld() {
     if (!rapierRef.current) {
@@ -818,12 +844,43 @@ export default function TestimoniesAbout() {
     if (!floorAddedRef.current) {
       const Rapier = rapierRef.current;
       const floorBody = worldRef.current.createRigidBody(Rapier.RigidBodyDesc.fixed());
+      // Initial compute and place floor at viewport bottom
+      const fp = computeViewportFloorPos();
+      floorPosRef.current = fp;
       const floorCol = DROP_AXIS === 'y'
-        ? Rapier.ColliderDesc.cuboid(10000, 1, 10000).setTranslation(0, FLOOR_POS - 1, 0)
-        : Rapier.ColliderDesc.cuboid(10000, 10000, 1).setTranslation(0, 0, FLOOR_POS - 1);
-      worldRef.current.createCollider(floorCol, floorBody);
+        ? Rapier.ColliderDesc.cuboid(10000, 1, 10000).setTranslation(0, fp - 1, 0)
+        : Rapier.ColliderDesc.cuboid(10000, 10000, 1).setTranslation(0, 0, fp - 1);
+      floorColliderRef.current = worldRef.current.createCollider(floorCol, floorBody);
       floorAddedRef.current = true;
-      pushDbg("Floor collider added.");
+      pushDbg(`Floor collider added at viewport bottom (world ${DROP_AXIS}=${fp.toFixed(1)}).`);
+
+      // Keep floor in sync with viewport on resize
+      const onResize = () => {
+        try {
+          const nv = computeViewportFloorPos();
+          floorPosRef.current = nv;
+          if (floorColliderRef.current) {
+            if (DROP_AXIS === 'y') floorColliderRef.current.setTranslation({ x: 0, y: nv - 1, z: 0 });
+            else floorColliderRef.current.setTranslation({ x: 0, y: 0, z: nv - 1 });
+          }
+          // Extend ortho frustum to include the floor (and margin below)
+          const left = 0, right = 4500, top = 1900;
+          const bottom = Math.min(0, floorPosRef.current - 100);
+          modelRef.current?.setOrthoBounds?.({ left, right, top, bottom });
+          modelRef.current?.requestRender?.();
+        } catch {}
+      };
+      window.addEventListener("resize", onResize);
+      // Store cleanup on collider object for simplicity
+      (floorColliderRef.current as any).__onResize = onResize;
+      // Apply initial ortho bounds immediately
+      {
+        const left = 0, right = 4500, top = 1900;
+        const bottom = Math.min(0, floorPosRef.current - 100);
+        modelRef.current?.setOrthoBounds?.({ left, right, top, bottom });
+        modelRef.current?.requestRender?.();
+        pushDbg(`Ortho bounds set for dropping: L=${left} R=${right} T=${top} B=${bottom.toFixed(1)}`);
+      }
     }
   }
 
@@ -842,7 +899,7 @@ export default function TestimoniesAbout() {
           accRef.current -= PHYS_DT;
         }
         // Sync meshes (respect parent transforms) and detect settling
-        meshToBodyRef.current.forEach((rb, mesh) => {
+        const updateOne = (map: Map<THREE.Mesh, any>) => map.forEach((rb, mesh) => {
           const t = rb.translation();
           const r = rb.rotation();
           const worldMat = new THREE.Matrix4().compose(
@@ -871,6 +928,8 @@ export default function TestimoniesAbout() {
           if (ls < 0.2 && as < 0.2) slept += PHYS_DT; else slept = 0;
           bodySleepRef.current.set(rb, slept);
         });
+        updateOne(meshToBodyRef.current);
+        updateOne(meshCloneToBodyRef.current);
       }
       (modelRef.current as any)?.requestRender?.();
       rafPhysRef.current = requestAnimationFrame(step);
@@ -885,6 +944,10 @@ export default function TestimoniesAbout() {
       meshToBodyRef.current.clear();
       bodySleepRef.current.clear();
       worldRef.current = null;
+      try {
+        const c = floorColliderRef.current as any;
+        if (c && c.__onResize) window.removeEventListener("resize", c.__onResize);
+      } catch {}
     };
   }, []);
 
@@ -897,7 +960,7 @@ export default function TestimoniesAbout() {
     }
 
     setPhase("dropping");
-    pushDbg("Starting drop sequence…");
+    pushDbg("Starting drop sequence… (floor = viewport bottom)");
 
     // Choose largest group by descendant count as model root
     let modelRoot: THREE.Object3D | null = null;
@@ -936,6 +999,17 @@ export default function TestimoniesAbout() {
     setDropTotal(dropQueueRef.current.length);
     setCanDropNext(true);
     pushDbg(`Ready: click 'Drop next object' to start [1/${dropQueueRef.current.length}]`);
+
+    // Prepare drops group in stage scene
+    try {
+      const stageScene = stageRef.current?.getScene?.();
+      if (stageScene && !dropsGroupRef.current) {
+        const g = new THREE.Group();
+        g.name = "dropsGroup";
+        stageScene.add(g);
+        dropsGroupRef.current = g;
+      }
+    } catch {}
   }
 
   // Trigger a single object drop; called by HUD button per permission
@@ -947,6 +1021,19 @@ export default function TestimoniesAbout() {
     setCanDropNext(false);
     await ensurePhysicsWorld();
     prepareMeshForDrop(mesh);
+    // Clone into stage scene for full-screen rendering
+    let clone: THREE.Mesh | null = null;
+    try {
+      if (dropsGroupRef.current) {
+        clone = mesh.clone(true) as THREE.Mesh;
+        // Sync world pose to clone local under dropsGroup (world aligned)
+        const box = new THREE.Box3().setFromObject(mesh);
+        const center = box.getCenter(new THREE.Vector3());
+        clone.position.copy(center);
+        clone.quaternion.copy(mesh.getWorldQuaternion(new THREE.Quaternion()));
+        dropsGroupRef.current.add(clone);
+      }
+    } catch {}
     const Rapier = rapierRef.current;
     const world = worldRef.current;
     // Compute world bbox center and half extents
@@ -981,7 +1068,11 @@ export default function TestimoniesAbout() {
     const lat = { x: 5 * rand(), y: 5 * rand(), z: 5 * rand() };
     rb.setAngvel(ang, true);
     rb.setLinvel(lat, true);
-    meshToBodyRef.current.set(mesh, rb);
+    if (clone) {
+      meshCloneToBodyRef.current.set(clone, rb);
+    } else {
+      meshToBodyRef.current.set(mesh, rb);
+    }
     bodySleepRef.current.set(rb, 0);
     pushDbg(`Spawned body for '${mesh.name || mesh.uuid}' with half=(${half.x.toFixed(1)},${half.y.toFixed(1)},${half.z.toFixed(1)})`);
     // Wait until settled (~0.5s below thresholds)
@@ -996,6 +1087,10 @@ export default function TestimoniesAbout() {
       requestAnimationFrame(check);
     });
     pushDbg(`Settled '${mesh.name || mesh.uuid}'.`);
+    // Hide original if clone was used, keep pile in stage
+    try {
+      if (clone) (mesh as any).visible = false;
+    } catch {}
     dropIndexRef.current = i + 1;
     if (dropIndexRef.current < arr.length) {
       await new Promise((r) => setTimeout(r, DROP_INTERVAL_MS));
@@ -1288,6 +1383,15 @@ export default function TestimoniesAbout() {
         className="sticky top-0 h-screen overflow-hidden isolate"
         style={{ background: SECTION_GRADIENT }}
       >
+        {/* Fullscreen drop stage overlay (renders during dropping) */}
+        <FullscreenStage
+          visible={phase === "dropping"}
+          modelRef={stageRef}
+          computeBottom={() => {
+            const fp = computeViewportFloorPos();
+            return Math.min(0, fp);
+          }}
+        />
         {/* Laser overlay: ALL THREE files in the same absolute coordinate space */}
         <MultiLaserOverlayAbsolute
           active={laserActive}
@@ -1308,7 +1412,7 @@ export default function TestimoniesAbout() {
         <div
           style={{
             position: "absolute",
-            top: 12,
+            top: 212,
             right: 12,
             zIndex: 60,
             width: "min(36vw, 520px)",
@@ -1359,7 +1463,7 @@ export default function TestimoniesAbout() {
 
           {phase === "dropping" && (
             <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>
-              Dropping objects… One by one onto floor (axis={DROP_AXIS}, pos={FLOOR_POS}). Gravity={DROP_GRAVITY}
+              Dropping objects… One by one onto floor (axis={DROP_AXIS}, pos={floorPosRef.current}). Gravity={DROP_GRAVITY}
             </div>
           )}
 
@@ -1398,7 +1502,7 @@ export default function TestimoniesAbout() {
           {openingWidthVW > 0 && (
             <div
               className="absolute inset-0"
-              style={{ zIndex: 10, backgroundColor: LIGHT_GREY, clipPath: openingClip, overflow: "hidden" }}
+              style={{ zIndex: 10, backgroundColor: LIGHT_GREY, clipPath: phase === "dropping" ? "none" : openingClip, overflow: "visible" }}
             >
               {/* Hex PNG inside opening */}
               <div
@@ -1463,7 +1567,7 @@ export default function TestimoniesAbout() {
                 </div>
 
                 {/* Photos row */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2vw", width: "100%", transform: "translateY(0px)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2vw", width: "100%", transform: "translateY(0px)", overflow: phase === "dropping" ? "visible" : undefined }}>
                   <img
                     src="/about/vitali.jpg"
                     alt="Vitali"
@@ -1506,7 +1610,7 @@ export default function TestimoniesAbout() {
           )}
 
           {/* Row 1 — LEFT */}
-          <div className="absolute inset-x-0 pointer-events-none" style={{ top: 0, height: "50%", zIndex: 2 }}>
+          <div className="absolute inset-x-0 pointer-events-none" style={{ top: 0, height: "50%", zIndex: 2, overflow: phase === "dropping" ? "visible" : undefined }}>
             <img
               src="/popular/pine.png"
               alt="Pine"
@@ -1541,7 +1645,7 @@ export default function TestimoniesAbout() {
           </div>
 
           {/* Row 2 — RIGHT */}
-          <div className="absolute inset-x-0 pointer-events-none" style={{ top: "50%", height: "50%", zIndex: 2 }}>
+          <div className="absolute inset-x-0 pointer-events-none" style={{ top: "50%", height: "50%", zIndex: 2, overflow: phase === "dropping" ? "visible" : undefined }}>
             <img
               src="/popular/figue.png"
               alt="Figue"
