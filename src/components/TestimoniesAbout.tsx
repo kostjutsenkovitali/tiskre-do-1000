@@ -4,7 +4,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, ReactNode } from "react";
 import Link from "next/link";
 // useI18n imported once at top (line 6). Remove duplicate import here.
-import ThreeModel from "@/components/ThreeModel";
+import ThreeModel, { ThreeModelHandle } from "@/components/ThreeModel";
+import * as THREE from "three";
 
 type Dir = "left" | "right";
 
@@ -301,12 +302,14 @@ function MultiLaserOverlayAbsolute({
   durationMs = 4000,
   anchorRef,
   onDone,
+  onDebug,
 }: {
   active: boolean;
   targets: Array<{ segs: Seg[] | null; bbox: BBox | null }>;
   durationMs?: number;
   anchorRef?: React.RefObject<HTMLDivElement | null>;
   onDone: () => void;
+  onDebug?: (msg: string) => void;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -335,6 +338,13 @@ function MultiLaserOverlayAbsolute({
     if (!any) return null;
     return { min, max };
   }, [targets]);
+
+  // Report feed stats when available
+  useEffect(() => {
+    if (feedMinMax) {
+      onDebug?.(`Laser feed stats: min=${feedMinMax.min.toFixed(0)}, max=${feedMinMax.max.toFixed(0)}`);
+    }
+  }, [feedMinMax]);
 
   // Drawing options
   const SKIP_TOO_FAST = true; // optionally hide segments with very high feed
@@ -384,8 +394,10 @@ function MultiLaserOverlayAbsolute({
         await incAudioRefs.current[0]!.play();
         await incAudioRefs.current[1]!.play();
         audioReadyRef.current = true;
+        onDebug?.("Laser audio ready (autoplay)");
       } catch {
         audioReadyRef.current = false;
+        onDebug?.("Laser audio blocked by autoplay policy; waiting for user gesture");
       }
     };
     tryPlay();
@@ -398,6 +410,7 @@ function MultiLaserOverlayAbsolute({
       incAudioRefs.current[0]?.play().catch(() => {});
       incAudioRefs.current[1]?.play().catch(() => {});
       audioReadyRef.current = true;
+      onDebug?.("Laser audio resumed after user interaction");
       window.removeEventListener("pointerdown", resume);
       window.removeEventListener("keydown", resume);
       window.removeEventListener("scroll", resume, { capture: true } as any);
@@ -718,6 +731,8 @@ export default function TestimoniesAbout() {
 
   // GLB box anchor for lasers
   const glbBoxRef = useRef<HTMLDivElement>(null);
+  // Access to Three.js scene inside ThreeModel
+  const modelRef = useRef<ThreeModelHandle | null>(null);
 
   const [headerHeight, setHeaderHeight] = useState(0);
   const [vp, setVp] = useState(0);
@@ -727,6 +742,141 @@ export default function TestimoniesAbout() {
   const [rowProgress, setRowProgress] = useState(0); // 0..1
   const [openingWidthVW, setOpeningWidthVW] = useState(0);
   const [unveilScale, setUnveilScale] = useState(1);
+
+  // NEW: handle to drive drops via scene access
+  const [phase, setPhase] = useState<
+    "idle" | "laser" | "waiting-permission" | "dropping" | "done"
+  >("idle");
+
+  const [debugLines, setDebugLines] = useState<string[]>([]);
+  const pushDbg = (s: string) =>
+    setDebugLines((arr) => [...arr.slice(-60), `[${new Date().toLocaleTimeString()}] ${s}`]);
+
+  // Configuration for future dropping logic
+  const FLOOR_Y = 0;              // world "floor" in GLB space (orthographic flat mode)
+  const DROP_GRAVITY = 3800;      // units/s^2 in GLB world
+  const DROP_DAMPING = 0.14;      // when hitting floor, tiny bounce
+  const DROP_INTERVAL_MS = 320;   // delay between successive object drops
+  const MAX_DROP_TIME_MS = 8000;  // safety cap per object
+
+  // Utility: traverse and collect candidate "solid" meshes
+  function collectDroppableMeshes(root: THREE.Object3D): THREE.Mesh[] {
+    const out: THREE.Mesh[] = [];
+    root.traverse((o: any) => {
+      if (o?.isMesh && o.visible !== false) {
+        const g = o.geometry;
+        if (!g) return;
+        out.push(o);
+      }
+    });
+    return out;
+  }
+
+  // Compute world-space bbox height & set initial velocity
+  function prepareMeshForDrop(mesh: THREE.Mesh) {
+    const box = new THREE.Box3().setFromObject(mesh);
+    const size = box.getSize(new THREE.Vector3());
+    const height = size.y || 1;
+    (mesh as any).__vy = 0;
+    (mesh as any).__dropping = true;
+    (mesh as any).__height = height;
+  }
+
+  // Animate one mesh until it reaches the floor
+  function dropOne(mesh: THREE.Mesh): Promise<void> {
+    return new Promise((resolve) => {
+      let lastTs = performance.now();
+      const startTs = lastTs;
+
+      const step = (now: number) => {
+        const dt = Math.min(0.04, (now - lastTs) / 1000);
+        lastTs = now;
+
+        let vy = (mesh as any).__vy as number;
+        vy -= DROP_GRAVITY * dt;
+        let newY = mesh.position.y + vy * dt;
+
+        if (newY <= FLOOR_Y) {
+          newY = FLOOR_Y;
+          vy = -vy * DROP_DAMPING;
+          if (Math.abs(vy) < 60) {
+            mesh.position.y = newY;
+            (mesh as any).__vy = 0;
+            (mesh as any).__dropping = false;
+            resolve();
+            return;
+          }
+        }
+
+        mesh.position.y = newY;
+        (mesh as any).__vy = vy;
+
+        if (now - startTs > MAX_DROP_TIME_MS) {
+          pushDbg(`Timeout: forcing settle for '${mesh.name || mesh.uuid}'.`);
+          (mesh as any).__dropping = false;
+          resolve();
+          return;
+        }
+
+        requestAnimationFrame(step);
+      };
+
+      requestAnimationFrame(step);
+    });
+  }
+
+  // Orchestrate drops for all meshes, one by one
+  async function startDroppingSequence() {
+    const scene = modelRef.current?.getScene();
+    if (!scene) {
+      pushDbg("No scene yet; cannot drop.");
+      return;
+    }
+
+    setPhase("dropping");
+    pushDbg("Starting drop sequence…");
+
+    // Choose largest group by descendant count as model root
+    let modelRoot: THREE.Object3D | null = null;
+    let maxCount = -1;
+    for (const child of scene.children) {
+      let count = 0;
+      child.traverse(() => count++);
+      if (count > maxCount) {
+        maxCount = count;
+        modelRoot = child;
+      }
+    }
+    if (!modelRoot) {
+      pushDbg("Model root not found.");
+      return;
+    }
+
+    const meshes = collectDroppableMeshes(modelRoot);
+    pushDbg(`Collected ${meshes.length} meshes to drop.`);
+
+    const sized = meshes.map((m) => {
+      const box = new THREE.Box3().setFromObject(m);
+      return { m, h: box.getSize(new THREE.Vector3()).y };
+    });
+    sized.sort((a, b) => b.h - a.h);
+
+    for (let i = 0; i < sized.length; i++) {
+      const mesh = sized[i].m;
+      prepareMeshForDrop(mesh);
+      pushDbg(`Dropping [${i + 1}/${sized.length}] '${mesh.name || mesh.uuid}' …`);
+      await dropOne(mesh);
+      pushDbg(`Settled '${mesh.name || mesh.uuid}'.`);
+      if (i < sized.length - 1) {
+        await new Promise((r) => setTimeout(r, DROP_INTERVAL_MS));
+      }
+    }
+
+    pushDbg("All objects settled. Releasing scroll.");
+    unlockScroll(lockYRef.current);
+    setScrollLocked(false);
+    setPhase("done");
+  }
 
   // After laser finishes, swap models
   const [showFrame, setShowFrame] = useState(false);
@@ -889,17 +1039,14 @@ export default function TestimoniesAbout() {
     if (fullyOpen && !laserActive && !laserDone) {
       lockYRef.current = lockScroll();
       setScrollLocked(true);
+      pushDbg("Scroll locked (pre-laser).");
       setLaserActive(true);
+      setPhase("laser");
+      pushDbg("Laser started.");
     }
   }, [openingWidthVW, laserActive, laserDone]);
 
-  // Unlock scroll after laser finishes (release vertical)
-  useEffect(() => {
-    if (laserDone && scrollLocked) {
-      unlockScroll(lockYRef.current);
-      setScrollLocked(false);
-    }
-  }, [laserDone, scrollLocked]);
+  // Do NOT unlock scroll on laser end; scroll is released after drops finish
 
   const worldBBox = useMemo(() => SHEET_BBOX, []);
   const ratio = useMemo(() => {
@@ -1019,9 +1166,89 @@ export default function TestimoniesAbout() {
           onDone={() => {
             setLaserActive(false);
             setLaserDone(true);
-            setShowFrame(true); // << switch to frame.glb after laser finishes
+            // Keep tiskre.glb visible; do not switch to frame yet
+            pushDbg("Laser finished.");
+            setPhase("waiting-permission");
           }}
+          onDebug={(m) => pushDbg(m)}
         />
+
+        {/* === DEBUG HUD & CONTROLS === */}
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            zIndex: 60,
+            width: "min(36vw, 520px)",
+            maxHeight: "42vh",
+            background: "rgba(0,0,0,0.65)",
+            color: "#fff",
+            borderRadius: 12,
+            padding: "12px 12px 8px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            pointerEvents: "auto",
+            backdropFilter: "blur(3px)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ fontWeight: 900, letterSpacing: ".02em" }}>TestimoniesAbout — DEBUG</div>
+            <div style={{ fontSize: 12, opacity: 0.9 }}>
+              phase: <b>{phase}</b>
+              {scrollLocked ? " · scroll:locked" : " · scroll:free"}
+            </div>
+          </div>
+
+          {phase === "waiting-permission" && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                onClick={() => {
+                  startDroppingSequence();
+                }}
+                style={{ padding: "8px 12px", fontWeight: 800, borderRadius: 8, border: "1px solid #ccc", background: "#16a34a", color: "#fff" }}
+              >
+                ✅ Start dropping objects
+              </button>
+              <button
+                onClick={() => {
+                  // Emergency release without dropping
+                  unlockScroll(lockYRef.current);
+                  setScrollLocked(false);
+                  setPhase("done");
+                  pushDbg("Scroll manually released by user.");
+                }}
+                style={{ padding: "8px 12px", fontWeight: 800, borderRadius: 8, border: "1px solid #ccc", background: "#6b7280", color: "#fff" }}
+              >
+                🧯 Skip & release scroll
+              </button>
+            </div>
+          )}
+
+          {phase === "dropping" && (
+            <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>
+              Dropping objects… One by one onto floor (Y={FLOOR_Y}). Gravity={DROP_GRAVITY}, damping={DROP_DAMPING}
+            </div>
+          )}
+
+          <div
+            style={{
+              fontFamily:
+                'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+              fontSize: 12,
+              lineHeight: 1.25,
+              whiteSpace: "pre-wrap",
+              overflow: "auto",
+              background: "rgba(0,0,0,0.25)",
+              borderRadius: 8,
+              padding: 8,
+              maxHeight: "28vh",
+            }}
+          >
+            {debugLines.length ? debugLines.map((ln, i) => <div key={i}>{ln}</div>) : "— no logs yet —"}
+          </div>
+        </div>
 
         {/* Opening (center) */}
         <div className="absolute inset-x-0" style={{ top: headerHeight, bottom: 0 }}>
@@ -1083,6 +1310,7 @@ export default function TestimoniesAbout() {
                 >
                   <div style={{ position: "absolute", inset: 0 }}>
                     <ThreeModel
+                      ref={modelRef}
                       modelPath={showFrame ? "/about/frame.glb" : "/about/tiskre.glb"}
                       height={"100%"}
                       flat
